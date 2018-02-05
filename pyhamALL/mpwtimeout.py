@@ -9,7 +9,7 @@ import signal
 from contextlib import contextmanager
 
 
-from dask import dataframe
+from dask import dataframe as ddf
 import pandas as pd 
 
 
@@ -28,17 +28,24 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-    
-
-def updatefunction(startobject, update_data):
+def updatefunction_dict(startobject, update_data):
     #for a dictionary
- 
     try:
         startobject.update(update_data)
     except:
-        print( update_data)
+        print(update_data)
     return startobject
 
+
+
+def updatefunction_sparsemat(startobject, update_data):
+    #for a scipy spares matrix
+    #finish me
+    try:
+        pass
+    except:
+        print(update_data)
+    return startobject
 
 def worker(i,q,retq,l, timecards , workerfunction  ):
     pnumber = i
@@ -76,7 +83,7 @@ def updater(i,q,retq,l , updatefunction ,startobject, saveobject ):
         else:
             startobject = updatefunction(startobject , update_data)
 
-def daskupdater(i,q,retq,l , updatefunction ,startobject, saveobject ):
+def daskupdater(i,q,retq,l , updatefunction ,startobject, saveobject  ):
     #build up a dictionary
     #once enoguh entries are there transform it into a pandas dataframe
     #shove it into the final Dask dataframe and update it
@@ -91,17 +98,69 @@ def daskupdater(i,q,retq,l , updatefunction ,startobject, saveobject ):
             df = pd.from_dict( startobject )
             startobject = {}
             if count == 0:
-                DDF = dask.dataframe.from_pandas(df ) 
+                DDF = dask.dataframe.from_pandas(df) 
             else:
                 DDF.add(df)
             count += 1
-        
         elif update_data == 'DDFSAVE':
             #save dask dataframe as 
             dask.dataframe.to_hdf5(DDF, saveobject)
-
         else:
             startobject = updatefunction(startobject , update_data)
+    print('final save')
+    dask.dataframe.to_hdf5(DDF, saveobject)
+    print('daskupdater:DONE')
+
+
+def hdf5updater( i,q,retq,l , updatefunction ,startobject, saveobject, sparse = True ):
+    #output vectors to an hdf5 file
+    #finish me
+    
+
+    f = tb.open_file(saveobject, 'w')
+
+    if sparse == True:
+        filters = tb.Filters(complevel=5, complib='blosc')
+        out_data = f.create_earray(f.root, 'data', tb.Float32Atom(), shape=(0,), filters=filters)
+        out_ri = f.create_earray(f.root, 'ri', tb.Float32Atom(),shape=(0,), filters=filters)
+        out_ci = f.create_earray(f.root, 'ci', tb.Float32Atom(), shape=(0,), filters=filters)
+        bl = 1000 
+    #if sparse store index
+    else:
+        bl = 1000
+
+    if sparse == True:
+    
+
+        while True:
+        time.sleep(.1)
+        update_data = retq.get()
+        if update_data == 'DONE':
+            break
+        
+        elif update_data == 'SAVE':
+            df = pd.from_dict( startobject )
+            startobject = {}
+            if count == 0:
+                DDF = dask.dataframe.from_pandas(df) 
+            else:
+                DDF.add(df)
+            count += 1
+        elif update_data == 'DDFSAVE':
+            #save dask dataframe as 
+            dask.dataframe.to_hdf5(DDF, saveobject)
+        else:
+            startobject = updatefunction(startobject , update_data)
+            
+        for i in range(0, l, bl):
+          res = retmat[:,i:min(i+bl, l)]
+          vals = res.data
+          ri, ci = res.nonzero()
+          out_data.append(vals)
+          out_ri.append(ri)
+          out_ci.append(ci)
+    
+    else:
 
 
 def mp_with_timeout(nworkers, nupdaters, startobject , saveobject , datagenerator , workerfunction, updatefunction, timeout = 60, saveinterval = 300 , bigsaveinterval = 1000 ):
@@ -125,7 +184,7 @@ def mp_with_timeout(nworkers, nupdaters, startobject , saveobject , datagenerato
 
 
     for i in range(nupdaters):
-        t = mp.Process(target=updater, args=(i,q,retq,l , updatefunction ,startobject , saveobject+str(i)+'.pkl'  ) ) 
+        t = mp.Process(target=daskupdater, args=(i,q,retq,l , updatefunction ,startobject , saveobject+str(i)+'.pkl'  ) ) 
         t.daemon = True
         t.start()
         uprocesses[i]= t
@@ -138,8 +197,10 @@ def mp_with_timeout(nworkers, nupdaters, startobject , saveobject , datagenerato
         time.sleep(.1)
         #check for non responsive workers
         #save every so often
-        if count % 100 == 0 :
+        if count % saveinterval == 0 :
             retq.put('SAVE')
+        if count % bigsaveinterval == 0 :
+            retq.put('DDFSAVE')
         try:
             data = next(datagenerator)
             q.put(data)

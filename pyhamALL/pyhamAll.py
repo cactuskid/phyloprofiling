@@ -213,8 +213,10 @@ def yeildfams():
         yield row[0]
 
 retHamMP = functools.partial( retham , dbObj=dbObj , species_tree= species_tree,  datadir = datadir , replacement_dic = replacement_dic )
-multi.mp_with_timeout(nworkers= 10, nupdaters = 1, startobject ={} , saveobject=datadir + 'hams.pkl'  , 
-    datagenerator= yeildfams()  , workerfunction = retHamMP, updatefunction =multi.updatefunction , timeout = 60, saveinterval = 600  )
+
+
+multi.mp_with_timeout(nworkers= 10, nupdaters = 1, startobject ={} , saveobject= datadir + 'hams.pkl'  , 
+    datagenerator= yeildfams()  , workerfunction = retHamMP, updatefunction =multi.updatefunction_dict , timeout = 60, saveinterval = 600  )
 
 
 
