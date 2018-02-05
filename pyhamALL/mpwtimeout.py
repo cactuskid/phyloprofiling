@@ -76,12 +76,11 @@ def updater(i,q,retq,l , updatefunction ,startobject, saveobject ):
         else:
             startobject = updatefunction(startobject , update_data)
 
-
-
 def daskupdater(i,q,retq,l , updatefunction ,startobject, saveobject ):
     #build up a dictionary
     #once enoguh entries are there transform it into a pandas dataframe
     #shove it into the final Dask dataframe and update it
+    count = 0
     pnumber = i
     while True:
         time.sleep(.1)
@@ -89,16 +88,23 @@ def daskupdater(i,q,retq,l , updatefunction ,startobject, saveobject ):
         if update_data == 'DONE':
             break
         elif update_data == 'SAVE':
-            
-            df = pd.from_dict()
-
-
+            df = pd.from_dict( startobject )
             startobject = {}
+            if count == 0:
+                DDF = dask.dataframe.from_pandas(df ) 
+            else:
+                DDF.add(df)
+            count += 1
+        
+        elif update_data == 'DDFSAVE':
+            #save dask dataframe as 
+            dask.dataframe.to_hdf5(DDF, saveobject)
+
         else:
             startobject = updatefunction(startobject , update_data)
 
-            
-def mp_with_timeout(nworkers, nupdaters, startobject , saveobject , datagenerator , workerfunction, updatefunction, timeout = 60, saveinterval = 600  ):
+
+def mp_with_timeout(nworkers, nupdaters, startobject , saveobject , datagenerator , workerfunction, updatefunction, timeout = 60, saveinterval = 300 , bigsaveinterval = 1000 ):
 
     wprocesses ={}
     uprocesses ={}    
