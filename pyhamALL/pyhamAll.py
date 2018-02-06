@@ -234,6 +234,7 @@ def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
 
 if buildtestdataset == True:
     testdir = './test/'
+    hamdict={}
     for row in h5file.root.OrthoXML.Index[0:100]:
         hamdict.update(retham_testdataset(row[0], dbObj , speciestree , testdir , replacement_dic ))
     with open( testdir + 'hamdict.pkl' , 'wb' ) as handle:
