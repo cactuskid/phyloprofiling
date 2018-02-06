@@ -30,12 +30,6 @@ omadir = '/scratch/ul/projects/cdessimo/oma-browser/All.Dec2017/data/'
 
 buildtestdataset = True
 
-#here I use the Mar2017 release of the OMA database
-h5file = open_file(omadir + 'OmaServer.h5', mode="r") 
-
-#setup db objects
-dbObj = db.Database(h5file)
-omaIdObj = db.OmaIdMapper(dbObj)
 
 #species_tree = pyham.utils.get_newick_string(working_dir + "speciestree.nwk", type="nwk")
 with open( working_dir + "speciestree.nwk" , 'r') as treefile:
@@ -90,9 +84,8 @@ def get_species_sciname(uniprotspeciescode):
 #replace characters species tree
 
 species_tree = fix_species_tree(species_tree)
-
-print(species_tree)
-
+with open( working_dir + 'speciestree_hack.nwk' , 'w') as outTree:
+    outTree.write(species_tree)
 
 # # Figuring out which species names have been replaced
 
@@ -102,6 +95,15 @@ print(species_tree)
 
 # In[7]:
 
+
+
+
+#here I use the Mar2017 release of the OMA database
+h5file = open_file(omadir + 'OmaServer.h5', mode="r") 
+
+#setup db objects
+dbObj = db.Database(h5file)
+omaIdObj = db.OmaIdMapper(dbObj)
 
 #get a list of all the species which are identified as their 5-letter uniprot species code in the species tree
 uniprot_species = []
@@ -212,16 +214,17 @@ def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
 
 def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
     #make ham analysis object
-    #index = 'HOG:'.join(['0']*(6-len(str(fam))) + fam )
     index = str(fam)
     with open( testdir + index +'.orthoxml' , 'w' ) as outfile:
         ortho = dbObj.get_orthoxml(fam)
         print(ortho)
         outfile.write( str(ortho) )
+    
     nb_genes = convert_orthoxml_ids(myinfile = testdir + index +'.orthoxml'  , 
              myoutfile =  testdir + index +'_IDhack.orthoxml'  ,
              replacement_dic = replacement_dic)
-    hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name=True)
+    
+    hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name= True , format = 1)
     print(str(index)+':ham done')
     return {index: hamObj}
 
