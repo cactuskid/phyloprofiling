@@ -35,9 +35,6 @@ buildtestdataset = True
 with open( working_dir + "speciestree.nwk" , 'r') as treefile:
     species_tree = treefile.read()
 
-
-
-
 #species_tree = ete3. (datadir + "speciestree.nwk", type="nwk")
 
 # Here are some useful functions:
@@ -87,18 +84,12 @@ species_tree = fix_species_tree(species_tree)
 with open( working_dir + 'speciestree_hack.nwk' , 'w') as outTree:
     outTree.write(species_tree)
 
-# # Figuring out which species names have been replaced
 
-# You can compare the old version and the new version of the species tree to see the special characters that have been replaced. **HOWEVER, ** there is another problem. Certain scientific names in the species tree have been replaced by the 5-letter species code. This is the case when an internal node has the same name as a species (leaf). An example is E.coli. If you use Ctrl+F to find "Escherichia_coli_strain_K12" in the above species tree, you will find 3 matches-- 2 of these are species, and the last one is the internal node id. Hence, the actual Escherichia_coli_strain_K12 species itself has been replaced by the 5-letter UniProt code, which is **ECOLI**. Since some of the species names have been replaced in the newick species tree, they must be replaced in the orthoxml. 
-# 
-# The following code gets all these UniProt species codes found in the newick tree, and collects them in a list (uniprot_species). Then, it creates a dictionary where the key is the string to be replaced in the orthoxml and the value is the uniprot species code.
-
-# In[7]:
+t = Tree(species_tree, format =1 )
+print(t)
+species_tree = pyham.utils.get_newick_string(working_dir + "speciestree_hack.nwk", type="nwk")
 
 
-
-
-#here I use the Mar2017 release of the OMA database
 h5file = open_file(omadir + 'OmaServer.h5', mode="r") 
 
 #setup db objects
@@ -203,7 +194,7 @@ def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
                          myoutfile =  datadir + temp2.name ,
                          replacement_dic = replacement_dic)
                 l.release()
-                hamObj = pyham.Ham( species_tree, datadir + temp2.name , use_internal_name=True)
+                hamObj = pyham.Ham( species_tree, datadir + temp2.name )
                 print(str(index)+':ham done')
                 return {index: hamObj}
             except:
