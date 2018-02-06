@@ -115,7 +115,7 @@ def daskupdater(i,q,retq,l , updatefunction ,startobject, saveobject  ):
 def hdf5updater( i,q,retq,l , updatefunction ,startobject, saveobject, sparse = True ):
     #output vectors to an hdf5 file
     #finish me
-    
+
 
     f = tb.open_file(saveobject, 'w')
 
@@ -126,45 +126,61 @@ def hdf5updater( i,q,retq,l , updatefunction ,startobject, saveobject, sparse = 
         out_ci = f.create_earray(f.root, 'ci', tb.Float32Atom(), shape=(0,), filters=filters)
         bl = 1000 
     #if sparse store index
+    
     else:
         bl = 1000
-
-    if sparse == True:
-    
-
-        while True:
-        time.sleep(.1)
-        update_data = retq.get()
-        if update_data == 'DONE':
-            break
+        out_data = f.create_earray(f.root, 'data', tb.Float32Atom(), shape=(0,), filters=filters)
         
-        elif update_data == 'SAVE':
-            df = pd.from_dict( startobject )
-            startobject = {}
-            if count == 0:
-                DDF = dask.dataframe.from_pandas(df) 
-            else:
-                DDF.add(df)
-            count += 1
-        elif update_data == 'DDFSAVE':
-            #save dask dataframe as 
-            dask.dataframe.to_hdf5(DDF, saveobject)
-        else:
-            startobject = updatefunction(startobject , update_data)
+    if sparse == True:
+    #pack sparse matrices into hdf5 format
+        while True:
+            time.sleep(.1)
+            update_data = retq.get()
+            if update_data == 'DONE':
+                break
             
-        for i in range(0, l, bl):
-          res = retmat[:,i:min(i+bl, l)]
-          vals = res.data
-          ri, ci = res.nonzero()
-          out_data.append(vals)
-          out_ri.append(ri)
-          out_ci.append(ci)
-    
+            elif update_data == 'SAVE':
+                df = pd.from_dict( startobject )
+                startobject = {}
+                if count == 0:
+                    DDF = dask.dataframe.from_pandas(df) 
+                else:
+                    DDF.add(df)
+                count += 1
+            elif update_data == 'DDFSAVE':
+                #save dask dataframe as 
+                dask.dataframe.to_hdf5(DDF, saveobject)
+            else:
+                startobject = updatefunction(startobject , update_data)
+                
+            for i in range(0, l, bl):
+              res = retmat[:,i:min(i+bl, l)]
+              vals = res.data
+              ri, ci = res.nonzero()
+              out_data.append(vals)
+              out_ri.append(ri)
+              out_ci.append(ci)
+        
     else:
+        while True:
+            time.sleep(.1)
+            update_data = retq.get()
+            if update_data == 'DONE':
+                break
+            else:
+                startobject = updatefunction(startobject , update_data)
+                
+            for i in range(0, l, bl):
+              res = retmat[:,i:min(i+bl, l)]
+              vals = res.data
+              ri, ci = res.nonzero()
+              out_data.append(vals)
+              out_ri.append(ri)
+              out_ci.append(ci)
+        
 
 
 def mp_with_timeout(nworkers, nupdaters, startobject , saveobject , datagenerator , workerfunction, updatefunction, timeout = 60, saveinterval = 300 , bigsaveinterval = 1000 ):
-
     wprocesses ={}
     uprocesses ={}    
     l = mp.Lock()

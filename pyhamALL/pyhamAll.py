@@ -28,6 +28,8 @@ working_dir = "./"
 datadir = '/scratch/cluster/monthly/dmoi/dmoiProfiling/'
 omadir = '/scratch/ul/projects/cdessimo/oma-browser/All.Dec2017/data/'
 
+buildtestdataset = True
+
 #here I use the Mar2017 release of the OMA database
 h5file = open_file(omadir + 'OmaServer.h5', mode="r") 
 
@@ -38,6 +40,9 @@ omaIdObj = db.OmaIdMapper(dbObj)
 
 
 species_tree = pyham.utils.get_newick_string(working_dir + "speciestree.nwk", type="nwk")
+
+
+
 
 
 #species_tree = ete3. (datadir + "speciestree.nwk", type="nwk")
@@ -180,11 +185,7 @@ def convert_orthoxml_ids(myinfile, myoutfile, replacement_dic):
     outfile.close()
     return(count)
 
-
-
-
 #pyham takes a file rather than a string, so save it as a local file
-
 def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
     dbObj.get_orthoxml(fam)
     #make ham analysis object
@@ -193,30 +194,61 @@ def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
         ortho = dbObj.get_orthoxml(fam)
         l.release()
         temp.write( ortho )
-        try:
 
-            nb_genes = convert_orthoxml_ids(myinfile = temp.name , 
-                     myoutfile = datadir + str(fam)+'ALLhogs_IDhack.orthoxml',
-                     replacement_dic = replacement_dic)
-            hamObj = pyham.Ham( species_tree, datadir + str(fam)+'ALLhogs_IDhack.orthoxml' , use_internal_name=True)
-            print(str(fam)+':ham done')
-            
-            return {fam: hamObj}
-        except:
-            print ('pyham error')
-            print (str(fam))
-
-print(h5file.root.OrthoXML.Index[0:10])
-
-def yeildfams():
-    for row in h5file.root.OrthoXML.Index:
-        yield row[0]
-
-retHamMP = functools.partial( retham , dbObj=dbObj , species_tree= species_tree,  datadir = datadir , replacement_dic = replacement_dic )
+        with tempfile.NamedTemporaryFile(dir = datadir ) as temp2:
+            try:
+                index = 'HOG:'.join(['0']*(6-len(str(fam))) + fam )
+                    l.acquire()
+                    nb_genes = convert_orthoxml_ids(myinfile = datadir+temp.name , 
+                             myoutfile =  datadir + temp2.name ,
+                             replacement_dic = replacement_dic)
+                    l.release()
+                    hamObj = pyham.Ham( species_tree, datadir + temp2.name , use_internal_name=True)
+                    print(str(index)+':ham done')
+                    return {index: hamObj}
+            except:
+                print ('pyham error')
+                print (str(fam))
 
 
-multi.mp_with_timeout(nworkers= 10, nupdaters = 1, startobject ={} , saveobject= datadir + 'hams.pkl'  , 
-    datagenerator= yeildfams()  , workerfunction = retHamMP, updatefunction =multi.updatefunction_dict , timeout = 60, saveinterval = 600  )
+
+def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
+    #make ham analysis object
+    index = 'HOG:'.join(['0']*(6-len(str(fam))) + fam )
+    with open( testdir + index +'.orthoxml' , 'w' ) as outfile:
+        ortho = dbObj.get_orthoxml(fam)
+        outfile.write( ortho )
+        with tempfile.NamedTemporaryFile(testdir + index +'_IDhack.orthoxml' , 'w') as out2:
+            try:
+           
+                nb_genes = convert_orthoxml_ids(myinfile = testdir + index +'.orthoxml'  , 
+                         myoutfile =  testdir + index +'_IDhack.orthoxml'  ,
+                         replacement_dic = replacement_dic)
+                hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name=True)
+                print(str(index)+':ham done')
+                return {index: hamObj}
+            except:
+                print ('pyham error')
+                print (str(fam))
+
+
+if buildtestdataset == True:
+    testdir = './test/'
+    for row in h5file.root.OrthoXML.Index[0:100]:
+        hamdict.update(retham_testdataset(row[0], dbObj , speciestree , testdir , replacement_dic ))
+    with open( testdir + 'hamdict.pkl' , 'wb' ) as handle:
+        pickle.dump(hamdict , handle , -1 )
+
+else:
+    def yeildfams():
+        for row in h5file.root.OrthoXML.Index:
+            yield row[0]
+
+    retHamMP = functools.partial( retham , dbObj=dbObj , species_tree= species_tree,  datadir = datadir , replacement_dic = replacement_dic )
+
+
+    multi.mp_with_timeout(nworkers= 10, nupdaters = 1, startobject ={} , saveobject= datadir + 'hams.hdf5'  , 
+        datagenerator= yeildfams()  , workerfunction = retHamMP, updaterfunction= ,updateobjfunction =multi.updatefunction_dict , timeout = 60, saveinterval = 600  )
 
 
 
