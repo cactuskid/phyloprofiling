@@ -36,11 +36,10 @@ h5file = open_file(omadir + 'OmaServer.h5', mode="r")
 #setup db objects
 dbObj = db.Database(h5file)
 omaIdObj = db.OmaIdMapper(dbObj)
-#taxObj = db.Taxonomy(np.array(h5file.root.Taxonomy[:]))   
 
-
-species_tree = pyham.utils.get_newick_string(working_dir + "speciestree.nwk", type="nwk")
-
+#species_tree = pyham.utils.get_newick_string(working_dir + "speciestree.nwk", type="nwk")
+with open( working_dir + "speciestree.nwk" , 'r') as treefile:
+    species_tree = treefile.read()
 
 
 
@@ -87,7 +86,6 @@ def get_species_sciname(uniprotspeciescode):
 
 
 # In[6]:
-
 
 #replace characters species tree
 
