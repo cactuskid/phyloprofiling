@@ -220,17 +220,12 @@ def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
         ortho = dbObj.get_orthoxml(fam)
         print(ortho)
         outfile.write( str(ortho) )
-    try:
-   
-        nb_genes = convert_orthoxml_ids(myinfile = testdir + index +'.orthoxml'  , 
-                 myoutfile =  testdir + index +'_IDhack.orthoxml'  ,
-                 replacement_dic = replacement_dic)
-        hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name=True)
-        print(str(index)+':ham done')
-        return {index: hamObj}
-    except:
-        print ('pyham error')
-        print (str(fam))
+    nb_genes = convert_orthoxml_ids(myinfile = testdir + index +'.orthoxml'  , 
+             myoutfile =  testdir + index +'_IDhack.orthoxml'  ,
+             replacement_dic = replacement_dic)
+    hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name=True)
+    print(str(index)+':ham done')
+    return {index: hamObj}
 
 
 if buildtestdataset == True:
