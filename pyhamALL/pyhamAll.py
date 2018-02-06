@@ -214,7 +214,8 @@ def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
 
 def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
     #make ham analysis object
-    index = 'HOG:'.join(['0']*(6-len(str(fam))) + fam )
+    #index = 'HOG:'.join(['0']*(6-len(str(fam))) + fam )
+    index = str(fam)
     with open( testdir + index +'.orthoxml' , 'w' ) as outfile:
         ortho = dbObj.get_orthoxml(fam)
         outfile.write( ortho )
