@@ -236,7 +236,7 @@ if buildtestdataset == True:
     testdir = './test/'
     hamdict={}
     for row in h5file.root.OrthoXML.Index[0:100]:
-        hamdict.update(retham_testdataset(row[0], dbObj , speciestree , testdir , replacement_dic ))
+        hamdict.update(retham_testdataset(row[0], dbObj , species_tree , testdir , replacement_dic ))
     with open( testdir + 'hamdict.pkl' , 'wb' ) as handle:
         pickle.dump(hamdict , handle , -1 )
 
