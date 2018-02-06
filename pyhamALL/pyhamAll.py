@@ -198,14 +198,14 @@ def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
         with tempfile.NamedTemporaryFile(dir = datadir ) as temp2:
             try:
                 index = 'HOG:'.join(['0']*(6-len(str(fam))) + fam )
-                    l.acquire()
-                    nb_genes = convert_orthoxml_ids(myinfile = datadir+temp.name , 
-                             myoutfile =  datadir + temp2.name ,
-                             replacement_dic = replacement_dic)
-                    l.release()
-                    hamObj = pyham.Ham( species_tree, datadir + temp2.name , use_internal_name=True)
-                    print(str(index)+':ham done')
-                    return {index: hamObj}
+                l.acquire()
+                nb_genes = convert_orthoxml_ids(myinfile = datadir+temp.name , 
+                         myoutfile =  datadir + temp2.name ,
+                         replacement_dic = replacement_dic)
+                l.release()
+                hamObj = pyham.Ham( species_tree, datadir + temp2.name , use_internal_name=True)
+                print(str(index)+':ham done')
+                return {index: hamObj}
             except:
                 print ('pyham error')
                 print (str(fam))
@@ -243,12 +243,9 @@ else:
     def yeildfams():
         for row in h5file.root.OrthoXML.Index:
             yield row[0]
-
     retHamMP = functools.partial( retham , dbObj=dbObj , species_tree= species_tree,  datadir = datadir , replacement_dic = replacement_dic )
-
-
     multi.mp_with_timeout(nworkers= 10, nupdaters = 1, startobject ={} , saveobject= datadir + 'hams.hdf5'  , 
-        datagenerator= yeildfams()  , workerfunction = retHamMP, updaterfunction= ,updateobjfunction =multi.updatefunction_dict , timeout = 60, saveinterval = 600  )
+        datagenerator= yeildfams()  , workerfunction = retHamMP, updaterfunction=multi.daskupdater ,updateobjfunction =multi.updatefunction_dict , timeout = 60, saveinterval = 600  )
 
 
 
