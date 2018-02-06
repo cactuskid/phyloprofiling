@@ -218,19 +218,19 @@ def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
     index = str(fam)
     with open( testdir + index +'.orthoxml' , 'w' ) as outfile:
         ortho = dbObj.get_orthoxml(fam)
-        outfile.write( ortho )
-        with tempfile.NamedTemporaryFile(testdir + index +'_IDhack.orthoxml' , 'w') as out2:
-            try:
-           
-                nb_genes = convert_orthoxml_ids(myinfile = testdir + index +'.orthoxml'  , 
-                         myoutfile =  testdir + index +'_IDhack.orthoxml'  ,
-                         replacement_dic = replacement_dic)
-                hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name=True)
-                print(str(index)+':ham done')
-                return {index: hamObj}
-            except:
-                print ('pyham error')
-                print (str(fam))
+        print(ortho)
+        outfile.write( str(ortho) )
+    try:
+   
+        nb_genes = convert_orthoxml_ids(myinfile = testdir + index +'.orthoxml'  , 
+                 myoutfile =  testdir + index +'_IDhack.orthoxml'  ,
+                 replacement_dic = replacement_dic)
+        hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name=True)
+        print(str(index)+':ham done')
+        return {index: hamObj}
+    except:
+        print ('pyham error')
+        print (str(fam))
 
 
 if buildtestdataset == True:
