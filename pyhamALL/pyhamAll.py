@@ -28,17 +28,12 @@ working_dir = "./"
 datadir = '/scratch/cluster/monthly/dmoi/dmoiProfiling/'
 omadir = '/scratch/ul/projects/cdessimo/oma-browser/All.Dec2017/data/'
 
-#here I use the Mar2017 release of the OMA database
-h5file = open_file(omadir + 'OmaServer.h5', mode="r") 
-
-#setup db objects
-dbObj = db.Database(h5file)
-omaIdObj = db.OmaIdMapper(dbObj)
-#taxObj = db.Taxonomy(np.array(h5file.root.Taxonomy[:]))   
+buildtestdataset = True
 
 
-species_tree = pyham.utils.get_newick_string(working_dir + "speciestree.nwk", type="nwk")
-
+#species_tree = pyham.utils.get_newick_string(working_dir + "speciestree.nwk", type="nwk")
+with open( working_dir + "speciestree.nwk" , 'r') as treefile:
+    species_tree = treefile.read()
 
 #species_tree = ete3. (datadir + "speciestree.nwk", type="nwk")
 
@@ -83,22 +78,23 @@ def get_species_sciname(uniprotspeciescode):
 
 # In[6]:
 
-
 #replace characters species tree
 
 species_tree = fix_species_tree(species_tree)
+with open( working_dir + 'speciestree_hack.nwk' , 'w') as outTree:
+    outTree.write(species_tree)
 
-print(species_tree)
+
+t = Tree(species_tree, format =1 )
+print(t)
+species_tree = pyham.utils.get_newick_string(working_dir + "speciestree_hack.nwk", type="nwk")
 
 
-# # Figuring out which species names have been replaced
+h5file = open_file(omadir + 'OmaServer.h5', mode="r") 
 
-# You can compare the old version and the new version of the species tree to see the special characters that have been replaced. **HOWEVER, ** there is another problem. Certain scientific names in the species tree have been replaced by the 5-letter species code. This is the case when an internal node has the same name as a species (leaf). An example is E.coli. If you use Ctrl+F to find "Escherichia_coli_strain_K12" in the above species tree, you will find 3 matches-- 2 of these are species, and the last one is the internal node id. Hence, the actual Escherichia_coli_strain_K12 species itself has been replaced by the 5-letter UniProt code, which is **ECOLI**. Since some of the species names have been replaced in the newick species tree, they must be replaced in the orthoxml. 
-# 
-# The following code gets all these UniProt species codes found in the newick tree, and collects them in a list (uniprot_species). Then, it creates a dictionary where the key is the string to be replaced in the orthoxml and the value is the uniprot species code.
-
-# In[7]:
-
+#setup db objects
+dbObj = db.Database(h5file)
+omaIdObj = db.OmaIdMapper(dbObj)
 
 #get a list of all the species which are identified as their 5-letter uniprot species code in the species tree
 uniprot_species = []
@@ -180,11 +176,7 @@ def convert_orthoxml_ids(myinfile, myoutfile, replacement_dic):
     outfile.close()
     return(count)
 
-
-
-
 #pyham takes a file rather than a string, so save it as a local file
-
 def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
     dbObj.get_orthoxml(fam)
     #make ham analysis object
@@ -193,30 +185,56 @@ def retham(fam, l, dbObj, species_tree, datadir , replacement_dic):
         ortho = dbObj.get_orthoxml(fam)
         l.release()
         temp.write( ortho )
-        try:
 
-            nb_genes = convert_orthoxml_ids(myinfile = temp.name , 
-                     myoutfile = datadir + str(fam)+'ALLhogs_IDhack.orthoxml',
-                     replacement_dic = replacement_dic)
-            hamObj = pyham.Ham( species_tree, datadir + str(fam)+'ALLhogs_IDhack.orthoxml' , use_internal_name=True)
-            print(str(fam)+':ham done')
-            
-            return {fam: hamObj}
-        except:
-            print ('pyham error')
-            print (str(fam))
-
-print(h5file.root.OrthoXML.Index[0:10])
-
-def yeildfams():
-    for row in h5file.root.OrthoXML.Index:
-        yield row[0]
-
-retHamMP = functools.partial( retham , dbObj=dbObj , species_tree= species_tree,  datadir = datadir , replacement_dic = replacement_dic )
+        with tempfile.NamedTemporaryFile(dir = datadir ) as temp2:
+            try:
+                index = 'HOG:'.join(['0']*(6-len(str(fam))) + fam )
+                l.acquire()
+                nb_genes = convert_orthoxml_ids(myinfile = datadir+temp.name , 
+                         myoutfile =  datadir + temp2.name ,
+                         replacement_dic = replacement_dic)
+                l.release()
+                hamObj = pyham.Ham( species_tree, datadir + temp2.name )
+                print(str(index)+':ham done')
+                return {index: hamObj}
+            except:
+                print ('pyham error')
+                print (str(fam))
 
 
-multi.mp_with_timeout(nworkers= 10, nupdaters = 1, startobject ={} , saveobject= datadir + 'hams.pkl'  , 
-    datagenerator= yeildfams()  , workerfunction = retHamMP, updatefunction =multi.updatefunction_dict , timeout = 60, saveinterval = 600  )
+
+def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
+    #make ham analysis object
+    index = str(fam)
+    with open( testdir + index +'.orthoxml' , 'w' ) as outfile:
+        ortho = dbObj.get_orthoxml(fam)
+        print(ortho)
+        outfile.write( str(ortho) )
+    
+    nb_genes = convert_orthoxml_ids(myinfile = testdir + index +'.orthoxml'  , 
+             myoutfile =  testdir + index +'_IDhack.orthoxml'  ,
+             replacement_dic = replacement_dic)
+    
+    hamObj = pyham.Ham( species_tree, testdir + index +'_IDhack.orthoxml'  , use_internal_name= True , format = 1)
+    print(str(index)+':ham done')
+    return {index: hamObj}
+
+
+if buildtestdataset == True:
+    testdir = './test/'
+    hamdict={}
+    for row in h5file.root.OrthoXML.Index[0:100]:
+        hamdict.update(retham_testdataset(row[0], dbObj , species_tree , testdir , replacement_dic ))
+    with open( testdir + 'hamdict.pkl' , 'wb' ) as handle:
+        pickle.dump(hamdict , handle , -1 )
+
+else:
+    def yeildfams():
+        for row in h5file.root.OrthoXML.Index:
+            yield row[0]
+    retHamMP = functools.partial( retham , dbObj=dbObj , species_tree= species_tree,  datadir = datadir , replacement_dic = replacement_dic )
+    multi.mp_with_timeout(nworkers= 10, nupdaters = 1, startobject ={} , saveobject= datadir + 'hams.hdf5'  , 
+        datagenerator= yeildfams()  , workerfunction = retHamMP, updaterfunction=multi.daskupdater ,updateobjfunction =multi.updatefunction_dict , timeout = 60, saveinterval = 600  )
 
 
 
