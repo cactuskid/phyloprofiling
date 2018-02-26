@@ -219,7 +219,6 @@ def retham_testdataset(fam,  dbObj, species_tree, testdir , replacement_dic):
     print(str(index)+':ham done')
     return {index: hamObj}
 
-
 if buildtestdataset == True:
     testdir = './test/'
     hamdict={}
