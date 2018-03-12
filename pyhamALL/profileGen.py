@@ -4,8 +4,9 @@ import dask
 import datasketch
 import ete3
 import sparse
+import itertools
 
-
+from datasketch import LeanMinHash, MinHash, MinHashLSH
 
 def generateTaxaIndex(newick):
 	#use this to generate an index for the global taxonomic tree for all of OMA
@@ -55,6 +56,17 @@ def Tree2mat(eteobj, taxaIndex):
 		matrix[ rowdict[] , taxaIndex[] ] = 1
 
 
+def MatToLSH(index , hashmat , LSH):
+	#lsh forest single core?
+	
+	for row in range(hashmat.shape[0]):
+		#deserialize byte array and insert it into lsh
+		m1 = LeanMinHash.deserialize(hashmat[row,:])
+		LSH.insert(index[row], m1)
+
+	#use itertools to build all 15 combos of hash signatures using serialized leanminhashes
+
+	
 
 
 
