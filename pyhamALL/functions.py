@@ -13,6 +13,7 @@ import functools
 
 import pickle
 import random
+import itertools
 
 
 import re, string 
@@ -38,24 +39,26 @@ import dask.array as da
 import dask
 from dask.delayed import delayed
 import h5py
+import gc
 
-import io
-
+dask.set_options(get=dask.threaded.get)
 
 ########################hdf5 save and load #################################################################
-def hd5save(df, name , overwrite ,verbose = False):
-    #output dataframe columns in as a matrices and store to hdf5. 
-
+def hd5save(df, name , overwrite ,verbose = False , pipelines= None ):
     #dataframe columns should all be arrays or bytestrings w ascii encoding
 
-    #this will be used to save our matrix with our encoding of evolutionary events and presence over taxa.
     if overwrite == True:
         f = h5py.File(name,'w')
     else:
         f = h5py.File(name,'a')
     f.create_group('datasets')
 
-    for col in df.columns:
+
+    if pipelines is None:
+        pipelines = df.columns
+    
+    total = list(set(pipelines+['Y']))
+    for col in total:
         try:
             array = np.vstack( df[col].values )
         except:
@@ -81,32 +84,12 @@ def hd5save(df, name , overwrite ,verbose = False):
             dset[x:inx + x , : ] = array
     f.close()
 
-def dfdumptohdf5(dd, name , overwrite ,verbose = False):
-    #dataframe straight to hdf5
-    #this will store the parts of our dataframe we don't want to represent as a matrix.
-    #all strings should be in bytestr format
-
-    #this will be used to store our pyham trees  and minhash objects.
-    #name can be a pattern like 'myfile.*.hdf5' to split into multiple files
-
-    if overwrite == True:
-        dd.to_hdf(name, '/data', get=dask.multiprocessing.get) 
-    else:
-        #load prexisting and append
-        old = dd.read_hdf(name, '/data')
-        old.merge(dd, left_on='index', right_on='index', how='outer')
-        old.to_hdf(name, '/data', get=dask.multiprocessing.get) 
-    return name
-
-
 def DaskArray_hd5loadDataset(files , verbose = False ):
     #load to dask arrays, all arrays passed should have the same dataset names
-    #this will load the matrix in each HDF5 into dask arrays and concatenate them returning a big matrix with everything.
-
     datasets = {}
     for name in files:
         f = h5py.File(name,'r')
-        print(list(f['datasets'].keys()) ) 
+        print(list(f['datasets'].keys()) )
         for dataset in f['datasets'].keys():
             chunksize = [  max(1, int(chunk/2) ) for chunk in f['datasets'][dataset].chunks ]
             
@@ -127,15 +110,24 @@ def DaskArray_hd5loadDataset(files , verbose = False ):
                 if verbose ==True:
                     print('append')
                     print(datasets[dataset])
-                    print(datasets[dataset][0:10].compute(get=dask.get) )
+                    print(datasets[dataset][0:10].compute() )
+    
+    for key in datasets:
+        print(datasets[key][0:10].compute() )
     return datasets
 
+def applypipeline_to_series(series, pipeline, hyperparams):
+    newseries = series.map( pipeline )
+    if hyperparams['printResult']== True:
+        print(newseries)
 
+    newseries.index = series.index
+    return newseries
 
 ##################################run processes, apply to dataframe partitions etc###########################################
 
 def runOnDelayed(DF , pipeline):
-    #split df nd run a pipeline on each dataframe
+    #split df into temp fastas
     dfs = DF.to_delayed()
     retdfs = [functions.delayed(pipeline) (df) for df in dfs]
     DDF =None
@@ -147,15 +139,14 @@ def runOnDelayed(DF , pipeline):
     return DDF
 
 
-
 def openprocess(args , inputstr =None , verbose = False ):
-    #if we need to run any external processes we can use this in the pipeline, but I doubt we'll need it
     args = shlex.split(args)
-    p = subprocess.Popen(args,  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr= subprocess.PIPE)
+    p = subprocess.Popen(args,  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr= subprocess.PIPE )
     if verbose == True:
         print(inputstr.decode())
+    
     if inputstr != None:
-        p.stdin.write(inputstr)
+        p.stdin.write(inputstr.encode())
         
     output = p.communicate()
     if verbose == True:
@@ -179,6 +170,96 @@ def compose(functions):
 
     return retfunction
 
+def dataGen( fastas , fulldata = False):
+    for fasta in fastas:
+        fastaIter = SeqIO.parse(fasta, "fasta")
+        for seq in fastaIter:
+            if len(seq.seq)>0:
+                if fulldata == False:
+                    yield seq.seq
+                else:
+                    yield seq
+
+###########################################################dataframe / dataset building ##########################################
+def fastasToDF(fastas , DDF = None, verbose=False, ecodDB = False):
+    regex = re.compile('[^a-zA-Z0-9]')
+    regexAA = re.compile('[^ARDNCEQGHILKMFPSTWYV]')
+    DFdict={}
+    for fasta in fastas:
+        if verbose == True:
+            print(fasta)
+        fastaIter = SeqIO.parse(fasta, "fasta")
+        for seq in fastaIter:
+            seqstr = regexAA.sub('', str(seq.seq))
+            desc =str(seq.description)
+            fastastr = '>'+desc+'\n'+seqstr+'\n'
+            DFdict[desc] = { 'desc': desc.encode(), 'seq':seqstr, 'fasta': fastastr}
+            if ecodDB == True:
+                labels = ['ECOD uid','ECOD domain' , 'EOCD hierearchy string', 'ECOD pdb_range']
+                for i,ecodb in enumerate(seq.description.split('|')[1:]):
+                    DFdict[desc][labels[i]] = ecodb
+    df = pd.DataFrame.from_dict(DFdict, orient = 'index')
+    if verbose == True:
+        print(df)
+    
+    DDF = dd.from_pandas(df , npartitions = 4*mp.cpu_count()  )
+    
+    if ecodDB == True:
+        DDF.set_index('ECOD uid')
+    else:
+        DDF.set_index('desc')
+    return DDF
+
+def iter_sample_fast(iterator, samplesize):
+    results = []
+    # Fill in the first samplesize elements:
+    for _ in range(samplesize):
+        results.append(next(iterator))
+    random.shuffle(results)  # Randomize their positions
+    for i, v in enumerate(iterator, samplesize):
+        r = random.randint(0, i)
+        if r < samplesize:
+            results[r] = v  # at a decreasing rate, replace random items
+
+    if len(results) < samplesize:
+        raise ValueError("Sample larger than population.")
+    return results
+########################################################################vis
+
+from matplotlib import pyplot as plt
+
+def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.show()
+
+
 
 ###################################### functions for phyloprofile data generation #################################
 
@@ -198,7 +279,7 @@ def generateTaxaIndex(newick):
 
 
 
-def serializeHash(minhas, hyperparams):
+def serializeHash(minhash, hyperparams):
     #convert hash to bystr to store in HDF5
 
     pass 
