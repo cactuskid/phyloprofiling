@@ -9,33 +9,44 @@ import itertools
 from datasketch import LeanMinHash, MinHash, MinHashLSH
 
 def generateTaxaIndex(newick):
-	#use this to generate an index for the global taxonomic tree for all of OMA
-	t =ete3.Tree( newick)
+	'''
+	Generates taxa index
+	Generates an index for the global taxonomic tree for all OMA
+	Args:
+		newick: species tree in newick format
+	Returns:
+		taxaIndex: dictionary key: node name (species name); value: index
+		taxaIndexReverse: dictonary key: index: value: species name
+	'''
+	t =ete3.Tree(newick)
 	taxaIndex = {}
-	for i,n in enumerate(t.traverse):
+	for i,node in enumerate(t.traverse):
 		taxaIndexReverse[i] = node.name
 		taxaIndex[node.name] = i
 	return taxaIndex, taxaIndexReverse
 
-def pyhamtoTree(hamOBJ):
-	#use pyham to get all evolutionary events from a pyham object
-	#turn into an array and a hash
-	tp = pyham.TreeProfile(hamOBJ)
-	tree = tp.compute_tree_profile_full()
-	return tree
+
 
 def Tree2Hashes(eteobj):
 	#turn each tree into a minhash object
 	#serialize and store as array
 
+
+
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}
 	
-	for node in tree.traverse():
+
+	for node in eteobj.traverse():
+	# traverse() returns an iterator to traverse the tree structure
+	# strategy:"levelorder" by default; nodes are visited in order from root to leaves
+	# it return treeNode instances
 		node.
 
 	hashes= []
+
 	for array in eventdict:
 		#generate minhash
+		# why set ? 
 		eventdict[array] = set(eventdict[array])
 		m1 = MinHash(num_perm=128)
 		for element in eventdict[array]:
