@@ -5,7 +5,6 @@ import datasketch
 import ete3
 import sparse
 import itertools
-
 from datasketch import LeanMinHash, MinHash, MinHashLSH
 
 def generateTaxaIndex(newick):
@@ -30,6 +29,7 @@ def generateTaxaIndex(newick):
 def Tree2Hashes(eteobj):
 	#turn each tree into a minhash object
 	#serialize and store as array
+	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}	
 
 
 
@@ -58,12 +58,15 @@ def Tree2Hashes(eteobj):
 	hashmat = np.vstack(hashes)
 	return hashmat
 
+
 def Tree2mat(eteobj, taxaIndex):
 	#use partials to configure the taxa index
 	#turn each tree into a sparse matrix with 4 rows
 	rowdict={ 'presence':0 , 'gain':1 , 'loss':2 , 'duplication':3}
 	matrix = sparse((len(rowdict), len(taxaIndex) ))
+	
 	for node in tree.traverse():
+		
 		matrix[ rowdict[] , taxaIndex[] ] = 1
 
 

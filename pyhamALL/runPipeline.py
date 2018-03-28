@@ -1,5 +1,4 @@
 
-
 import pyham
 from pyoma.browser import db 
 import numpy as np
@@ -19,11 +18,11 @@ print(t)
 #
 species_tree = pyham.utils.get_newick_string(working_dir + "speciestree_hack.nwk", type="nwk")
 
-
 #open up OMA
 h5file = open_file(omadir + 'OmaServer.h5', mode="r") 
 #setup db objects
 dbObj = db.Database(h5file)
+
 omaIdObj = db.OmaIdMapper(dbObj)
 
 #load Fams

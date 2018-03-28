@@ -128,6 +128,9 @@ def stringtograph(xmlfile, seeds , G= None , verbose = False):
 
 
 	for child in interactions:
+		#this part is sloppier than the rest... 
+		#gonna add filters for which evidence is used
+		
 		try:
 			ID = child.attrib['id']
 		except:
@@ -142,6 +145,7 @@ def stringtograph(xmlfile, seeds , G= None , verbose = False):
 				G.add_edge(participants[0], participants[1])
 				
 				#todo add experiment data to each link
+
 				references = []
 				explist = child.find('{net:sf:psidev:mi}experimentList')
 				for ref in explist.iter():
