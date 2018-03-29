@@ -73,6 +73,10 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 		if node.is_root():
 			print('name')
 			print(node.name)
+
+		if 'Nanosalinarum' in node.name:
+			print(node.name)
+
 		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name:
 			name = replace_characters(node.name)
 			replacement_dico[node.name] = name 
