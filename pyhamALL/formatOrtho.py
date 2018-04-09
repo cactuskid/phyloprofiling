@@ -38,12 +38,18 @@ def convert_orthoxml_ids(instr, replacement_dic):
 	return outstr
 
 def replace_characters(string):
-	string = string.replace(".", "_")
-	string = string.replace(" ", "_")
-	string = string.replace("(", "_")
-	string = string.replace(")", "_")
-	string = string.replace(":", "_")
-	return(string)
+	'''
+	replace character from string
+	Args:
+		String
+	Return:
+		Corrected string
+	'''
+	for ch in ['.',' ','(',')',':']:
+		if ch in string:
+			string=string.replace(ch,'_')
+
+	return string
 
 
 
@@ -61,73 +67,86 @@ def generateHackedSpeciesTree(species_tree):
 #make a dictionary with the scientific name and the uniprot species code
 #this replacement dic is for later to replace key with value in orthoxml
 def fix_species_tree(species_tree, omaIdObj , verbose = False):
-	'''replaces characters which mess up the newick species tree'''
-	replacement_dict = {}
-	replacement_dico = {}
+	'''replaces characters which mess up the newick species tree
+
+		Args:
+			species_tree : species tree in newick format
+			omaIdObj : Oma ID object
+			verbose : boolean,  output more info
+
+	'''
+
+	# need two replacement dictionary
+	# one is returned and one is used to correct the tree
+
+	replacement_dict_species_tree = {}
+	replacement_dict_orthoXML = {}
 	
 	#species_and_taxa = re.findall(r'"([^"]*)"', species_tree) 
 	
 	t = ete3.Tree( species_tree, format=1 , quoted_node_names = True )
 	
 	for node in t.traverse():
-		if node.is_root():
-			print('name')
-			print(node.name)
+		if verbose == True:
+			if node.is_root():
+				print('name')
+				print(node.name)
 
-		if 'Nanosalinarum' in node.name:
-			print(node.name)
 
 		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name:
 			name = replace_characters(node.name)
-			replacement_dico[node.name] = name 
+			replacement_dict_orthoXML[node.name] = name 
 			
 
-	t = ete3.Tree( t.write(format=1) , format = 1)
+	t = ete3.Tree( t.write(format=1) , format=1)
+	# create a second tree, is a copy from the first one, but has LUCA for root
 	t2 = ete3.Tree()
 	t2.name="LUCA"
 	for n in t.get_children():
 		t2.add_child(n)
 	for node in t2.traverse():
-		if node.is_root():
-			print('root name')
-			print(node.name)
+		if verbose == True:
+			if node.is_root():
+				print('root name')
+				print(node.name)
+				# create second replacement dictionary
 		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name:
 			name = replace_characters(node.name)
-			replacement_dict[node.name] = name 		
+			replacement_dict_species_tree[node.name] = name 		
 	species_tree = t2.write(format=1, format_root_node= True)
-	print(species_tree.find('LUCA'))
 	
+	if verbose == True:
+		print(species_tree.find('LUCA'))
 	
 	#species_tree = species_tree.replace("\n", "")
-	
 	
 	#get a list of all the species which are identified as their 5-letter uniprot species code in the species tree
 	uniprot_species = []
 	uniprot_species = re.findall(r'\b[A-Z]{5}\b', species_tree)
-	uniprot_species.append("STAA3")
-	uniprot_species.append("ECO57")
-	uniprot_species.append("BUCAI")
-	uniprot_species.append("CHLPN")
+
+	uniprot_species_to_add = ["STAA3","ECO57","BUCAI","CHLPN"]
+	for species in uniprot_species_to_add:
+		uniprot_species.append(species)
 
 	if verbose == True:
 		print("UniProt 5-letter species codes which have replaced their scientific names in the species tree: "+str(uniprot_species))
 	
 	for species in uniprot_species:
-		
+
 		try:
-			replacement_dict[species] = replace_characters(omaIdObj.genome_from_UniProtCode(species)[5].decode())
-			replacement_dico[species] = replace_characters(omaIdObj.genome_from_UniProtCode(species)[5].decode())
+			replacement_dict_species_tree[species] = replace_characters(omaIdObj.genome_from_UniProtCode(species)[5].decode())
+			replacement_dict_orthoXML[species] = replace_characters(omaIdObj.genome_from_UniProtCode(species)[5].decode())
 		except:
 			pass
 		
 	if verbose == True:
 		#print("\nreplacement_dic: "+ str(replacement_dic))
 		for species in uniprot_species:
-			if species in replacement_dict:
-				print( replacement_dict[species]) 
+			if species in replacement_dict_species_tree:
+				print( replacement_dict_species_tree[species]) 
 	
-	for name in replacement_dict:
-		species_tree = species_tree.replace(name, replacement_dict[name])
+	for name in replacement_dict_species_tree:
+		species_tree = species_tree.replace(name, replacement_dict_species_tree[name])
 
 	species_tree = species_tree.replace("\"", "")
 	
@@ -135,4 +154,4 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 		outhack.write(species_tree)
 
 
-	return species_tree , replacement_dico
+	return species_tree , replacement_dict_orthoXML

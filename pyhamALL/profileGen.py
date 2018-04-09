@@ -1,73 +1,113 @@
 #use dask and pyham to create a big sparse matrix for each type of evolutionary event
 import pyham
 import dask
-import datasketch
 import ete3
 import sparse
+from scipy.sparse import csr_matrix
 import itertools
-from datasketch import LeanMinHash, MinHash, MinHashLSH
+import datasketch
+import numpy as np
 
-def generateTaxaIndex(newick):
+def generateTaxaIndex(species_tree):
 	'''
-	Generates taxa index
 	Generates an index for the global taxonomic tree for all OMA
 	Args:
-		newick: species tree in newick format
+		species_tree: species tree in newick format
 	Returns:
 		taxaIndex: dictionary key: node name (species name); value: index
 		taxaIndexReverse: dictonary key: index: value: species name
 	'''
-	t =ete3.Tree(newick)
+	t =ete3.Tree(species_tree, format=1)
 	taxaIndex = {}
-	for i,node in enumerate(t.traverse):
+	taxaIndexReverse = {}
+	for i,node in enumerate(t.traverse()):
 		taxaIndexReverse[i] = node.name
 		taxaIndex[node.name] = i
 	return taxaIndex, taxaIndexReverse
 
 
 
-def Tree2Hashes(eteobj):
+def Tree2Hashes(treemap):
 	#turn each tree into a minhash object
 	#serialize and store as array
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}	
-
-
-
-	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}
 	
 
-	for node in eteobj.traverse():
+	for node in treemap.traverse():
 	# traverse() returns an iterator to traverse the tree structure
 	# strategy:"levelorder" by default; nodes are visited in order from root to leaves
 	# it return treeNode instances
-		node.
+		if not node.is_root():
+			print(node.name)
+			if node.nbr_genes >0:
+				eventdict['presence'].append('P'+node.name)
+			if node.dupl > 0:
+				eventdict['duplication'].append('D'+node.name)
+			if node.lost > 0:
+				eventdict['loss'].append('L'+node.name)
+		else:
+			eventdict['gain'].append('G'+node.name)
 
 	hashes= []
 
 	for array in eventdict:
 		#generate minhash
-		# why set ? 
 		eventdict[array] = set(eventdict[array])
-		m1 = MinHash(num_perm=128)
+		m1 = datasketch.MinHash(num_perm=128)
+
+
+
 		for element in eventdict[array]:
-			m1.update(element)
-		m1 = LeanMinHash(m1)
+
+			m1.update(element.encode())
+
+			#datasketch merge
+			# itertools
+			# all combine possible for the elements
+
+		m1 = datasketch.LeanMinHash(m1)
 		buf = bytearray(m1.bytesize())
 		m1.serialize(buf)
-		hashes.apped([m1.serialize()])
+		hashes.append([buf])
 	hashmat = np.vstack(hashes)
 	return hashmat
 
 
-def Tree2mat(eteobj, taxaIndex):
+def Tree2mat(treemap, taxaIndex):
+	'''
+	Turn each tree into a sparse matrix with 4 rows.
+
+	Args:
+		treemap : tree profile object from pyHam; contains biological events
+		taxaIndex : index of gloval taxonomic tree from OMA
+
+	Returns :
+		profile_matrix : matrix of size numberOfBiologicalEvents times taxaIndex containing when the given biological event is present in the given species
+	'''
+	# ??
 	#use partials to configure the taxa index
-	#turn each tree into a sparse matrix with 4 rows
-	rowdict={ 'presence':0 , 'gain':1 , 'loss':2 , 'duplication':3}
-	matrix = sparse((len(rowdict), len(taxaIndex) ))
 	
-	for node in tree.traverse():
-		
-		matrix[ rowdict[] , taxaIndex[] ] = 1
+	rowdict={ 'presence':0 , 'gain':1 , 'loss':2 , 'duplication':3}
+
+	profile_matrix = csr_matrix( (len(rowdict), len(taxaIndex) ) )
+	
+	for node in treemap.traverse():
+	# traverse() returns an iterator to traverse the tree structure
+	# strategy:"levelorder" by default; nodes are visited in order from root to leaves
+	# it return treeNode instances
+		if not node.is_root():
+			# for presence, loss, and duplication, set 1 if > 0           
+			if node.nbr_genes > 0:
+				profile_matrix[ rowdict['presence'] , taxaIndex[node.name]] = 1 
+			if node.lost > 0:
+				profile_matrix[ rowdict['loss'] , taxaIndex[node.name]] = 1
+			if node.dupl > 0:
+				profile_matrix[ rowdict['duplication'] , taxaIndex[node.name]] = 1
+		else:
+			# gain is only for root; impossible to "gain" a gene several times
+			profile_matrix[ rowdict['gain'] , taxaIndex[node.name]] = 1
+  
+	return profile_matrix
 
 
 def MatToLSH(index , hashmat , LSH , rownum = None):
