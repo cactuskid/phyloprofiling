@@ -22,7 +22,7 @@ import profileGen
 
 
 #open up OMA
-h5file = open_file(config.omadirLaurentS + 'OmaServer.h5', mode="r") 
+h5file = open_file(config.omadirLaurent + 'OmaServer.h5', mode="r") 
 #setup db objects
 dbObj = db.Database(h5file)
 omaIdObj = db.OmaIdMapper(dbObj)
@@ -30,23 +30,33 @@ omaIdObj = db.OmaIdMapper(dbObj)
 # corrects species tree and replacement dictionary for orthoXML files
 species_tree, replacement_dic = formatOrtho.fix_species_tree("speciestree.nwk", omaIdObj)
 
+#temporary, 
+hashmat_list = [] 
+mat_list = []
+
+# init LSH
+
 #load Fam
-fam = pyhamPipeline.getOneFamily(100000, h5file)
+for fam in pyhamPipeline.yieldFamilies(h5file):
+	try:
+	# generate pyham object
+	ham_fam = pyhamPipeline.get_ham(fam, dbObj, species_tree, replacement_dic)
 
-# generate pyham object
-ham_fam = pyhamPipeline.get_ham(fam, dbObj, species_tree, replacement_dic)
+	# generate tree profile
+	treemap_fam = pyhamPipeline.pyhamtoTree(ham_fam, fam)
 
-# generate tree profile
-treemap_fam = pyhamPipeline.pyhamtoTree(ham_fam, fam)
+	# generate matrix of hash
+	hashmat = profileGen.Tree2Hashes(treemap_fam)
+	hashmat_list.append(hashmat)
+	# generate taxa index
+	taxaIndex, taxaIndexReverse = profileGen.generateTaxaIndex(species_tree)
 
-# generate matrix of hash
-hashmat = profileGen.Tree2Hashes(treemap_fam)
-
-# generate taxa index
-taxaIndex, taxaIndexReverse = profileGen.generateTaxaIndex(species_tree)
-
-# generate matrix of 1 and 0 for each biological event
-mat = profileGen.Tree2mat(treemap_fam, taxaIndex)
+	# generate matrix of 1 and 0 for each biological event
+	mat = profileGen.Tree2mat(treemap_fam, taxaIndex)
+	mat_list.append(mat)
+	print(fam)
+except:
+	pass
 
 #load orthoxml
 
@@ -58,7 +68,7 @@ mat = profileGen.Tree2mat(treemap_fam, taxaIndex)
 
 #generate matrix rows
 
-#comile LSH from serialized minhashes
+#compile LSH from serialized minhashes
 
 #save lsh objects
 

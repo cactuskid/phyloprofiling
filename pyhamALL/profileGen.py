@@ -7,6 +7,7 @@ from scipy.sparse import csr_matrix
 import itertools
 import datasketch
 import numpy as np
+import itertools
 
 def generateTaxaIndex(species_tree):
 	'''
@@ -27,7 +28,7 @@ def generateTaxaIndex(species_tree):
 
 
 
-def Tree2Hashes(treemap):
+def Tree2Hashes(treemap, LSH):
 	#turn each tree into a minhash object
 	#serialize and store as array
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}	
@@ -38,7 +39,6 @@ def Tree2Hashes(treemap):
 	# strategy:"levelorder" by default; nodes are visited in order from root to leaves
 	# it return treeNode instances
 		if not node.is_root():
-			print(node.name)
 			if node.nbr_genes >0:
 				eventdict['presence'].append('P'+node.name)
 			if node.dupl > 0:
@@ -48,30 +48,47 @@ def Tree2Hashes(treemap):
 		else:
 			eventdict['gain'].append('G'+node.name)
 
-	hashes= []
+	hashes = []
+
+	hashesDict = {}
 
 	for array in eventdict:
-		#generate minhash
 		eventdict[array] = set(eventdict[array])
-		m1 = datasketch.MinHash(num_perm=128)
 
-
+		minHash = datasketch.MinHash(num_perm=128)
 
 		for element in eventdict[array]:
 
-			m1.update(element.encode())
+			minHash.update(element.encode())
 
-			#datasketch merge
-			# itertools
-			# all combine possible for the elements
+		hashesDict[array] = minHash
 
-		m1 = datasketch.LeanMinHash(m1)
-		buf = bytearray(m1.bytesize())
-		m1.serialize(buf)
+		lminHash = datasketch.LeanMinHash(minHash)
+
+		buf = bytearray(lminHash.bytesize())
+		lminHash.serialize(buf)
 		hashes.append([buf])
+
+	for j in range(1,len(eventdict.keys())):
+		for i in itertools.combinations(eventdict.keys(), j+1):
+			combName = ''
+			minHash = datasketch.MinHash(num_perm=128)
+			for array in i:
+				combName += array
+				minHash.merge(hashesDict[array])
+
+			#hashesDict[combName] = minHash
+
+			lminHash = datasketch.LeanMinHash(minHash)
+			# add to LSH directly 
+			LSH.add(lminHash)
+
+			buf = bytearray(lminHash.bytesize())
+			lminHash.serialize(buf)
+			hashes.append([buf])
+
 	hashmat = np.vstack(hashes)
 	return hashmat
-
 
 def Tree2mat(treemap, taxaIndex):
 	'''

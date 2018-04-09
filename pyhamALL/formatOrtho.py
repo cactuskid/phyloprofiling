@@ -5,7 +5,7 @@ import pyham
 #orthoxml hack
 import fnmatch
 
-def convert_orthoxml_ids(instr, replacement_dic):
+def convert_orthoxml_ids(instr, replacement_dic, verbose=False):
 	'''Takes an orthoxml file as input, along with the replacement_dic, where the keys are scientific names (with 
 	special characters already replaced) and values are the new name which matches the species tree.
 	Replaces the special characters and old scientific names with the new ones.
@@ -13,6 +13,9 @@ def convert_orthoxml_ids(instr, replacement_dic):
 	mylist = []
 	count = 0 
 	outstr = ''
+	exclude = []
+	detected = True
+
 	for line in instr.split('\n'):
 		searchObj = re.search( r'.*<species name=\"(.*)\" NCBITaxId.*', line)
 		searchObj2 = re.search(r'.*<property name=\"TaxRange\" value=\"(.*)\"\/>', line)
@@ -21,9 +24,16 @@ def convert_orthoxml_ids(instr, replacement_dic):
 			#new_name = replace_characters(old_name)
 			#line = line.replace(old_name, new_name)
 
+			detected = False
+
+
 			for key, value in replacement_dic.items():
 				if old_name == key:
 					line = line.replace(key, value)
+					detected = True
+
+			if verbose == True and detected == False:
+				print(line)
 
 		if searchObj2:
 			old_name = searchObj2.group(1)
@@ -34,7 +44,26 @@ def convert_orthoxml_ids(instr, replacement_dic):
 				if old_name == key:
 					line = line.replace(key, value)
 		
-		outstr+= line
+		if detected == False:
+			if '<gene id' in line:
+				exclude += [s for s in line.split('"') if s.isdigit()]
+				print(exclude)
+
+		
+
+		if detected == True:
+			if '<geneRef' in line:
+				writeLine = True
+				for ref in exclude:
+					
+					if ref in line:
+						writeLine = False
+				if writeLine == True:
+					outstr += line + '\n' 
+			else:
+				outstr+= line + '\n'
+		if line == '</species>':
+			detected = True
 	return outstr
 
 def replace_characters(string):

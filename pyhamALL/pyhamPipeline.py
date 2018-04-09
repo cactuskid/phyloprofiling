@@ -28,7 +28,6 @@ def get_ham(fam, dbObj, species_tree, replacement_dic, datadir=None, l=None):
 	ortho = convert_orthoxml_ids(ortho, replacement_dic)
 	# get ham Object
 
-
 	hamObj = pyham.Ham(species_tree, ortho, type_hog_file="string", use_internal_name = True)
 
 	return hamObj
