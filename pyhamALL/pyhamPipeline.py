@@ -2,7 +2,7 @@ from formatOrtho import convert_orthoxml_ids
 import pyham
 
 #pyham takes a file rather than a string, so save it as a local file
-def get_ham(fam, dbObj, species_tree, replacement_dic, datadir=None, l=None):
+def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
 	'''
 	Get Ham object from fam id
 
@@ -16,24 +16,21 @@ def get_ham(fam, dbObj, species_tree, replacement_dic, datadir=None, l=None):
 	Returns :
 		hamObj : pyham object
 	'''
-	
-
 	#make ham analysis object
-	#with tempfile.NamedTemporaryFile(dir = datadir ) as temp:
-		#l.acquire()
-
+	if l:
+		l.acquire()
 	# get orthoXML from database
 	ortho = dbObj.get_orthoxml(fam).decode()
+	if l:
+		l.realease()
+
 	# correct orthoXML with mapping dict
 	ortho = convert_orthoxml_ids(ortho, replacement_dic)
 	# get ham Object
-
 	hamObj = pyham.Ham(species_tree, ortho, type_hog_file="string", use_internal_name = True)
-
-	return hamObj
-
-	#l.release()
-	#temp.write( ortho )
+	hog = hamOBJ.get_hog_by_id(fam)
+	tp = hamOBJ.create_tree_profile(hog=hog)
+	return tp.treemap
 
 
 def yieldFamilies(h5file):
@@ -54,17 +51,9 @@ def getOneFamily(i, h5file):
 	'''
 	return h5file.root.OrthoXML.Index[i][0]
 
-def pyhamtoTree(hamOBJ, fam):
-	'''
-	Use pyham to get all evolutionary events from a pyham object
-
-	Args:
-		hamOBJ : ham object, created from a species tree and an orthoXML file
-		fam : hog family
-	Returns :
-		treemap : tree profile done from the ham object and the hog id (fam)
-	'''
-	hog = hamOBJ.get_hog_by_id(fam)
-	tp = hamOBJ.create_tree_profile(hog=hog)
-
-	return tp.treemap
+def famsToDF(h5file, verbose=False):
+	fams = h5file.root.OrthoXML.Index
+	df = dd.read_hdf(fams)
+	if verbose == True:
+		print(df)
+	return df

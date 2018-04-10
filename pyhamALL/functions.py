@@ -162,26 +162,6 @@ def compose(functions):
 	retfunction = functools.reduce(compose2, functions, retx )
 	return retfunction
 
-def dataGen( fastas , fulldata = False):
-	for fasta in fastas:
-		fastaIter = SeqIO.parse(fasta, "fasta")
-		for seq in fastaIter:
-			if len(seq.seq)>0:
-				if fulldata == False:
-					yield seq.seq
-				else:
-					yield seq
-
 ###########################################################dataframe / dataset building ##########################################
 
-
-
-
-def famsToDF(h5file, verbose=False):
-	fams = h5file.root.OrthoXML.Index
-	df = dd.read_hdf(fams)
-
-	if verbose == True:
-		print(df)
-	return df
 
