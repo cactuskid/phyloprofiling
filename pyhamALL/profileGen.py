@@ -28,7 +28,7 @@ def generateTaxaIndex(species_tree):
 
 
 
-def Tree2Hashes(treemap):#, LSH):
+def Tree2Hashes(treemap, fam=None, LSH=None):
 	#turn each tree into a minhash object
 	#serialize and store as array
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}	
@@ -78,18 +78,17 @@ def Tree2Hashes(treemap):#, LSH):
 				minHash.merge(hashesDict[array])
 
 			#hashesDict[combName] = minHash
-
 			lminHash = datasketch.LeanMinHash(minHash)
 			# add to LSH directly 
-			#LSH.add(lminHash)
-
+			if LSH:
+				#add a distinct key for all hash combos for each fam
+				LSH.add( str(fam)+'_'+str(i) + '_' + str(j) , lminHash)
 			buf = bytearray(lminHash.bytesize())
 			lminHash.serialize(buf)
 			hashes.append([buf])
-
 	hashmat = np.vstack(hashes)
 	return hashmat
-
+	
 def Tree2mat(treemap, taxaIndex):
 	'''
 	Turn each tree into a sparse matrix with 4 rows.
