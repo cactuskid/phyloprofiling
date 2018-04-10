@@ -12,11 +12,6 @@ import config
 import pyhamPipeline
 import profileGen
 
-from dask import dataframe as ddf
-from dask.distributed import Client
-
-
-
 
 parallel = False
 #open up OMA
@@ -30,6 +25,8 @@ taxa_index = profileGen.generateTaxaIndex(species_tree)
 
 #load Fams
 if parallel == True:
+	from dask import dataframe as ddf
+	from dask.distributed import Client
 	c = Client()
 	l = distributed.Lock(name='OMAlock', client=c)
 	df = functions.famsToDF(h5file)
@@ -40,10 +37,12 @@ if parallel == True:
 	#from ete3 to matrix rows
 	ROWPIPELINE = functools.partial( profileGen.Tree2mat , taxaIndex = taxa_index)
 
+	#calculate all profiles
 	df['Tree']= df['index'].map(HAMPIPELINE).compute()
 	df['Hashes'] = df['Tree'].map(HASHPIPEline).compute()
 	df['Rows'] = df['Tree'].map(ROWPIPELINE).compute()
 
+	df.index.to_delayed()
 
 if parallel == False:
 	hashmat_list = [] 
