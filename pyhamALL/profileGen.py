@@ -28,7 +28,7 @@ def generateTaxaIndex(species_tree):
 
 
 
-def Tree2Hashes(treemap, LSH):
+def Tree2Hashes(treemap):#, LSH):
 	#turn each tree into a minhash object
 	#serialize and store as array
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}	
@@ -81,7 +81,7 @@ def Tree2Hashes(treemap, LSH):
 
 			lminHash = datasketch.LeanMinHash(minHash)
 			# add to LSH directly 
-			LSH.add(lminHash)
+			#LSH.add(lminHash)
 
 			buf = bytearray(lminHash.bytesize())
 			lminHash.serialize(buf)

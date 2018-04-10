@@ -47,11 +47,10 @@ def convert_orthoxml_ids(instr, replacement_dic, verbose=False):
 		if detected == False:
 			if '<gene id' in line:
 				exclude += [s for s in line.split('"') if s.isdigit()]
-				print(exclude)
+				if verbose == True:
+					print(exclude)
 
-		
-
-		if detected == True:
+		if detected == True and 'paralogGroup' not in line:
 			if '<geneRef' in line:
 				writeLine = True
 				for ref in exclude:
@@ -62,7 +61,7 @@ def convert_orthoxml_ids(instr, replacement_dic, verbose=False):
 					outstr += line + '\n' 
 			else:
 				outstr+= line + '\n'
-		if line == '</species>':
+		if '</species>' in line:
 			detected = True
 	return outstr
 
@@ -74,7 +73,7 @@ def replace_characters(string):
 	Return:
 		Corrected string
 	'''
-	for ch in ['.',' ','(',')',':']:
+	for ch in ['.',' ','(',')',':', ' ']:
 		if ch in string:
 			string=string.replace(ch,'_')
 
@@ -122,7 +121,7 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 				print(node.name)
 
 
-		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name:
+		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name or ' ' in node.name:
 			name = replace_characters(node.name)
 			replacement_dict_orthoXML[node.name] = name 
 			
@@ -139,7 +138,7 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 				print('root name')
 				print(node.name)
 				# create second replacement dictionary
-		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name:
+		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name or ' ' in node.name:
 			name = replace_characters(node.name)
 			replacement_dict_species_tree[node.name] = name 		
 	species_tree = t2.write(format=1, format_root_node= True)

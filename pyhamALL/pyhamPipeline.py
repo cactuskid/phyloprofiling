@@ -14,7 +14,7 @@ def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
 		datadir = ??
 		l = lock
 	Returns :
-		hamObj : pyham object
+		treemap : tp.treemap
 	'''
 	#make ham analysis object
 	if l:
@@ -28,8 +28,8 @@ def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
 	ortho = convert_orthoxml_ids(ortho, replacement_dic)
 	# get ham Object
 	hamObj = pyham.Ham(species_tree, ortho, type_hog_file="string", use_internal_name = True)
-	hog = hamOBJ.get_hog_by_id(fam)
-	tp = hamOBJ.create_tree_profile(hog=hog)
+	hog = hamObj.get_hog_by_id(fam)
+	tp = hamObj.create_tree_profile(hog=hog)
 	return tp.treemap
 
 
