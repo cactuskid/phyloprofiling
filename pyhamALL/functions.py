@@ -2,34 +2,15 @@
 
 import csv
 import numpy as np
-import scipy.signal as sig
-
-import scipy.linalg as linalg
-from scipy.fftpack import rfft, fftshift
 import glob
-
 import functools
-
-
 import pickle
 import random
 import itertools
-
-
 import re, string
-from keras.models import Sequential
-from keras.layers import Dense, Conv1D, Dropout
-from keras.wrappers.scikit_learn import KerasClassifier
-from keras.utils import np_utils
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import KFold , train_test_split
-from sklearn.preprocessing import LabelEncoder , robust_scale , normalize
-from sklearn.pipeline import Pipeline
 from subprocess import Popen
 import os
 import multiprocessing as mp
-from Bio import SeqIO
-
 import pandas as pd
 import shlex, subprocess
 import config
