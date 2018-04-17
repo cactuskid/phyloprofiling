@@ -52,6 +52,8 @@ def Tree2Hashes(treemap, fam=None, LSH=None):
 
 	hashesDict = {}
 
+	lminHashDict = {}
+
 	for array in eventdict:
 		eventdict[array] = set(eventdict[array])
 
@@ -65,16 +67,23 @@ def Tree2Hashes(treemap, fam=None, LSH=None):
 
 		lminHash = datasketch.LeanMinHash(minHash)
 
-		buf = bytearray(lminHash.bytesize())
-		lminHash.serialize(buf)
-		hashes.append([buf])
+		lminHashName = str(fam)+'-'+array
+
+		lminHashDict[lminHashName] = lminHash
+		
+		LSH.insert(lminHashName, lminHash)
+
+		#print(lminHashName)
+		#buf = bytearray(lminHash.bytesize())
+		#lminHash.serialize(buf)
+		#hashes.append([buf])
 
 	for j in range(1,len(eventdict.keys())):
 		for i in itertools.combinations(eventdict.keys(), j+1):
 			combName = ''
 			minHash = datasketch.MinHash(num_perm=128)
 			for array in i:
-				combName += array
+				combName += '-'+array
 				minHash.merge(hashesDict[array])
 
 			#hashesDict[combName] = minHash
@@ -123,9 +132,10 @@ def Tree2mat(treemap, taxaIndex):
 			# gain is only for root; impossible to "gain" a gene several times
 			profile_matrix[ rowdict['gain'] , taxaIndex[node.name]] = 1
   
-	return profile_matrix
+	#return profile_matrix
 
 
+# not used anymore ?
 def MatToLSH(index , hashmat , LSH , rownum = None):
 	#lsh forest single core?
 	if rownum == None:

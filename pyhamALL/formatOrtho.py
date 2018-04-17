@@ -15,6 +15,9 @@ def convert_orthoxml_ids(instr, replacement_dic, verbose=False):
 	outstr = ''
 	exclude = []
 	detected = True
+	para = False
+	temp = ''
+
 
 	for line in instr.split('\n'):
 		searchObj = re.search( r'.*<species name=\"(.*)\" NCBITaxId.*', line)
@@ -50,7 +53,20 @@ def convert_orthoxml_ids(instr, replacement_dic, verbose=False):
 				if verbose == True:
 					print(exclude)
 
-		if detected == True and 'paralogGroup' not in line:
+		if para == True:
+			para = False
+			if '/paralogGroup' in line:
+				temp = ''
+
+		if '<paralogGroup' in line:
+			para = True
+			temp = line
+		else:
+			if temp != '':
+				line = temp + '\n' + line
+				temp = ''
+
+		if detected == True and not para:
 			if '<geneRef' in line:
 				writeLine = True
 				for ref in exclude:
@@ -58,6 +74,7 @@ def convert_orthoxml_ids(instr, replacement_dic, verbose=False):
 					if ref in line:
 						writeLine = False
 				if writeLine == True:
+					
 					outstr += line + '\n' 
 			else:
 				outstr+= line + '\n'
@@ -73,7 +90,7 @@ def replace_characters(string):
 	Return:
 		Corrected string
 	'''
-	for ch in ['.',' ','(',')',':', ' ']:
+	for ch in ['.',',',' ','(',')',':']:
 		if ch in string:
 			string=string.replace(ch,'_')
 
@@ -100,12 +117,11 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 		Args:
 			species_tree : species tree in newick format
 			omaIdObj : Oma ID object
-			verbose : boolean,  output more info
+			verbose : boolean,  displays more info
 
 	'''
-
-	# need two replacement dictionary
-	# one is returned and one is used to correct the tree
+	#need two replacement dictionary
+	#one is returned and one is used to correct the tree
 
 	replacement_dict_species_tree = {}
 	replacement_dict_orthoXML = {}
@@ -123,10 +139,11 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 
 		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name or ' ' in node.name:
 			name = replace_characters(node.name)
-			replacement_dict_orthoXML[node.name] = name 
-			
+			replacement_dict_orthoXML[node.name] = name
 
-	t = ete3.Tree( t.write(format=1) , format=1)
+
+	#t = ete3.Tree( t.write(format=1) , format=1)
+
 	# create a second tree, is a copy from the first one, but has LUCA for root
 	t2 = ete3.Tree()
 	t2.name="LUCA"
@@ -140,8 +157,8 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 				# create second replacement dictionary
 		if ',' in node.name or ('(' in node.name and ')'  in node.name) or ':' in node.name or '.' in node.name or ' ' in node.name:
 			name = replace_characters(node.name)
-			replacement_dict_species_tree[node.name] = name 		
-	species_tree = t2.write(format=1, format_root_node= True)
+			replacement_dict_orthoXML[node.name] = name 		
+	species_tree = t2.write(format=1)#, format_root_node= True)
 	
 	if verbose == True:
 		print(species_tree.find('LUCA'))
@@ -162,24 +179,24 @@ def fix_species_tree(species_tree, omaIdObj , verbose = False):
 	for species in uniprot_species:
 
 		try:
+			
 			replacement_dict_species_tree[species] = replace_characters(omaIdObj.genome_from_UniProtCode(species)[5].decode())
 			replacement_dict_orthoXML[species] = replace_characters(omaIdObj.genome_from_UniProtCode(species)[5].decode())
 		except:
 			pass
-		
+	
 	if verbose == True:
 		#print("\nreplacement_dic: "+ str(replacement_dic))
 		for species in uniprot_species:
 			if species in replacement_dict_species_tree:
+				print(species)
 				print( replacement_dict_species_tree[species]) 
 	
-	for name in replacement_dict_species_tree:
-		species_tree = species_tree.replace(name, replacement_dict_species_tree[name])
+	for name in replacement_dict_orthoXML:
+		species_tree = species_tree.replace(name, replacement_dict_orthoXML[name])
 
-	species_tree = species_tree.replace("\"", "")
-	
 	with open(config.working_dir + 'speciestree_hack.nwk' , 'w') as outhack:
 		outhack.write(species_tree)
 
 
-	return species_tree , replacement_dict_orthoXML
+	return replacement_dict_orthoXML

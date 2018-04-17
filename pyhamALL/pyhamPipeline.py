@@ -1,4 +1,4 @@
-from formatOrtho import convert_orthoxml_ids
+import format_files
 import pyham
 
 #pyham takes a file rather than a string, so save it as a local file
@@ -25,7 +25,7 @@ def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
 		l.realease()
 
 	# correct orthoXML with mapping dict
-	ortho = convert_orthoxml_ids(ortho, replacement_dic)
+	ortho = format_files.correct_orthoxml(ortho, replacement_dic, verbose=True)
 	# get ham Object
 	hamObj = pyham.Ham(species_tree, ortho, type_hog_file="string", use_internal_name = True)
 	hog = hamObj.get_hog_by_id(fam)
