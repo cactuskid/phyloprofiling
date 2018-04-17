@@ -60,7 +60,6 @@ if parallel == False:
 			# generate matrix of 1 and 0 for each biological event
 			mat = profileGen.Tree2mat(treemap_fam, taxaIndex)
 			mat_list.append(mat)
-			print(fam)
 
 
 	except:

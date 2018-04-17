@@ -5,6 +5,8 @@ import pyham
 #orthoxml hack
 import fnmatch
 
+#THIS FILE IS NOT USED ANYMORE
+
 def convert_orthoxml_ids(instr, replacement_dic, verbose=False):
 	'''Takes an orthoxml file as input, along with the replacement_dic, where the keys are scientific names (with 
 	special characters already replaced) and values are the new name which matches the species tree.

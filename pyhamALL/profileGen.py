@@ -80,23 +80,25 @@ def Tree2Hashes(treemap, fam=None, LSH=None):
 
 	for j in range(1,len(eventdict.keys())):
 		for i in itertools.combinations(eventdict.keys(), j+1):
-			combName = ''
+			combName = str(fam)
 			minHash = datasketch.MinHash(num_perm=128)
 			for array in i:
 				combName += '-'+array
 				minHash.merge(hashesDict[array])
 
-			#hashesDict[combName] = minHash
+			lminHashDict[combName] = minHash
 			lminHash = datasketch.LeanMinHash(minHash)
+
+
 			# add to LSH directly 
 			if LSH:
 				#add a distinct key for all hash combos for each fam
-				LSH.add( str(fam)+'_'+str(i) + '_' + str(j) , lminHash)
-			buf = bytearray(lminHash.bytesize())
-			lminHash.serialize(buf)
-			hashes.append([buf])
-	hashmat = np.vstack(hashes)
-	return hashmat
+				LSH.insert( combName , lminHash)
+			#buf = bytearray(lminHash.bytesize())
+			#lminHash.serialize(buf)
+			#hashes.append([buf])
+	#hashmat = np.vstack(hashes)
+	return lminHashDict
 	
 def Tree2mat(treemap, taxaIndex):
 	'''
@@ -109,7 +111,6 @@ def Tree2mat(treemap, taxaIndex):
 	Returns :
 		profile_matrix : matrix of size numberOfBiologicalEvents times taxaIndex containing when the given biological event is present in the given species
 	'''
-	# ??
 	#use partials to configure the taxa index
 	
 	rowdict={ 'presence':0 , 'gain':1 , 'loss':2 , 'duplication':3}
