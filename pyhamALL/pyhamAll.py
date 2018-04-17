@@ -20,7 +20,7 @@ h5file = open_file(config.omadirLaurent + 'OmaServer.h5', mode="r")
 dbObj = db.Database(h5file)
 omaIdObj = db.OmaIdMapper(dbObj)
 # corrects species tree and replacement dictionary for orthoXML files
-species_tree, replacement_dic = formatOrtho.fix_species_tree("speciestree.nwk", omaIdObj)
+species_tree, replacement_dic = formatOrtho.fix_species_tree(h5file, omaIdObj)
 taxa_index = profileGen.generateTaxaIndex(species_tree)
 
 #load Fams
@@ -31,7 +31,7 @@ if parallel == True:
 	l = distributed.Lock(name='OMAlock', client=c)
 	df = functions.famsToDF(h5file)
 	#from family number to ete3
-	HAMPIPELINE = functools.partial( pyhamPipeline.get_hamTree,  dbObj= dbObj , species_tree=species_tree , replacement_dic= replacement_dic, l=l):
+	HAMPIPELINE = functools.partial( pyhamPipeline.get_hamTree,  dbObj= dbObj , species_tree=species_tree , replacement_dic= replacement_dic, l=l)
 	#from ete3 to hashes
 	HASHPIPEline =  profileGen.Tree2Hashes 
 	#from ete3 to matrix rows
@@ -62,8 +62,8 @@ if parallel == False:
 			mat_list.append(mat)
 
 
-	except:
-		pass
+		except:
+			pass
 
 #load orthoxml
 
