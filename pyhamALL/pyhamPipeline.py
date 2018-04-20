@@ -27,7 +27,7 @@ def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
 	# correct orthoXML with mapping dict
 	ortho = format_files.correct_orthoxml(ortho, replacement_dic, verbose=False)
 	# get ham Object
-	hamObj = pyham.Ham(species_tree, ortho, type_hog_file="string", use_internal_name = True)
+	hamObj = pyham.Ham(species_tree, ortho.encode(), type_hog_file="orthoxml", use_internal_name = True, orthoXML_as_string=True)
 	hog = hamObj.get_hog_by_id(fam)
 	tp = hamObj.create_tree_profile(hog=hog)
 	return tp.treemap

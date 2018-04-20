@@ -48,7 +48,7 @@ def Tree2Hashes(treemap, fam=None, LSH=None):
 		else:
 			eventdict['gain'].append('G'+node.name)
 
-	hashes = []
+	hashes = {}
 
 	hashesDict = {}
 
@@ -70,13 +70,17 @@ def Tree2Hashes(treemap, fam=None, LSH=None):
 		lminHashName = str(fam)+'-'+array
 
 		lminHashDict[lminHashName] = lminHash
-		
-		LSH.insert(lminHashName, lminHash)
+		if LSH is not None: 
+			LSH.insert(lminHashName, lminHash)
 
-		#print(lminHashName)
-		#buf = bytearray(lminHash.bytesize())
-		#lminHash.serialize(buf)
-		#hashes.append([buf])
+		
+		buf = bytearray(lminHash.bytesize())
+		lminHash.serialize(buf)
+
+		hashes[array] = buf
+
+
+	#hashmat = np.hstack(buffers)
 
 	for j in range(1,len(eventdict.keys())):
 		for i in itertools.combinations(eventdict.keys(), j+1):
@@ -94,11 +98,8 @@ def Tree2Hashes(treemap, fam=None, LSH=None):
 			if LSH:
 				#add a distinct key for all hash combos for each fam
 				LSH.insert( combName , lminHash)
-			#buf = bytearray(lminHash.bytesize())
-			#lminHash.serialize(buf)
-			#hashes.append([buf])
-	#hashmat = np.vstack(hashes)
-	return lminHashDict
+
+	return hashes
 	
 def Tree2mat(treemap, taxaIndex):
 	'''
@@ -153,5 +154,8 @@ def MatToLSH(index , hashmat , LSH , rownum = None):
 
 	
 
+#def hash_to_hdf5(fam, hash, hashname):
+	# put hash in hdf5
 
+	
 
