@@ -2,7 +2,7 @@
 
 import json
 import urllib as urllib
-import networkx as nx
+#import networkx as nx
 import xml.etree.ElementTree as ET
 
 def call_string_list(species, identifiers, required_score,additional_network_nodes, verbose = False):

@@ -3,7 +3,7 @@ import pyham
 import dask
 import ete3
 import sparse
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix,find 
 import itertools
 import datasketch
 import numpy as np
@@ -101,7 +101,7 @@ def Tree2Hashes(treemap, fam=None, LSH=None):
 
 	return hashes
 	
-def Tree2mat(treemap, taxaIndex):
+def Tree2mat( treemap, taxaIndex, verbose = False):
 	'''
 	Turn each tree into a sparse matrix with 4 rows.
 
@@ -113,10 +113,13 @@ def Tree2mat(treemap, taxaIndex):
 		profile_matrix : matrix of size numberOfBiologicalEvents times taxaIndex containing when the given biological event is present in the given species
 	'''
 	#use partials to configure the taxa index
-	
-	rowdict={ 'presence':0 , 'gain':1 , 'loss':2 , 'duplication':3}
+	hogmat = csr_matrix( (1 , 4*len(taxaIndex)  ) )
+	columndict={ 'presence':0
+	 , 'gain': 1 
+	 , 'loss': 2
+	 , 'duplication':3
+	}
 
-	profile_matrix = csr_matrix( (len(rowdict), len(taxaIndex) ) )
 	
 	for node in treemap.traverse():
 	# traverse() returns an iterator to traverse the tree structure
@@ -125,15 +128,25 @@ def Tree2mat(treemap, taxaIndex):
 		if not node.is_root():
 			# for presence, loss, and duplication, set 1 if > 0           
 			if node.nbr_genes > 0:
-				profile_matrix[ rowdict['presence'] , taxaIndex[node.name]] = 1 
+				pad = columndict['presence'] *len(taxaIndex)
+				hogmat[ 0 , pad + taxaIndex[node.name]] = node.nbr_genes 
 			if node.lost > 0:
-				profile_matrix[ rowdict['loss'] , taxaIndex[node.name]] = 1
+				pad = columndict['loss']*len(taxaIndex)
+			
+				hogmat[0 , pad + taxaIndex[node.name]] = 1
 			if node.dupl > 0:
-				profile_matrix[ rowdict['duplication'] , taxaIndex[node.name]] = 1
+				pad = columndict['duplication']*len(taxaIndex)
+				hogmat[0 , pad + taxaIndex[node.name]] = 1
 		else:
 			# gain is only for root; impossible to "gain" a gene several times
-			profile_matrix[ rowdict['gain'] , taxaIndex[node.name]] = 1
-	return profile_matrix
+			pad = columndict['gain']*len(taxaIndex)
+			hogmat[0 , pad + taxaIndex[node.name]] = 1
+	
+	if verbose == True:
+		print(hogmat)
+
+	return hogmat
+
 
 
 

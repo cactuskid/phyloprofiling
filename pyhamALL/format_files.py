@@ -15,7 +15,6 @@ def create_species_tree(h5file, omaIdObj):
 		replacement_dic : replacement dictionary used to correct the species tree and orthoxml files
 	'''
 	# load database
-	h5file = open_file(config.omadirLaurent + 'OmaServer.h5', mode="r")
 	# create ncbi object
 	ncbi = ete3.NCBITaxa()
 	# get genome list
