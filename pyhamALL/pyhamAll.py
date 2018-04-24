@@ -8,10 +8,30 @@ import pickle
 import tempfile
 import functools
 import config
+import h5py
 
 import pyhamPipeline
 import profileGen
+import format_files
 
+from datasketch import MinHashLSH
+
+
+
+h5file_save = h5py.File(config.datadir + 'hogProfiles', 'a')
+
+dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
+
+# TODO change chucksize for full run
+chunksize = 3
+
+for dataset_name in dataset_names:
+	if dataset_name not in list(h5file_save.keys()):
+		dataset = h5file_save.create_dataset(dataset_name, (0,0), maxshape=(None, None), dtype = 'int32')
+
+dsets = {}
+for dataset_name in list(h5file_save.keys()):
+	dsets[dataset_name] = h5file_save[dataset_name]
 
 
 import pyham
@@ -40,7 +60,7 @@ import h5sparse
 
 parallel = False
 #open up OMA
-h5file = open_file(config.omadirLaurent + 'OmaServer.h5', mode="r") 
+h5file = open_file(config.omadir + 'OmaServer.h5', mode="r") 
 #setup db objects
 dbObj = db.Database(h5file)
 omaIdObj = db.OmaIdMapper(dbObj)
@@ -74,6 +94,11 @@ if parallel == False:
 	mat_list = []
 
 
+			for dset in dsets:
+				if dset == 'fam':
+					dsets[dset][i,:] = fam
+				else:
+					dsets[dset][i,:] = hashesDic[dset]
 
 
 h5file = h5py.File(config.omadirLaurent + 'data1', 'a')
