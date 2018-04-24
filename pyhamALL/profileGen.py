@@ -133,29 +133,7 @@ def Tree2mat(treemap, taxaIndex):
 		else:
 			# gain is only for root; impossible to "gain" a gene several times
 			profile_matrix[ rowdict['gain'] , taxaIndex[node.name]] = 1
-  
-	#return profile_matrix
+	return profile_matrix
 
 
-# not used anymore ?
-def MatToLSH(index , hashmat , LSH , rownum = None):
-	#lsh forest single core?
-	if rownum == None:
-		for row in range(hashmat.shape[0]):
-			#deserialize byte array and insert it into lsh
-			m1 = LeanMinHash.deserialize(hashmat[row,:])
-			LSH.insert(index[row], m1)
-	else:
-		#build of an lsh with only a few of the hash rows
-		for row in rownum:
-			m1 = LeanMinHash.deserialize(hashmat[row,:])
-			LSH.insert(index[row], m1)
-	#use itertools to build all 15 combos of hash signatures using serialized leanminhashes
-
-	
-
-#def hash_to_hdf5(fam, hash, hashname):
-	# put hash in hdf5
-
-	
 
