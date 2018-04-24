@@ -8,14 +8,34 @@ import pickle
 import tempfile
 import functools
 import config
+import h5py
 
 import pyhamPipeline
 import profileGen
+import format_files
 
+from datasketch import MinHashLSH
+
+
+
+h5file_save = h5py.File(config.datadir + 'hogProfiles', 'a')
+
+dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
+
+# TODO change chucksize for full run
+chunksize = 3
+
+for dataset_name in dataset_names:
+	if dataset_name not in list(h5file_save.keys()):
+		dataset = h5file_save.create_dataset(dataset_name, (0,0), maxshape=(None, None), dtype = 'int32')
+
+dsets = {}
+for dataset_name in list(h5file_save.keys()):
+	dsets[dataset_name] = h5file_save[dataset_name]
 
 parallel = False
 #open up OMA
-h5file = open_file(config.omadirLaurent + 'OmaServer.h5', mode="r") 
+h5file = open_file(config.omadir + 'OmaServer.h5', mode="r") 
 #setup db objects
 dbObj = db.Database(h5file)
 omaIdObj = db.OmaIdMapper(dbObj)
@@ -47,23 +67,46 @@ if parallel == True:
 if parallel == False:
 	hashmat_list = [] 
 	mat_list = []
+	lsh = MinHashLSH()
 	for fam in pyhamPipeline.yieldFamilies(h5file):
-		try:
+
+		# TODO remove if for full run
+		if fam < 5
 			# generate tree profile
 			treemap_fam = pyhamPipeline.get_ham(fam, dbObj, species_tree, replacement_dic)
 			# generate matrix of hash
-			hashmat = profileGen.Tree2Hashes(fam, treemap_fam)
-			hashmat_list.append(hashmat)
-			# generate taxa index
-			taxaIndex, taxaIndexReverse = profileGen.generateTaxaIndex(species_tree)
+			hashesDict = profileGen.Tree2Hashes(fam, treemap_fam, lsh)
 
-			# generate matrix of 1 and 0 for each biological event
-			mat = profileGen.Tree2mat(treemap_fam, taxaIndex)
-			mat_list.append(mat)
+			if i == 0:
+				for dataset in dsets:
+					if dataset == 'fam':
+						dsets[dataset].resize((chunksize, 1 ))
+					else: 
+						dsets[dataset].resize((chunksize, np.asarray(hashesDic[dataset]).shape[0] ))
+			
+			if i % chunksize == 0 and i != 0:
+				for dataset in dsets:
+					if dataset == 'fam':
+						dsets[dataset].resize((i+chunksize, 1 ))
+					else: 
+						dsets[dataset].resize((i+chunksize, np.asarray(hashesDic[dataset]).shape[0] ))
 
+			for dset in dsets:
+				if dset == 'fam':
+					dsets[dset][i,:] = fam
+				else:
+					dsets[dset][i,:] = hashesDic[dset]
 
-		except:
-			pass
+h5file_save.close()
+
+		#hashmat_list.append(hashmat)
+		# generate taxa index
+		#taxaIndex, taxaIndexReverse = profileGen.generateTaxaIndex(species_tree)
+
+		# generate matrix of 1 and 0 for each biological event
+		#mat = profileGen.Tree2mat(treemap_fam, taxaIndex)
+		#mat_list.append(mat)
+
 
 #load orthoxml
 
