@@ -33,12 +33,13 @@ def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
 	return tp.treemap
 
 
-def yieldFamilies(h5file):
+def yieldFamilies(h5file,startfam):
 	'''
 	Given a h5file containing OMA server, returns an iterator over the families
 	'''
 	for row in h5file.root.OrthoXML.Index:
-		yield row[0]
+		if row[0]>startfam:
+			yield row[0]
 
 def getOneFamily(i, h5file):
 	'''
