@@ -13,26 +13,36 @@ import time
 import pyhamPipeline
 import profileGen
 import format_files
+import multiprocessing as mp
+
+import functions
+
 from datasketch import MinHashLSH
 import h5sparse
 from scipy.sparse import vstack
 import pandas as pd
+from distributed import Client, progress, LocalCluster, Lock
+
+from multiprocessing.pool import ThreadPool
 
 
 dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
 # TODO change chucksize for full run
 chunksize = 1000
-parallel = True
-OVERWRITE = False
+parallel = False
+OVERWRITE = True
 
 if OVERWRITE == True:
 		writemode = 'w'
-	else:
+else:
 		writemode = 'a'
 
 #open up OMA
 h5OMA = open_file(config.omadir + 'OmaServer.h5', mode="r") 
 
+#setup db objects
+dbObj = db.Database(h5OMA)
+omaIdObj = db.OmaIdMapper(dbObj)
 	
 
 h5hashes = h5py.File(config.datadir+ 'hashes.h5',writemode)
@@ -41,15 +51,20 @@ h5matrix =  h5sparse.File(config.datadir + "matrix.h5",writemode)
 dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
 
 
+# corrects species tree and replacement dictionary for orthoXML files
+dic, tree = format_files.create_species_tree(h5OMA, omaIdObj)
+#set up tree mapping dictionary
+taxaIndex,reverse  = profileGen.generateTaxaIndex(tree)
+#initialize matrix h5 file
+
+start = time.clock()
+lsh = MinHashLSH()
 
 
 startfam = 0
-if OVERWRITE ==False:
-	startfam = np.amax(h5hases['fam'])
+#if OVERWRITE ==False:
+#	startfam = np.amax(h5hashes['fam'])
 
-#setup db objects
-dbObj = db.Database(h5OMA)
-omaIdObj = db.OmaIdMapper(dbObj)
 
 
 #load Fams
@@ -57,36 +72,51 @@ if parallel == True:
 	
 	
 	from dask import dataframe as ddf
-	from dask.distributed import Client
-	c = Client()
-	l = distributed.Lock(name='OMAlock', client=c)
+	import dask
 
-	df = ddf.read_hdf(config.omadir + 'OmaServer.h5', '/root/OrthoXML/Index')
+	#dask.set_options(pool=ThreadPool( mp.cpu_count() ))
+	#dask.set_options(get=dask.threaded.get)
 	
-	for line in pyhamPipeline.yieldFamilies(h5file,startfam)
-		fams.append(fam)
-		if len(fams)>chunksize:
-			df = ddf.from_array()
+	if __name__ == '__main__':
+		print('init cluster')
+		cluster = LocalCluster(n_workers=1)
 
-			fams = []
+		print('init client')
+		c = Client(cluster)
 
-	print(len(df))
-	
-	"""pint(df)
-			
-				#from family number to ete3
+		print('init lock')
+		l = Lock(name='OMAlock')
+		
+		print('functions')
+		def runONE(series,function):
+			return series.map(function)
+
+		HAMPIPELINE = functools.partial( pyhamPipeline.readortho,  dbObj= dbObj , species_tree=tree , replacement_dic= dic, l=l)
+		applyham = functools.partial( functions.applypipeline_to_series , pipeline= HAMPIPELINE)
+
+		HASHPIPEline = functools.partial( profileGen.Tree2Hashes , lsh = None , mp = True )
+		
+		#from ete3 to matrix rows
+		ROWPIPELINE = functools.partial( profileGen.Tree2mat , taxaIndex = taxaIndex)
+		print('ok')
+		fams = []
+		for i,fam in enumerate( pyhamPipeline.yieldFamilies(h5OMA,startfam)):
+			fams.append(fam)
+			if len(fams)>chunksize:
+				print(len(fams))
 				
-				HAMPIPELINE = functools.partial( pyhamPipeline.get_hamTree,  dbObj= dbObj , species_tree=species_tree , replacement_dic= replacement_dic, l=l)
-				#from ete3 to hashes
-				HASHPIPEline =  profileGen.Tree2Hashes 
-				#from ete3 to matrix rows
-				ROWPIPELINE = functools.partial( profileGen.Tree2mat , taxaIndex = taxa_index)
-			
-				#calculate all profiles
-				df['Tree']= df['index'].map(HAMPIPELINE).compute()
-				df['Hashes'] = df['Tree'].map(HASHPIPEline).compute()
-				df['Rows'] = df['Tree'].map(ROWPIPELINE).compute()
-			"""
+				df = ddf.from_array(np.asarray(fams), columns=['fam'])
+
+				series = df.apply( HAMPIPELINE , col = 'fam' , meta={'ortho': str} , axis =1).compute()
+
+				print(series.compute())
+
+				#df['Hashes'] = df['Tree'].map_partitions(applyHASHtoseries).compute()
+				#df['Rows'] = df['Tree'].map_partitions(applyROWtoseries).compute()
+				print(df)
+				print(time.clock()-start)
+				break
+
 
 
 
@@ -98,11 +128,7 @@ if parallel == False:
 			dataset = h5hashes.create_dataset(dataset_name, (chunksize,0), maxshape=(None, None), dtype = 'int32')
 
 
-	# corrects species tree and replacement dictionary for orthoXML files
-	dic, tree = format_files.create_species_tree(h5OMA, omaIdObj)
-	#set up tree mapping dictionary
-	taxaIndex,reverse  = profileGen.generateTaxaIndex(tree)
-	#initialize matrix h5 file
+	
 
 	treemap_fam = pyhamPipeline.get_hamTree(1, dbObj, tree, dic)
 	matrixRow = profileGen.Tree2mat(treemap_fam, taxaIndex)
@@ -130,9 +156,6 @@ if parallel == False:
 	rows = []
 	errors = []
 
-
-	start = time.clock()
-	lsh = MinHashLSH()
 	#load Fam
 	for i,fam in enumerate(pyhamPipeline.yieldFamilies(h5OMA, startfam)):
 		
@@ -148,9 +171,9 @@ if parallel == False:
 			if i == 0:
 				for dataset in dsets:
 					if dataset == 'fam':
-						dsets[dataset].resize((chunksize+1, 1 ))
+						dsets[dataset].resize((startfam+ chunksize+1, 1 ))
 					else: 
-						dsets[dataset].resize((chunksize+1, np.asarray(hashesDic[dataset]).shape[0] ))
+						dsets[dataset].resize((startfam + chunksize+1, np.asarray(hashesDic[dataset]).shape[0] ))
 						
 			if i % chunksize == 0 and i != 0:
 				print(time.clock()-start)
@@ -162,9 +185,9 @@ if parallel == False:
 
 				for dataset in dsets:
 					if dataset == 'fam':
-						dsets[dataset].resize((i+chunksize+1, 1 ))
+						dsets[dataset].resize((startfam + i+chunksize+1, 1 ))
 					else: 
-						dsets[dataset].resize((i+chunksize, np.asarray(hashesDic[dataset]).shape[0] ))
+						dsets[dataset].resize((startfam + i+chunksize, np.asarray(hashesDic[dataset]).shape[0] ))
 				
 				matrixdsets['hogmatrix'].append(vstack(rows))
 				rows= []
@@ -179,7 +202,6 @@ if parallel == False:
 			with open(config.datadir + 'errors.pkl' , 'wb') as errout:
 				pickle.dump(errors, errout, -1)
 			
-
 	with open(config.datadir + 'lsh.pkl' , 'wb') as lshout:
 		pickle.dump(lsh, lshout, -1)
 	

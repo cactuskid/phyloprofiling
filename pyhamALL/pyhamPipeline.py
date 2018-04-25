@@ -1,8 +1,10 @@
 import format_files
 import pyham
+from distributed import Client, progress, LocalCluster, Lock
+
 
 #pyham takes a file rather than a string, so save it as a local file
-def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
+def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None, col= None):
 	'''
 	Get Ham object from fam id
 
@@ -16,22 +18,42 @@ def get_hamTree(fam, dbObj, species_tree, replacement_dic, l=None):
 	Returns :
 		treemap : tp.treemap
 	'''
-	#make ham analysis object
-	if l:
-		l.acquire()
+	#make ham analysis object\
+	
+
+	if l==True:
+		lock = Lock('OMAlock')
+		lock.acquire()
 	# get orthoXML from database
 	ortho = dbObj.get_orthoxml(fam).decode()
-	if l:
-		l.realease()
-
-	# correct orthoXML with mapping dict
+	if l==True:
+		lock.release()
+	
 	ortho = format_files.correct_orthoxml(ortho, replacement_dic, verbose=False)
-	# get ham Object
 	hamObj = pyham.Ham(species_tree, ortho.encode(), type_hog_file="orthoxml", use_internal_name = True, orthoXML_as_string=True)
 	hog = hamObj.get_hog_by_id(fam)
 	tp = hamObj.create_tree_profile(hog=hog)
+	
 	return tp.treemap
 
+def readortho(fam, dbObj, species_tree, replacement_dic, l=None, col= None):
+	if fam =='foo':
+		fam =1 
+	else:
+		print(fam)
+		fam= fam[col]
+	if l==True:
+		lock = Lock('OMAlock')
+		lock.acquire()
+	# get orthoXML from database
+	ortho = dbObj.get_orthoxml(fam).decode()
+	if l==True:
+		lock.release()
+	
+	ortho = format_files.correct_orthoxml(ortho, replacement_dic, verbose=False)
+	import pdb; pdb.set_trace()
+
+	return ortho
 
 def yieldFamilies(h5file,startfam):
 	'''

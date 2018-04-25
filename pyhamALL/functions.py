@@ -94,13 +94,6 @@ def DaskArray_hd5loadDataset(files , verbose = False ):
 		print(datasets[key][0:10].compute() )
 	return datasets
 
-def applypipeline_to_series(series, pipeline, hyperparams):
-	newseries = series.map( pipeline )
-	if hyperparams['printResult']== True:
-		print(newseries)
-	newseries.index = series.index
-	return newseries
-
 ##################################run processes, apply to dataframe partitions etc###########################################
 
 def runOnDelayed(DF , pipeline):
@@ -145,4 +138,9 @@ def compose(functions):
 
 ###########################################################dataframe / dataset building ##########################################
 
+def applypipeline_to_series(series, pipeline):
+	print(series)
+	newseries = series.map( pipeline )
+	print(newseries)
+	return newseries
 
