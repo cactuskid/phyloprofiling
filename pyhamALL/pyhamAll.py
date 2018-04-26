@@ -24,165 +24,104 @@ import pandas as pd
 from distributed import Client, progress, LocalCluster, Lock
 
 from multiprocessing.pool import ThreadPool
+if __name__ == '__main__':
 
+	dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
+	# TODO change chucksize for full run
+	chunksize = 1000
+	parallel = True
+	OVERWRITE = True
 
-dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
-# TODO change chucksize for full run
-chunksize = 1000
-parallel = False
-OVERWRITE = True
+	if OVERWRITE == True:
+			writemode = 'w'
+	else:
+			writemode = 'a'
 
-if OVERWRITE == True:
-		writemode = 'w'
-else:
-		writemode = 'a'
+	#open up OMA
+	h5OMA = open_file(config.omadir + 'OmaServer.h5', mode="r") 
 
-#open up OMA
-h5OMA = open_file(config.omadir + 'OmaServer.h5', mode="r") 
+	#setup db objects
+	dbObj = db.Database(h5OMA)
+	omaIdObj = db.OmaIdMapper(dbObj)
+		
 
-#setup db objects
-dbObj = db.Database(h5OMA)
-omaIdObj = db.OmaIdMapper(dbObj)
+	h5hashes = h5py.File(config.datadir+ 'hashes.h5',writemode)
+	h5matrix =  h5sparse.File(config.datadir + "matrix.h5",writemode)
+	dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
+	for dataset_name in dataset_names:
+			if dataset_name not in list(h5hashes.keys()):
+				dataset = h5hashes.create_dataset(dataset_name, (chunksize,0), maxshape=(None, None), dtype = 'int32')
 	
 
-h5hashes = h5py.File(config.datadir+ 'hashes.h5',writemode)
-h5matrix =  h5sparse.File(config.datadir + "matrix.h5",writemode)
 
-dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
+	# corrects species tree and replacement dictionary for orthoXML files
+	dic, tree = format_files.create_species_tree(h5OMA, omaIdObj)
+	#set up tree mapping dictionary
+	taxaIndex,reverse  = profileGen.generateTaxaIndex(tree)
+	#initialize matrix h5 file
 
-
-# corrects species tree and replacement dictionary for orthoXML files
-dic, tree = format_files.create_species_tree(h5OMA, omaIdObj)
-#set up tree mapping dictionary
-taxaIndex,reverse  = profileGen.generateTaxaIndex(tree)
-#initialize matrix h5 file
-
-start = time.clock()
-lsh = MinHashLSH()
+	start = time.clock()
+	lsh = MinHashLSH()
 
 
-startfam = 0
-#if OVERWRITE ==False:
-#	startfam = np.amax(h5hashes['fam'])
+	startfam = 0
+	#if OVERWRITE ==False:
+	#	startfam = np.amax(h5hashes['fam'])
 
 
 
-#load Fams
-if parallel == True:
-	
-	
-	from dask import dataframe as ddf
-	import dask
+	#load Fams
+	if parallel == True:
+		
+		
+		from dask import dataframe as ddf
+		import dask
 
-	#dask.set_options(pool=ThreadPool( mp.cpu_count() ))
-	#dask.set_options(get=dask.threaded.get)
-	
-	if __name__ == '__main__':
+		#dask.set_options(pool=ThreadPool( mp.cpu_count() ))
+		#dask.set_options(get=dask.threaded.get)
+		
+
 		print('init cluster')
-		cluster = LocalCluster(n_workers=1)
+		cluster = LocalCluster(n_workers=25)
 
 		print('init client')
 		c = Client(cluster)
 
-		print('init lock')
-		l = Lock(name='OMAlock')
-		
-		print('functions')
-		def runONE(series,function):
-			return series.map(function)
-
-		HAMPIPELINE = functools.partial( pyhamPipeline.readortho,  dbObj= dbObj , species_tree=tree , replacement_dic= dic, l=l)
-		applyham = functools.partial( functions.applypipeline_to_series , pipeline= HAMPIPELINE)
-
-		HASHPIPEline = functools.partial( profileGen.Tree2Hashes , lsh = None , mp = True )
-		
-		#from ete3 to matrix rows
+		print('config functions')
+		HAMPIPELINE = functools.partial( pyhamPipeline.runpyham , species_tree=tree )
+		HASHPIPEline = functools.partial( profileGen.DFTree2Hashes  )
 		ROWPIPELINE = functools.partial( profileGen.Tree2mat , taxaIndex = taxaIndex)
-		print('ok')
-		fams = []
+		print('start!')
+
+		fams = {}
 		for i,fam in enumerate( pyhamPipeline.yieldFamilies(h5OMA,startfam)):
-			fams.append(fam)
-			if len(fams)>chunksize:
-				print(len(fams))
-				
-				df = ddf.from_array(np.asarray(fams), columns=['fam'])
-
-				series = df.apply( HAMPIPELINE , col = 'fam' , meta={'ortho': str} , axis =1).compute()
-
-				print(series.compute())
-
-				#df['Hashes'] = df['Tree'].map_partitions(applyHASHtoseries).compute()
-				#df['Rows'] = df['Tree'].map_partitions(applyROWtoseries).compute()
-				print(df)
-				print(time.clock()-start)
-				break
-
-
-
-
-if parallel == False:
-
-
-	for dataset_name in dataset_names:
-		if dataset_name not in list(h5hashes.keys()):
-			dataset = h5hashes.create_dataset(dataset_name, (chunksize,0), maxshape=(None, None), dtype = 'int32')
-
-
-	
-
-	treemap_fam = pyhamPipeline.get_hamTree(1, dbObj, tree, dic)
-	matrixRow = profileGen.Tree2mat(treemap_fam, taxaIndex)
-	
-	for dataset_name in ['fam', 'hogmatrix']:
-		if dataset_name not in list(h5matrix.h5f.keys()):
-			if dataset_name != 'fam':
-				dataset = h5matrix.create_dataset(dataset_name, data=matrixRow , chunks=(100000,), maxshape=(None,))
-			else:
-				dataset = h5matrix.h5f.create_dataset(dataset_name, (chunksize,0), maxshape=(None, None), dtype = 'int32')
-
-	dsets = {}
-	matrixdsets = {}
-	for dataset_name in list(h5hashes.keys()):
-		dsets[dataset_name] = h5hashes[dataset_name]
-		
-	for dataset_name in list(h5matrix.h5f.keys()):
-		if dataset_name == 'fam':
-			matrixdsets[dataset_name] = h5matrix.h5f[dataset_name]
-		else:
-			matrixdsets[dataset_name] = h5matrix[dataset_name]
-
-	
-	#temporary, 
-	rows = []
-	errors = []
-
-	#load Fam
-	for i,fam in enumerate(pyhamPipeline.yieldFamilies(h5OMA, startfam)):
-		
-		#generate treemap profile
-		try:
-			treemap_fam = pyhamPipeline.get_hamTree(fam, dbObj, tree, dic)
+			fams[fam] = { 'ortho':pyhamPipeline.readortho( fam ,   dbObj= dbObj , species_tree=tree , replacement_dic= dic)}
 			
-			# generate matrix of hash
-			hashesDic = profileGen.Tree2Hashes(treemap_fam, fam, lsh)
-			matrixRow = profileGen.Tree2mat(treemap_fam, taxaIndex, verbose = False )
-			rows.append(matrixRow)
-
-			if i == 0:
-				for dataset in dsets:
+			if len(fams)>chunksize:
+				
+				pddf = pd.DataFrame.from_dict(fams, orient= 'index' )	
+				pddf['fams'] = pddf.index
+				df = ddf.from_pandas(pddf , chunksize = 10 )
+				df['tree'] = df[['fams','ortho']].apply( HAMPIPELINE , axis =1 ,  meta=pd.Series(dtype=object ) ).compute()
+				df['hashes'] = df[['fams','tree']].apply( HASHPIPEline , axis =1 ,  meta=pd.Series(dtype=object) ).compute()
+				df['rows'] = df['tree'].apply( ROWPIPELINE, meta=pd.Series(dtype=object ) ).compute()
+				
+				for dico in df['hashes'].compute().to_dict():
+					for fam in dico['dict']:
+						lsh.insert( fam , dico['dict'][fam])
+					for hashval in dico['hashes']:		
+				
+				with open(config.datadir + 'lsh.pkl' , 'wb') as lshout:
+					pickle.dump(lsh, lshout, -1)
+				
+				matrixdsets['hogmatrix'].append(vstack(df['rows'].compute().to_list()))
+						
+				for col in df['hashes']:
 					if dataset == 'fam':
 						dsets[dataset].resize((startfam+ chunksize+1, 1 ))
 					else: 
 						dsets[dataset].resize((startfam + chunksize+1, np.asarray(hashesDic[dataset]).shape[0] ))
-						
-			if i % chunksize == 0 and i != 0:
-				print(time.clock()-start)
-				with open(config.datadir + 'lsh.pkl' , 'wb') as lshout:
-					pickle.dump(lsh, lshout, -1)
-				
-				print(fam)
-				print(i)
-
+			
 				for dataset in dsets:
 					if dataset == 'fam':
 						dsets[dataset].resize((startfam + i+chunksize+1, 1 ))
@@ -196,20 +135,99 @@ if parallel == False:
 					dsets[dataset][i,:] = fam
 				else:
 					dsets[dataset][i,:] = hashesDic[dataset]
-			
-		except:
-			errors.append(fam)
-			with open(config.datadir + 'errors.pkl' , 'wb') as errout:
-				pickle.dump(errors, errout, -1)
-			
-	with open(config.datadir + 'lsh.pkl' , 'wb') as lshout:
-		pickle.dump(lsh, lshout, -1)
-	
+				print(time.clock()-start)
+				
+				fams = {}
+				break
+				 
 
-	with open(config.datadir + 'errors.pkl' , 'wb') as errout:
-		pickle.dump(errors, errout, -1)
-	
-	print('DONE!')
 
-	h5hashes.close()
-	h5OMA.close()
+	if parallel == False:
+
+
+		
+		
+
+		treemap_fam = pyhamPipeline.get_hamTree(1, dbObj, tree, dic)
+		matrixRow = profileGen.Tree2mat(treemap_fam, taxaIndex)
+		
+		for dataset_name in ['fam', 'hogmatrix']:
+			if dataset_name not in list(h5matrix.h5f.keys()):
+				if dataset_name != 'fam':
+					dataset = h5matrix.create_dataset(dataset_name, data=matrixRow , chunks=(100000,), maxshape=(None,))
+				else:
+					dataset = h5matrix.h5f.create_dataset(dataset_name, (chunksize,0), maxshape=(None, None), dtype = 'int32')
+
+		dsets = {}
+		matrixdsets = {}
+		for dataset_name in list(h5hashes.keys()):
+			dsets[dataset_name] = h5hashes[dataset_name]
+			
+		for dataset_name in list(h5matrix.h5f.keys()):
+			if dataset_name == 'fam':
+				matrixdsets[dataset_name] = h5matrix.h5f[dataset_name]
+			else:
+				matrixdsets[dataset_name] = h5matrix[dataset_name]
+
+		
+		#temporary, 
+		rows = []
+		errors = []
+
+		#load Fam
+		for i,fam in enumerate(pyhamPipeline.yieldFamilies(h5OMA, startfam)):
+			
+			#generate treemap profile
+			try:
+				treemap_fam = pyhamPipeline.get_hamTree(fam, dbObj, tree, dic)
+				
+				# generate matrix of hash
+				hashesDic = profileGen.Tree2Hashes(treemap_fam, fam, lsh)
+				matrixRow = profileGen.Tree2mat(treemap_fam, taxaIndex, verbose = False )
+				rows.append(matrixRow)
+
+				if i == 0:
+					for dataset in dsets:
+						if dataset == 'fam':
+							dsets[dataset].resize((startfam+ chunksize+1, 1 ))
+						else: 
+							dsets[dataset].resize((startfam + chunksize+1, np.asarray(hashesDic[dataset]).shape[0] ))
+							
+				if i % chunksize == 0 and i != 0:
+					print(time.clock()-start)
+					with open(config.datadir + 'lsh.pkl' , 'wb') as lshout:
+						pickle.dump(lsh, lshout, -1)
+					
+					print(fam)
+					print(i)
+
+					for dataset in dsets:
+						if dataset == 'fam':
+							dsets[dataset].resize((startfam + i+chunksize+1, 1 ))
+						else: 
+							dsets[dataset].resize((startfam + i+chunksize, np.asarray(hashesDic[dataset]).shape[0] ))
+					
+					matrixdsets['hogmatrix'].append(vstack(rows))
+					rows= []
+				for dataset in dsets:
+					if dataset == 'fam':
+						dsets[dataset][i,:] = fam
+					else:
+						dsets[dataset][i,:] = hashesDic[dataset]
+				
+			except:
+				errors.append(fam)
+				with open(config.datadir + 'errors.pkl' , 'wb') as errout:
+					pickle.dump(errors, errout, -1)
+				
+		with open(config.datadir + 'lsh.pkl' , 'wb') as lshout:
+			pickle.dump(lsh, lshout, -1)
+		
+
+		with open(config.datadir + 'errors.pkl' , 'wb') as errout:
+			pickle.dump(errors, errout, -1)
+		
+		print('DONE!')
+
+		h5hashes.close()
+		h5OMA.close()
