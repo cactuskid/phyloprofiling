@@ -32,7 +32,6 @@ def hd5save(df, name , overwrite ,verbose = False , pipelines= None ):
 		f = h5py.File(name,'a')
 	f.create_group('datasets')
 
-
 	if pipelines is None:
 		pipelines = df.columns
 	
@@ -77,7 +76,6 @@ def DaskArray_hd5loadDataset(files , verbose = False ):
 				print( chunksize)
 				print( f['datasets'][dataset].chunks)
 				#print(f['datasets'][dataset][0:10])
-			
 			if dataset not in datasets:
 				datasets[dataset] = da.from_array(f['datasets'][dataset], chunks=chunksize )
 				if verbose==True:
