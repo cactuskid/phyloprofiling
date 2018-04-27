@@ -3,7 +3,7 @@ import pyham
 import dask
 import ete3
 import sparse
-from scipy.sparse import csr_matrix,find 
+from scipy.sparse import csr_matrix,find , vstack
 import itertools
 import datasketch
 import numpy as np
@@ -26,12 +26,24 @@ def generateTaxaIndex(species_tree):
 		taxaIndex[node.name] = i
 	return taxaIndex, taxaIndexReverse
 
-def FamList2RowsOnTheFly(listfam):
-	pass
+def FamList2RowsOnTheFly(listfam, dbObj, tree, dic):
+
+	taxaIndex, taxaIndexReverse = generateTaxaIndex(tree)
+	rows = []
+
+	for fam in listfam:
+		# get treemap
+		treemap_fam = pyhamPipeline.get_hamTree(fam, dbObj, tree, dic)
+		# get mat
+		rows.append(Tree2mat(treemap_fam, taxaIndex))
+	
+	stackRows = vstak(rows)
+
+	return stackRows
+
 
 def FamList2RowsH5(h5file, listfam):
 	pass
-
 
 
 def jaccard_cutoff(fams, scores, cutoff):
