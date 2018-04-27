@@ -32,6 +32,41 @@ def FamList2RowsOnTheFly(listfam):
 def FamList2RowsH5(h5file, listfam):
 	pass
 
+
+
+def jaccard_cutoff(fams, scores, cutoff):
+    return fams[ np.where(scores > cutoff)]
+
+
+def get_HOGhash(fam , h5hashes. events = ['duplication', 'gain', 'loss', 'presence']):
+	#get hash of desired events
+    for event in events:
+            buf = h5hashes[event][fam,:]
+            if queryminhash is None:
+                query_minhash = LeanMinHash.deserialize(buf)                
+                minhash1 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
+            else:
+                query_minhash =  LeanMinHash.deserialize(buf)
+                minhash2 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
+                minhash1.merge(minhash2)
+    return minhash1
+
+def get_hashdict(fams, h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
+	hashdict = {}
+	for fam in fams:
+		hashdict[fam] = get_HOGhash( fam, h5hashes, events)
+	return hashdict
+	
+def jaccard_rank(query,hashdict):
+    hashlist = np.asarray(list(hashdict.values()))
+    fams = np.asarray(list(hashdict.keys()))
+    scores = [ queryhash.jaccrad(resulthash) for resulthash in hashlist ]
+    index = np.argsort(scores)
+    for array in [hashlist, fams , index]:
+        array = array[index]
+    return fams,scores
+
+
 def Tree2Hashes(treemap, fam=None, LSH=None , l = None):
 	#turn each tree into a minhash object
 	#serialize and store as array

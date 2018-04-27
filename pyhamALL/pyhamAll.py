@@ -71,7 +71,7 @@ if __name__ == '__main__':
 	#initialize matrix h5 file
 
 	start = time.clock()
-	lsh = MinHashLSH()
+	lsh = MinHashLSH(threshold=0.5, num_perm=128)
 
 
 	startfam = 0
@@ -118,9 +118,14 @@ if __name__ == '__main__':
 				df['hashes'] = df[['fams','tree']].apply( HASHPIPEline , axis =1 ,  meta=pd.Series(dtype=object) ).compute()
 				#df['rows'] = df['tree'].apply( ROWPIPELINE, meta=pd.Series(dtype=object ) ).compute()
 				hashes = df['hashes'].compute().to_dict()
+				
 				for fam in hashes:
-					for famhashname in hashes[fam]['dict']:
-						lsh.insert( famhashname , hashes[fam]['dict'][famhashname])
+					try:
+						for famhashname in hashes[fam]['dict']:
+							lsh.insert( famhashname , hashes[fam]['dict'][famhashname])
+					except:
+						print('fam error')
+						
 				with open(config.datadir + 'newlsh.pkl' , 'wb') as lshout:
 					pickle.dump(lsh, lshout, -1)
 				
