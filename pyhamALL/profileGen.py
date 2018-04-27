@@ -26,7 +26,11 @@ def generateTaxaIndex(species_tree):
 		taxaIndex[node.name] = i
 	return taxaIndex, taxaIndexReverse
 
+def FamList2RowsOnTheFly(listfam):
+	pass
 
+def FamList2RowsH5(h5file, listfam):
+	pass
 
 def Tree2Hashes(treemap, fam=None, LSH=None , l = None):
 	#turn each tree into a minhash object
