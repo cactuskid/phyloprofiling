@@ -92,7 +92,7 @@ if __name__ == '__main__':
 		
 
 		print('init cluster')
-		cluster = LocalCluster(n_workers=int(mp.cpu_count()/2))
+		cluster = LocalCluster(n_workers=int(.75*mp.cpu_count()))
 
 		print('init client')
 		c = Client(cluster)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 		
 		print('start!')
 		fams = {}
-		
+		errors = []
 		for i,fam in enumerate( pyhamPipeline.yieldFamilies(h5OMA,startfam)):
 			fams[fam] = { 'ortho':pyhamPipeline.readortho( fam ,   dbObj= dbObj , species_tree=tree , replacement_dic= dic)}
 			if len(fams)>chunksize:
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 				df = ddf.from_pandas(pddf , chunksize = 10 )
 				df['tree'] = df[['fams','ortho']].apply( HAMPIPELINE , axis =1 ,  meta=pd.Series(dtype=object ) ).compute()
 				df['hashes'] = df[['fams','tree']].apply( HASHPIPEline , axis =1 ,  meta=pd.Series(dtype=object) ).compute()
-				df['rows'] = df['tree'].apply( ROWPIPELINE, meta=pd.Series(dtype=object ) ).compute()
+				#df['rows'] = df['tree'].apply( ROWPIPELINE, meta=pd.Series(dtype=object ) ).compute()
 				hashes = df['hashes'].compute().to_dict()
 				for fam in hashes:
 					for famhashname in hashes[fam]['dict']:
@@ -127,18 +127,24 @@ if __name__ == '__main__':
 				#matrixdsets['rows'].append(vstack(df['rows'].compute().to_list()))
 				
 				for fam in hashes:
-					if fam:
+					try:
 						hashvals = hashes[fam]['hashes']
-						print(fam)
 						for i,event in enumerate(hashvals):
 							dataset = dataset_names[i]
 							if len(dsets[dataset])< fam+10:
 								dsets[dataset].resize( (len(dsets[dataset]) +chunksize , len(hashvals[event]) ) )
 							dsets[dataset][fam,:] = hashvals[event]
+					except:
+						print('fam error')
+						print(fam)
+						errors.append(fam)
 				print(time.clock()-start)
-				fams = {}
-				
+				fams = {}	
+	with open('errors.txt' , 'w')as errfile:
+		for entry in errors:
+			errfile.write(str(entry) + '\n')
 	
+
 	print('DONE')
 
 
