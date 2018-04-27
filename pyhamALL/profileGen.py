@@ -53,7 +53,7 @@ def jaccard_cutoff(fams, scores, cutoff):
 def get_HOGhash(fam , h5hashes. events = ['duplication', 'gain', 'loss', 'presence']):
 	#get hash of desired events
     for event in events:
-            buf = h5hashes[event][fam,:]
+            buf = np.get_buffer(h5hashes[event][fam,:])
             if queryminhash is None:
                 query_minhash = LeanMinHash.deserialize(buf)                
                 minhash1 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
@@ -68,7 +68,7 @@ def get_hashdict(fams, h5hashes, events = ['duplication', 'gain', 'loss', 'prese
 	for fam in fams:
 		hashdict[fam] = get_HOGhash( fam, h5hashes, events)
 	return hashdict
-	
+
 def jaccard_rank(query,hashdict):
     hashlist = np.asarray(list(hashdict.values()))
     fams = np.asarray(list(hashdict.keys()))
@@ -83,8 +83,6 @@ def Tree2Hashes(treemap, fam=None, LSH=None , l = None):
 	#turn each tree into a minhash object
 	#serialize and store as array
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}	
-	
-
 	for node in treemap.traverse():
 	# traverse() returns an iterator to traverse the tree structure
 	# strategy:"levelorder" by default; nodes are visited in order from root to leaves
