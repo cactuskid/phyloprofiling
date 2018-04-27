@@ -4,12 +4,16 @@ import profileGen
 import h5sparse
 from sklearn import Covariance
 import pyoma
+import numpy as np 
 
-clusters = []
-# list of used fam
-used_queries = set([])
 
 min_members = 10
+genrandqueries = 100
+
+clusters = []
+used_queries = set([])
+
+queries = list(np.randint(low=1, high=10000000000, size=genrandqueries))
 
 #load lsh
 with open(config.datadir + 'newlsh.pkl' , 'rb') as lshout:
@@ -40,9 +44,8 @@ for cutoff in [.5, .6,.7,.8,.9]:
 #grab rand clusters
 with open('clustersize.txt', 'a')as clustersizeout:
 	for fam in queries:
-		
 		#todo limit min hog size with pyoma
-
+		
 		if fam not in used_queries:       
 			queryhash = get_HOGhash(fam , h5hashes) 
 			result = get_result(query, lsh.query(queryhash))
