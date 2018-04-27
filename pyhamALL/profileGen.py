@@ -56,7 +56,7 @@ def get_hashdict(fams, h5hashes, events = ['duplication', 'gain', 'loss', 'prese
 	for fam in fams:
 		hashdict[fam] = get_HOGhash( fam, h5hashes, events)
 	return hashdict
-	
+
 def jaccard_rank(query,hashdict):
     hashlist = np.asarray(list(hashdict.values()))
     fams = np.asarray(list(hashdict.keys()))
@@ -71,8 +71,6 @@ def Tree2Hashes(treemap, fam=None, LSH=None , l = None):
 	#turn each tree into a minhash object
 	#serialize and store as array
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}	
-	
-
 	for node in treemap.traverse():
 	# traverse() returns an iterator to traverse the tree structure
 	# strategy:"levelorder" by default; nodes are visited in order from root to leaves
