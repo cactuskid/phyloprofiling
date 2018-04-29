@@ -36,9 +36,7 @@ def FamList2RowsOnTheFly(listfam, dbObj, tree, dic):
 		treemap_fam = pyhamPipeline.get_hamTree(fam, dbObj, tree, dic)
 		# get mat
 		rows.append(Tree2mat(treemap_fam, taxaIndex))
-	
 	stackRows = vstak(rows)
-
 	return stackRows
 
 
@@ -50,7 +48,7 @@ def jaccard_cutoff(fams, scores, cutoff):
     return fams[ np.where(scores > cutoff)]
 
 
-def get_HOGhash(fam , h5hashes. events = ['duplication', 'gain', 'loss', 'presence']):
+def get_HOGhash(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
 	#get hash of desired events
     for event in events:
             buf = np.get_buffer(h5hashes[event][fam,:])
