@@ -48,7 +48,7 @@ def jaccard_cutoff(fams, scores, cutoff):
     return fams[ np.where(scores > cutoff)]
 
 
-def get_HOGhash(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
+def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
 	#get hash of desired events
     for event in events:
             buf = np.get_buffer(h5hashes[event][fam,:])
@@ -64,13 +64,13 @@ def get_HOGhash(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presen
 def get_hashdict(fams, h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
 	hashdict = {}
 	for fam in fams:
-		hashdict[fam] = get_HOGhash( fam, h5hashes, events)
+		hashdict[fam] = get_hash_hog_id( fam, h5hashes, events)
 	return hashdict
 
 def jaccard_rank(query,hashdict):
     hashlist = np.asarray(list(hashdict.values()))
     fams = np.asarray(list(hashdict.keys()))
-    scores = [ queryhash.jaccrad(resulthash) for resulthash in hashlist ]
+    scores = [ queryhash.jaccard(resulthash) for resulthash in hashlist ]
     index = np.argsort(scores)
     for array in [hashlist, fams , index]:
         array = array[index]
