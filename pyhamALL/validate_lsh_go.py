@@ -45,18 +45,50 @@ used_queries = set([])
 
 lsh = pickle.lead(open(config.datadir + 'lsh.pkl' , 'rb'))
 
+import multiprocessing as mp
+
+pool = mp.Pool()
+
+
+def jaccardmp( h1 , h2):
+	i,h1 = h1
+	j,h2 = h2
+
+	return( i,j, h1.jaccard(h2) )
+
+
 with  h5py.File(config.datadir+ 'hashes.h5', 'r') as h5hashes:
 
-	fam_list_queries = [23, 4345, 2134, 25]
-
-	fam_hashdict = get_hashdict(fams, h5hashes)
-	
+	genrandqueries = 100
+	#np.random.seed(1)
+	queries = list(np.random.randint(low=1, high=len(h5OMA.root.OrthoXML.Index) , size=genrandqueries))
+	#filter . if has go terms for gene function	
 	results = {}
+	for combo in itertools.combinations(['duplication', 'gain', 'loss', 'presence'])
+		for fam in fam_list_queries:
+			
+			query = profileGen.gethoghash(fam, combo)	
+			reuslts = (lsh.query(query)
+			
+			#filter . if has go terms for gene function
 
-	for fam in fam_list_queries:
-		results[fam](lsh.query(fam_hashdict[fam])
-	
-	# call jaccard_rank ??
+			hashes = [ profileGen.gethoghash(hog, combo)  for hog in results +[fam]]
+			go = [ getgoterms(hog) for hog in results+[fam] ]
+			results[fam] = { 'fam' : results +[fam] , 'hash': hashes , 'go': go  }
+
+			godist = np.zeros( (len(go), len(go)))
+			for i,go1 in enumerate(go):
+				for j,go2 in enumerate(go):
+					godist[i,j] = dist(go1,go2)
+
+			jdist = np.zeros( (len(go), len(go)))
+			hashcompare = [ (h1,h2) for h1,h2 in itertools.combinations(enumerate(hashes), 2) ]
+			results = pool.map_async(hashcompare , jaccardmp ).get()
+			for r in results:
+				i,j,dist = r
+				jdist[i,j] = dist
+
+
 
 	#validate stuff
 	for fam in fam_list_quries:

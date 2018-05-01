@@ -263,6 +263,6 @@ def Tree2mat( treemap, taxaIndex, verbose = False):
 		return hogmat
 
 	else:
-		return None
+		return csr_matrix( (1 , 4*len(taxaIndex)  ) )
 
 

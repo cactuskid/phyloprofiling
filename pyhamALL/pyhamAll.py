@@ -97,18 +97,26 @@ if __name__ == '__main__':
 				HASHPIPEline = functools.partial( profileGen.DFTree2Hashes  )
 				ROWPIPELINE = functools.partial( profileGen.Tree2mat , taxaIndex = taxaIndex)
 				
+				def yieldDFs(chunksize, h5OMA, startfam):
+					fams = {}
+					for i,fam in enumerate( pyhamPipeline.yieldFamilies(h5OMA,startfam)):
+							fams[fam] = { 'ortho':pyhamPipeline.readortho( fam ,   dbObj= dbObj , species_tree=tree , replacement_dic= dic)}
+							if i > chunksize:
+								pddf = pd.DataFrame.from_dict(fams, orient= 'index' )	
+								pddf['fams'] = pddf.index
+								fams = {}
+								yield pddf
+
 				print('start!')
 				fams = {}
 				hashdict = {}
 				errors = []
 				try:
-					for i,fam in enumerate( pyhamPipeline.yieldFamilies(h5OMA,startfam)):
-						fams[fam] = { 'ortho':pyhamPipeline.readortho( fam ,   dbObj= dbObj , species_tree=tree , replacement_dic= dic)}
+					
 						if len(fams)>chunksize:
 							print(time.clock()-start)
-							pddf = pd.DataFrame.from_dict(fams, orient= 'index' )	
-							pddf['fams'] = pddf.index
-							df = ddf.from_pandas(pddf , chunksize= 300 )
+							[]
+							df = ddf.from_delayed(pddf , chunksize= 30 )
 							df['tree'] = df[['fams','ortho']].apply( HAMPIPELINE , axis =1 ,  meta=pd.Series(dtype=object ) ).compute()
 							hashes = df[['fams','tree']].apply( HASHPIPEline , axis =1 ,  meta=pd.Series(dtype=object) ).compute().to_dict()
 							#df['rows'] = df['tree'].apply( ROWPIPELINE, meta=pd.Series(dtype=object ) ).compute()
