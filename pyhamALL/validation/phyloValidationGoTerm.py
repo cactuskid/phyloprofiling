@@ -48,7 +48,7 @@ class SemanticSimilarityAnalysis(object):
         # 1. compute distances between all genes
         distance_mat = self.compute_genes_distances(query_go_terms, result_go_terms)
         # 2. from all the distance, select BMA
-        score = distance_mat)
+        score = mean_max_score_matrix(distance_mat)
         
         return score
         
@@ -145,7 +145,7 @@ class SemanticSimilarityAnalysis(object):
         godict = { k : v for k,v in godict.items() if v}
         godictfinal = {}
         for gene, terms in godict.items():
-            newTerms = self.keep_only_by_namespace(terms, 'biological_process')
+            newTerms = self.filter_namespace(terms)
             if newTerms:
                 godictfinal[gene] = newTerms
         godictfinal = { k : v for k,v in godictfinal.items() if v}
@@ -198,7 +198,7 @@ class SemanticSimilarityAnalysis(object):
         for row in it:
             yield row.fetch_all_fields()
             
-    def keep_only_by_namespace(self, list_terms, name):
+    def filter_namespace(self, list_terms, name='biological_process'):
         '''
         return list of terms with the correct namespace
         Args:
