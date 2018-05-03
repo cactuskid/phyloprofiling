@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
+from goatools.semantic import resnik_sim
+import numpy as np
+
 """
 Created on Sun Mar 25 11:56:43 2018
 
@@ -11,8 +13,7 @@ distance between them.
 
 The semantic distance score is computed using a BMA-RESNIK-BMA strategy
 '''
-from goatools.semantic import resnik_sim
-import numpy as np
+
 
 class SemanticSimilarityAnalysis(object):
 
@@ -31,11 +32,11 @@ class SemanticSimilarityAnalysis(object):
         '''
         query_go_terms = self.get_go_terms(query)
         result_go_terms = self.get_go_terms(result)
-        
+
         score = self.compute_score(query_go_terms, result_go_terms)
-        
+
         return score
-    
+
     def compute_score(self, query_go_terms, result_go_terms):
         '''
         Computes semantic similarity score between two hogs
@@ -48,10 +49,10 @@ class SemanticSimilarityAnalysis(object):
         # 1. compute distances between all genes
         distance_mat = self.compute_genes_distances(query_go_terms, result_go_terms)
         # 2. from all the distance, select BMA
-        score = mean_max_score_matrix(distance_mat)
-        
+        score = self.mean_max_score_matrix(distance_mat)
+
         return score
-        
+
     def compute_genes_distances(self, query_go_terms, result_go_terms):
         '''
         Compute matrix of distances between the genes of two hogs
@@ -60,10 +61,10 @@ class SemanticSimilarityAnalysis(object):
             result_go_terms: dict of genes:list of go terms
         Returns:
             gene_dist: matrix of distance between genes of hogs
-        '''        
+        '''
         query_keys = query_go_terms.keys()
         result_keys = result_go_terms.keys()
-                        
+
         gene_dist = np.zeros((len(query_keys), len(result_keys)))
 
         for k in range(len(query_keys)):
@@ -73,10 +74,10 @@ class SemanticSimilarityAnalysis(object):
                 goterms2 = list(result_go_terms[list(result_keys)[l]])
 
                 if goterms1 and goterms2:
-                    gene_dist[k,l] = self.compute_genes_score(goterms1, goterms2)
-                    
+                    gene_dist[k, l] = self.compute_genes_score(goterms1, goterms2)
+
         return gene_dist
-    
+
     def compute_genes_score(self, goterms1, goterms2):
         '''
         Computes the semantic similarity score between two genes
@@ -87,19 +88,20 @@ class SemanticSimilarityAnalysis(object):
             gene_score: semantic similarity score between two genes
         '''
         ss_dist = np.zeros((len(goterms1), len(goterms2)))
-            
+
         for m in range(len(goterms1)):
             for n in range(len(goterms2)):
 
                 try:
-                    dist = resnik_sim(goterms1[m],goterms2[n],self.go,self.termcounts)
-                    ss_dist[m,n] = dist
+                    dist = resnik_sim(goterms1[m], goterms2[n], self.go, self.termcounts)
+                    ss_dist[m, n] = dist
                 except:
+                    # TODO catch real error
                     pass
         gene_score = self.mean_max_score_matrix(ss_dist)
-        
+
         return gene_score
-    
+
     def mean_max_score_matrix(self, sem_mat):
         '''
         computes the BMA of a matrix
@@ -115,6 +117,7 @@ class SemanticSimilarityAnalysis(object):
                     score = 0
                 score += max(i for i in row if i >= 0)
             except:
+                # TODO catch actual error
                 pass
         for col in sem_mat.transpose():
             try:
@@ -122,12 +125,13 @@ class SemanticSimilarityAnalysis(object):
                     score = 0
                 score += max(i for i in col if i >= 0)
             except:
+                # TODO catch actual error
                 pass
         mat_size = sum(sem_mat.shape)
         score /= mat_size
-        
+
         return score
-    
+
     # returns go terms
     def get_go_terms(self, hog_id):
         '''Fetch the genes from hog id, then get all GO terms from it
@@ -137,21 +141,23 @@ class SemanticSimilarityAnalysis(object):
             golist: list of GO term
         '''
         population = self.get_hog_members(hog_id)
-        #turn into godict
-        #for each gene, we have the go terms
-        godict = {entry: {('GO:{:07d}'.format(e['TermNr']))     
-                      for e in self.h5file.root.Annotations.GeneOntology.read_where('EntryNr == {}'.format(entry))} for entry in population}
-        
-        godict = { k : v for k,v in godict.items() if v}
+        # turn into godict
+        # for each gene, we have the go terms
+        godict = {entry: {('GO:{:07d}'.format(e['TermNr'])) for e in self._get_entry_geneOntology(entry)} for entry in population}
+
+        godict = {k: v for k, v in godict.items() if v}
         godictfinal = {}
         for gene, terms in godict.items():
             newTerms = self.filter_namespace(terms)
             if newTerms:
                 godictfinal[gene] = newTerms
-        godictfinal = { k : v for k,v in godictfinal.items() if v}
+        godictfinal = {k: v for k, v in godictfinal.items() if v}
         return godictfinal
 
-    def get_hog_members(self, hog_id, maxEntries = None):
+    def _get_entry_geneOntology(self, entry):
+        return self.h5file.root.Annotations.GeneOntology.read_where('EntryNr == {}'.format(entry))
+
+    def get_hog_members(self, hog_id, maxEntries=None):
         '''Get all gene members from the hog
         Args:
             hog_id: hog id
@@ -160,20 +166,20 @@ class SemanticSimilarityAnalysis(object):
             population: list containing the genes of the Hog
         '''
         iterator = self.iter_hog_member(hog_id)
-       
-        if maxEntries == None:
-            population = frozenset( [x['EntryNr'] for x in iterator] )
+
+        if maxEntries is None:
+            population = frozenset([x['EntryNr'] for x in iterator])
         else:
             population = []
-            for i,x in enumerate(iterator):
+            for i, x in enumerate(iterator):
                 if i > maxEntries:
                     break
-               
+
                 population.append(x['EntryNr'])
             population = list(population)
-        
+
         return population
-    
+
     # decode hog format
     def _hog_lex_range(self, hog):
         '''decode hog format
@@ -184,7 +190,7 @@ class SemanticSimilarityAnalysis(object):
         '''
         hog_str = hog.decode() if isinstance(hog, bytes) else hog
         return hog_str.encode('ascii'), (hog_str[0:-1] + chr(1 + ord(hog_str[-1]))).encode('ascii')
-    
+
     # yield hog members given hog id and oma database
     def iter_hog_member(self, hog_id):
         '''iter over hog members
@@ -194,10 +200,10 @@ class SemanticSimilarityAnalysis(object):
             yield members of hog
         '''
         hog_range = self._hog_lex_range(hog_id)
-        it = self.h5file.root.Protein.Entries.where( '({!r} <= OmaHOG) & (OmaHOG < {!r})'.format(*hog_range))
+        it = self.h5file.root.Protein.Entries.where('({!r} <= OmaHOG) & (OmaHOG < {!r})'.format(*hog_range))
         for row in it:
             yield row.fetch_all_fields()
-            
+
     def filter_namespace(self, list_terms, name='biological_process'):
         '''
         return list of terms with the correct namespace
