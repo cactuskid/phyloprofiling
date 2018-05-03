@@ -70,7 +70,7 @@ if __name__ == '__main__':
 			if df is not None:
 				df['tree'] = df[['Fam','ortho']].apply( HAMPIPELINE , axis =1  )
 				df['hash'] = df[['Fam','tree']].apply( HASHPIPEline , axis =1 )
-				df['rows'] = df['tree'].apply( ROWPIPELINE )
+				#df['rows'] = df['tree'].apply( ROWPIPELINE )
 				retq.put(df)
 			else:
 				print('DONE WORKER'+ str(i))
@@ -82,15 +82,15 @@ if __name__ == '__main__':
 		dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
 
 		printstart = time.clock()
-		start = time.clock()
+		savestart = time.clock()
 		globaltime = time.clock()
 		
 		
-		chunksize = 100000
+		chunksize = 100
 		count = 0 
 		dataset_names = ['fam', 'duplication', 'gain', 'loss', 'presence']
-
-		lsh = MinHashLSH(threshold=0.7, num_perm=128)
+		threshold=0.7
+		lsh = MinHashLSH(threshold=threshold, num_perm=128)
 		forest = MinHashLSHForest(num_perm=128)
 
 		dt = datetime
@@ -104,59 +104,64 @@ if __name__ == '__main__':
 					if dataset_name not in list(h5hashes.keys()):
 						dataset = h5hashes.create_dataset(dataset_name, (chunksize,0), maxshape=(None, None), dtype = 'int32')
 					dsets[dataset_name] = h5hashes[dataset_name]
+				
 				with h5sparse.File(config.datadir + datestr + "matrix.h5",'w'  ) as h5matrix:
-					with open(config.datadir + datestr + 'newlsh.pkl' , 'wb') as lshout:
+					with open(config.datadir + datestr + '_'+str(threshold)+'_' +'newlsh.pkl' , 'wb') as lshout:
 						
 						with open(config.datadir +datestr+ 'newlshforest.pkl' , 'wb') as forestout:	
 							print('saver init ' + str(i))
 							while True:
 								thisdf = retq.get()
-								print(globaltime-time.clock())
+								print(time.clock()- globaltime)
+								print(count)
 								if thisdf is not None:
 									
 									hashes = thisdf['hash'].to_dict()
 
-									rows = vstack(thisdf['rows'])
+									#rows = vstack(thisdf['rows'])
 									
-									if count == 0:
-										h5matrix.create_dataset('rows', data=rows)
-									else:
-										h5matrix.append(rows)
-
 									for fam in hashes:
+										
+
 										if hashes[fam] is not None:
-											
+
 											for famhashname in hashes[fam]['dict']:
 												lsh.insert(famhashname , hashes[fam]['dict'][famhashname])
 												forest.add(famhashname ,hashes[fam]['dict'][famhashname])
 											hashvals = hashes[fam]['hashes']
+											
 											for i,event in enumerate(hashvals):
 												dataset = dataset_names[i]
 												if len(dsets[dataset])< fam+10:
-													dsets[dataset].resize( (len(dsets[dataset]) +chunksize , len(hashvals[event]) ) )
-												dsets[dataset][fam,:] = hashvals[event]								
-											else:
-												print('error')
-												print(fam)
-												errfile.write(str(entry) + '\n')
-									
+													dsets[dataset].resize( (fam +chunksize , len(hashvals[event])  ) )
+												dsets[dataset][fam,:] = hashvals[event]
+											h5hashes.flush()
+										else:
+											print('error')
+											print(fam)
+											errfile.write(str(fam) + '\n')
+
+
+										
 									if time.clock() - printstart > 60:
-										with Lock('outputlock'):
-											print(thisdf['Fam'].max())	
-											print( time.clock()- globaltime.get())
+										print(thisdf['Fam'].max())	
+										print( time.clock()- globaltime)
 										printstart = time.clock()
 									
-									if time.clock() -savestart >2000:
-										with Lock('outputlock'):
-											print(thisdf['Fam'].max())
-											print('saving')
-											pickle.dump(lsh, lshout, -1)
-											pickle.dump(forest, forestout, -1)
-											start = time.clock() 
-											print( time.clock()- globaltime)
+									if time.clock() -savestart > 2000:
+										print(thisdf['Fam'].max())
+										print('saving')
+										
+										pickle.dump(lsh, lshout, -1)
+										pickle.dump(forest, forestout, -1)
+										
+										savestart = time.clock() 
+										print( time.clock()- globaltime)
 									count+= len(thisdf)
-								
 								else:
+									pickle.dump(lsh, lshout, -1)
+									pickle.dump(forest.index(), forestout, -1)
+									
 									print('DONE UPDATER' + str(i))
 									break
 
@@ -205,4 +210,4 @@ if __name__ == '__main__':
 		gc.collect()
 		print( 'DONE!!!!!')
 
-	mp_with_timeout(15, 1 , genDFs(h5OMA,100) , worker, saver )
+	mp_with_timeout(int(mp.cpu_count()/2), 1 , genDFs(h5OMA,100) , worker, saver )
