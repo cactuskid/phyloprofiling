@@ -25,15 +25,15 @@ omaIdObj = db.OmaIdMapper(dbObj)
 # load gene ontology DAG
 # use guaranteed acyclic basic GO
 # TODO provide correct path for those
-go = obo_parser.GODag('/home/laurent/Documents/phylo/phyloprofiling_working/1stdraft/data/go.obo')
-associations = read_gaf('/home/laurent/Documents/phylo/phyloprofiling_working/1stdraft/data/gene_association.tair.gz')
+go = obo_parser.GODag('./data/go.obo')
+associations = read_gaf('./data/gene_association.tair')
 
 # Get the counts of each GO term.
 termcounts = TermCounts(go, associations)
 goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(
     go, h5OMA, termcounts)
 
-# multiprocessing stuff
+
 pool = mp.Pool()
 
 
@@ -63,62 +63,64 @@ result_dict = {}
 # only contains the matrices
 matrices_dict = {}
 
-with h5py.File(config.datadir + 'hashes.h5', 'r') as h5hashes:
+with h5py.File(config.datadir + 'May_02_2018_16_19hashes.h5', 'r') as h5hashes:
+    with open(config.datadir + 'May_02_2018_16_19_0.7_newlsh.pkl', 'rb') as lsh_file:
 
-    lsh = pickle.load(open(config.datadir + 'lsh.pkl', 'rb'))
+        lsh_unpickled = pickle.Unpickler(lsh_file)
+        lsh = lsh_unpickled.load()
+        print('all loaded')
+        # generate random queries from oma
+        gen_rand_queries = 100
+        np.random.seed(1)
+        queries = list(np.random.randint(low=1, high=len(h5OMA.root.OrthoXML.Index), size=gen_rand_queries))
+        # filter the queries; they should contain at least one go terms
+        queries = [query for query in queries if goTermAnalysis.get_go_terms(query)]
 
-    # generate random queries from oma
-    gen_rand_queries = 100
-    np.random.seed(1)
-    queries = list(np.random.randint(low=1, high=len(h5OMA.root.OrthoXML.Index), size=gen_rand_queries))
-    # filter the queries; they should contain at least one go terms
-    queries = [query for query in queries if goTermAnalysis.get_go_terms(query)]
+        # create all combo events, necessary to generate all the hashes
+        for n in range(1, len(events)):
+            for events_combo in itertools.combinations(events, n+1):
+                for fam_query in queries:
 
-    # create all combo events, necessary to generate all the hashes
-    for n in range(1, len(events)):
-        for events_combo in itertools.combinations(events, n+1):
-            for fam_query in queries:
+                    # get hash for this hog
+                    hash_query = get_hash_hog_id(fam_query, events_combo)
+                    # get the results for this query in the lsh
+                    lsh_results_unfiltered = lsh.query(hash_query)
+                    # add the query to the list of results and filter the results
+                    # (if no go term, remove hog id)
+                    lsh_results_filtered = [fam_query] + \
+                        [result for result in lsh_results_unfiltered if goTermAnalysis.get_go_terms(result_fam_id(result))]
 
-                # get hash for this hog
-                hash_query = get_hash_hog_id(fam_query, events_combo)
-                # get the results for this query in the lsh
-                lsh_results_unfiltered = lsh.query(hash_query)
-                # add the query to the list of results and filter the results
-                # (if no go term, remove hog id)
-                lsh_results_filtered = [fam_query] + \
-                    [result for result in lsh_results_unfiltered if goTermAnalysis.get_go_terms(result_fam_id(result))]
+                    # get a list of hashes, one for each filtered results
+                    hashes = [(hog_id, get_hash_hog_id(hog_id, events_combo)) for hog_id in lsh_results_filtered]
 
-                # get a list of hashes, one for each filtered results
-                hashes = [(hog_id, get_hash_hog_id(hog_id, events_combo)) for hog_id in lsh_results_filtered]
+                    # prepare the matrix for the semantic distance (go score)
+                    semantic_distance = np.zeros((len(lsh_results_filtered), len(lsh_results_filtered)))
+                    # double for loop necessary, mp cant be done (yet?)
+                    for i, hog1 in enumerate(lsh_results_filtered):
+                        for j, hog2 in enumerate(lsh_results_filtered):
+                            # get semantic dist between two hog (ids) and save it in matrix and in big dict
+                            semantic_dist = goTermAnalysis.semantic_similarity_score(hog1, hog2)
+                            semantic_distance[i, j] = semantic_dist
+                            result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
+                            # also save the go terms in big dict
+                            result_dict[(hog1, hog2, events_combo)]['go terms'] = goTermAnalysis.get_go_terms(hog2)
 
-                # prepare the matrix for the semantic distance (go score)
-                semantic_distance = np.zeros((len(lsh_results_filtered), len(lsh_results_filtered)))
-                # double for loop necessary, mp cant be done (yet?)
-                for i, hog1 in enumerate(lsh_results_filtered):
-                    for j, hog2 in enumerate(lsh_results_filtered):
-                        # get semantic dist between two hog (ids) and save it in matrix and in big dict
-                        semantic_dist = goTermAnalysis.semantic_similarity_score(hog1, hog2)
-                        semantic_distance[i, j] = semantic_dist
-                        result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
-                        # also save the go terms in big dict
-                        result_dict[(hog1, hog2, events_combo)]['go terms'] = goTermAnalysis.get_go_terms(hog2)
+                    # prepare matrix for the jaccard distances
+                    jaccard_distance = np.zeros((len(lsh_results_filtered), len(lsh_results_filtered)))
+                    # prepare data for mp stuff
+                    hashcompare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
+                    # compute jaccard
+                    jaccard_results = pool.map_async(hashcompare, jaccard_mp).get()
+                    # feed matrix and big dict with results
+                    for jac_res in jaccard_results:
+                        i, j, jac_dist = jac_res
+                        jaccard_distance[i, j] = jac_dist
+                        result_dict[(lsh_results_filtered(i), lsh_results_filtered(j), events_combo)]['jaccard_distance'] = jac_dist
 
-                # prepare matrix for the jaccard distances
-                jaccard_distance = np.zeros((len(lsh_results_filtered), len(lsh_results_filtered)))
-                # prepare data for mp stuff
-                hashcompare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
-                # compute jaccard
-                jaccard_results = pool.map_async(hashcompare, jaccard_mp).get()
-                # feed matrix and big dict with results
-                for jac_res in jaccard_results:
-                    i, j, jac_dist = jac_res
-                    jaccard_distance[i, j] = jac_dist
-                    result_dict[(lsh_results_filtered(i), lsh_results_filtered(j), events_combo)]['jaccard_distance'] = jac_dist
-
-                # save matrices
-                matrices_dict[(fam_query, events_combo)] = {
-                    'semantic_distance': semantic_distance,
-                    'jaccard_distance': jaccard_distance}
+                    # save matrices
+                    matrices_dict[(fam_query, events_combo)] = {
+                        'semantic_distance': semantic_distance,
+                        'jaccard_distance': jaccard_distance}
 
 # transform results in dataframe
 results_df = pd.DataFrame.from_dict(result_dict)
