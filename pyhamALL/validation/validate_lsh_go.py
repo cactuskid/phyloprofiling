@@ -63,12 +63,12 @@ result_dict = {}
 # only contains the matrices
 matrices_dict = {}
 
-with h5py.File(config.datadir + 'May_02_2018_16_19hashes.h5', 'r') as h5hashes:
-    with open(config.datadir + 'May_02_2018_16_19_0.7_newlsh.pkl', 'rb') as lsh_file:
+with h5py.File(config.datadir + 'May_04_2018_11_55hashes.h5', 'r') as h5hashes:
+    with open(config.datadir + 'May_04_2018_11_55_0.7_newlsh.pkl', 'rb') as lsh_file:
 
         lsh_unpickled = pickle.Unpickler(lsh_file)
         lsh = lsh_unpickled.load()
-        print('all loaded')
+
         # generate random queries from oma
         gen_rand_queries = 100
         np.random.seed(1)

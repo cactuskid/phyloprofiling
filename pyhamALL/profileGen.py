@@ -45,16 +45,20 @@ def jaccard_cutoff(fams, scores, cutoff):
     return fams[ np.where(scores > cutoff)]
 
 
+# TODO debug this
 def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
 	#get hash of desired events
+	query_minhash = None
     for event in events:
-            buf = np.get_buffer(h5hashes[event][fam,:])
-            if queryminhash is None:
+			# np.get_buffer doesnt work
+			buf = bytearray(h5hashes[event][fam,:])
+            #buf = np.get_buffer(h5hashes[event][fam,:])
+            if query_minhash is None:
                 query_minhash = LeanMinHash.deserialize(buf)
-                minhash1 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
+                minhash1 = MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
             else:
-                query_minhash =  LeanMinHash.deserialize(buf)
-                minhash2 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
+                query_minhash = LeanMinHash.deserialize(buf)
+                minhash2 = MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
                 minhash1.merge(minhash2)
     return minhash1
 
