@@ -65,7 +65,7 @@ if __name__ == '__main__':
 					yield pddf
 
 	def worker(i,q, retq,l):
-		
+
 		print('worker init ' + str(i))
 		while True:
 			df = q.get()
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 								hashvals = hashes[fam]['hashes']
 
 								for i,event in enumerate(hashvals):
-									dataset = dataset_names[i]
+									dataset = dataset_names[i+1]
 									if len(dsets[dataset])< fam+10:
 										dsets[dataset].resize( (fam +chunksize , len(hashvals[event])  ) )
 									dsets[dataset][fam,:] = hashvals[event]
