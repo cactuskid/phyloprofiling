@@ -5,6 +5,8 @@ from scipy.sparse import csr_matrix,find , vstack
 import itertools
 import datasketch
 import numpy as np
+import config
+
 
 def generateTaxaIndex(species_tree):
 	'''
@@ -41,14 +43,11 @@ def FamList2RowsH5(h5file, listfam):
 	pass
 
 
-def jaccard_cutoff(fams, scores, cutoff):
-    return fams[ np.where(scores > cutoff)]
-
-
 def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
 	#get hash of desired events
-    for event in events:
-            buf = np.get_buffer(h5hashes[event][fam,:])
+	query_minhash = None
+	for event in events:
+            buf = np.to_bytes(h5hashes[event][fam,:])
             if queryminhash is None:
                 query_minhash = LeanMinHash.deserialize(buf)
                 minhash1 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
@@ -57,6 +56,31 @@ def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'pr
                 minhash2 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
                 minhash1.merge(minhash2)
     return minhash1
+def jaccard_cutoff(fams, scores, cutoff):
+    return fams[ np.where(scores > cutoff)]
+
+
+def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
+	#get hash of desired events
+	query_minhash = None
+	for event in events:
+            buf = np.to_bytes(h5hashes[event][fam,:])
+            if queryminhash is None:
+                query_minhash = LeanMinHash.deserialize(buf)
+                minhash1 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
+            else:
+                query_minhash =  LeanMinHash.deserialize(buf)
+                minhash2 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
+                minhash1.merge(minhash2)
+    return minhash1
+
+
+def test_gethoghash():
+	with File( config.datadir + 'hashes.h5', 'r') as h5hashes:
+		entries = range(100,200)
+		for i in entries:
+			print(get_hash_hog_id(i, h5h5hashes))
+
 
 def get_hashdict(fams, h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
 	hashdict = {}
