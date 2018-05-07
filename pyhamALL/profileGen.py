@@ -65,15 +65,18 @@ def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'pr
 	#get hash of desired events
 	query_minhash = None
     for event in events:
+
+			query_minhash = LeanMinHash(MinHash())
+			query_minhash.hashvalues = h5hashes[event][fam,:]
 			# np.get_buffer doesnt work
-			buf = bytearray(h5hashes[event][fam,:])
+			#buf = bytearray(h5hashes[event][fam,:])
             #buf = np.get_buffer(h5hashes[event][fam,:])
 			#buf = np.frombuffer(h5hashes[event][fam,:])
             if query_minhash is None:
-                query_minhash = LeanMinHash.deserialize(buf)
+                #query_minhash = LeanMinHash.deserialize(buf)
                 minhash1 = MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
             else:
-                query_minhash = LeanMinHash.deserialize(buf)
+                #query_minhash = LeanMinHash.deserialize(buf)
                 minhash2 = MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
                 minhash1.merge(minhash2)
     return minhash1
