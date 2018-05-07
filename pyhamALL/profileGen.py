@@ -64,9 +64,12 @@ def jaccard_cutoff(fams, scores, cutoff):
 def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
 	#get hash of desired events
 	query_minhash = None
-	for event in events:
-            buf = np.to_bytes(h5hashes[event][fam,:])
-            if queryminhash is None:
+    for event in events:
+			# np.get_buffer doesnt work
+			buf = bytearray(h5hashes[event][fam,:])
+            #buf = np.get_buffer(h5hashes[event][fam,:])
+			#buf = np.frombuffer(h5hashes[event][fam,:])
+            if query_minhash is None:
                 query_minhash = LeanMinHash.deserialize(buf)
                 minhash1 = MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
             else:
@@ -213,11 +216,13 @@ def DFTree2Hashes(row):
 
 			lminHashDict[lminHashName] = lminHash
 
+			#lminHash.bytesize() --> computes the bitesize
+			#buf = bytearray(lminHash.bytesize())
+			#lminHash.serialize(buf)
 
-			buf = bytearray(lminHash.bytesize())
-			lminHash.serialize(buf)
+			#hashes[array] = buf
 
-			hashes[array] = buf
+			hashes[array] = lminHash.hashvalues
 
 
 		#hashmat = np.hstack(buffers)
