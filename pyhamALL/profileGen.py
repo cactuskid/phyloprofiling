@@ -1,3 +1,4 @@
+
 # use dask and pyham to create a big sparse matrix for each type of evolutionary event
 import ete3
 import sparse
@@ -35,29 +36,12 @@ def FamList2RowsOnTheFly(listfam, dbObj, tree, dic):
 		treemap_fam = pyhamPipeline.get_hamTree(fam, dbObj, tree, dic)
 		# get mat
 		rows.append(Tree2mat(treemap_fam, taxaIndex))
-	stackRows = vstak(rows)
+	stackRows = vstack(rows)
 	return stackRows
 
 
 def FamList2RowsH5(h5file, listfam):
 	pass
-
-
-def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):
-	#get hash of desired events
-	query_minhash = None
-	for event in events:
-            buf = np.to_bytes(h5hashes[event][fam,:])
-            if queryminhash is None:
-                query_minhash = LeanMinHash.deserialize(buf)
-                minhash1 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
-            else:
-                query_minhash =  LeanMinHash.deserialize(buf)
-                minhash2 = MinHash(seed=quers_minhash.seed, hashvalues=query_minhash.hashvalues)
-                minhash1.merge(minhash2)
-    return minhash1
-def jaccard_cutoff(fams, scores, cutoff):
-    return fams[ np.where(scores > cutoff)]
 
 
 # TODO debug this
@@ -81,7 +65,6 @@ def get_hash_hog_id(fam , h5hashes, events = ['duplication', 'gain', 'loss', 'pr
                 minhash1.merge(minhash2)
     return minhash1
 
-
 def test_gethoghash():
 	with File( config.datadir + 'hashes.h5', 'r') as h5hashes:
 		entries = range(100,200)
@@ -96,17 +79,17 @@ def get_hashdict(fams, h5hashes, events = ['duplication', 'gain', 'loss', 'prese
 	return hashdict
 
 def jaccard_rank(query,hashdict):
-    hashlist = np.asarray(list(hashdict.values()))
-    fams = np.asarray(list(hashdict.keys()))
-    scores = [ queryhash.jaccard(resulthash) for resulthash in hashlist ]
-    index = np.argsort(scores)
-    for array in [hashlist, fams , index]:
-        array = array[index]
-    return fams,scores
+	hashlist = np.asarray(list(hashdict.values()))
+	fams = np.asarray(list(hashdict.keys()))
+	scores = [ queryhash.jaccard(resulthash) for resulthash in hashlist ]
+	index = np.argsort(scores)
+	for array in [hashlist, fams , index]:
+		array = array[index]
+	return fams,scores
 
 
 def Tree2Hashes(treemap, fam=None, LSH=None , l = None):
-	#turn each tree into a minhash object
+	#turn each tree into a minhash objecDes places sont encore disponibles pour nos semaines d’activités estivales, du 16 au 20 juillet et du 23 au 27 juillet 2018.t
 	#serialize and store as array
 	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}
 	for node in treemap.traverse():
@@ -219,13 +202,11 @@ def DFTree2Hashes(row):
 
 			lminHashDict[lminHashName] = lminHash
 
-			#lminHash.bytesize() --> computes the bitesize
-			#buf = bytearray(lminHash.bytesize())
-			#lminHash.serialize(buf)
 
-			#hashes[array] = buf
+			buf = bytearray(lminHash.bytesize())
+			lminHash.serialize(buf)
 
-			hashes[array] = lminHash.hashvalues
+			hashes[array] = buf
 
 
 		#hashmat = np.hstack(buffers)
