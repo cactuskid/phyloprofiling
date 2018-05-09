@@ -84,6 +84,8 @@ with h5py.File(config.datadirLaurent + 'May_09_2018_13_42hashes.h5', 'r') as h5h
         for fam, hog in drosoHogList:
             if len(queries) > 100:
                 break
+            # be less restrictive here. Like, only one go term per hog is enough. Create a list with ALL of them.
+            # Then pick a few (10, 20, 50 ?) randomly (--> store that in "queries")
             if len(goTermAnalysis.get_go_terms(hog)) > 15:
                 queries.append(fam)
 
@@ -93,10 +95,18 @@ with h5py.File(config.datadirLaurent + 'May_09_2018_13_42hashes.h5', 'r') as h5h
         #queries = [str(query) for query in hogsList if goTermAnalysis.get_go_terms(query))]
         print(queries)
         # create all combo events, necessary to generate all the hashes
+        
+        # avoid the double for loop here. Better create a variable containing all the element of the list
+        # events_combo = [events_combo for events_combo in itertools.combinations(events, n+1) for n in range(1, len(envents)]
+        # maybe there is a function (like itertools.combinations) that does that in a simpler way
         for n in range(1, len(events)):
             for events_combo in itertools.combinations(events, n+1):
                 for fam_query in queries:
 
+                    # instead of looping on the double for loop above, maybe better to send all to the function ? 
+                    # create a dictionary with key:events_combo value:hash (replace the "get_hash_hog_id" function
+                    # instead of fetch (which is buggy) recreate the hashes
+                    
                     # get hash for this hog
                     hash_query = get_hash_hog_id(fam_query, h5hashes, events_combo)
                     # get the results for this query in the lsh
