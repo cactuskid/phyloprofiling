@@ -64,18 +64,19 @@ result_dict = {}
 matrices_dict = {}
 
 with h5py.File(config.datadir + 'May_04_2018_18_07hashes.h5', 'r') as h5hashes:
+    print('loading lsh')
     with open(config.datadir + 'May_04_2018_18_07_0.7_newlsh.pkl', 'rb') as lsh_file:
-
+        print('all loaded!')
         lsh_unpickled = pickle.Unpickler(lsh_file)
         lsh = lsh_unpickled.load()
 
         # generate random queries from oma
-        gen_rand_queries = 100
+        gen_rand_queries = 10000
         np.random.seed(1)
         queries = list(np.random.randint(low=1, high=len(h5OMA.root.OrthoXML.Index), size=gen_rand_queries))
         # filter the queries; they should contain at least one go terms
         queries = [query for query in queries if goTermAnalysis.get_go_terms(query)]
-
+        print(queries)
         # create all combo events, necessary to generate all the hashes
         for n in range(1, len(events)):
             for events_combo in itertools.combinations(events, n+1):
@@ -83,6 +84,7 @@ with h5py.File(config.datadir + 'May_04_2018_18_07hashes.h5', 'r') as h5hashes:
 
                     # get hash for this hog
                     hash_query = get_hash_hog_id(fam_query, events_combo)
+                    print(hash_query)
                     # get the results for this query in the lsh
                     lsh_results_unfiltered = lsh.query(hash_query)
                     # add the query to the list of results and filter the results
@@ -103,7 +105,7 @@ with h5py.File(config.datadir + 'May_04_2018_18_07hashes.h5', 'r') as h5hashes:
                             semantic_distance[i, j] = semantic_dist
                             result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
                             # also save the go terms in big dict
-                            result_dict[(hog1, hog2, events_combo)]['go terms'] = goTermAnalysis.get_go_terms(hog2)
+                            result_dict[(hog1, hog2, events_combo)]['go_terms'] = goTermAnalysis.get_go_terms(hog2)
 
                     # prepare matrix for the jaccard distances
                     jaccard_distance = np.zeros((len(lsh_results_filtered), len(lsh_results_filtered)))
@@ -123,7 +125,7 @@ with h5py.File(config.datadir + 'May_04_2018_18_07hashes.h5', 'r') as h5hashes:
                         'jaccard_distance': jaccard_distance}
 
 # transform results in dataframe
-results_df = pd.DataFrame.from_dict(result_dict)
 # save datafram in a csv file with timestamp
-csv_path_filename_date = config.datadir + 'results' + time.strftime("%Y%m%d-%H%M%S")
+results_df = pd.DataFrame.from_dict(result_dict)
+csv_path_filename_date = config.datadirLaurent + 'results' + time.strftime("%Y%m%d-%H%M%S")
 results_df.to_csv(csv_path_filename_date, sep='\t')

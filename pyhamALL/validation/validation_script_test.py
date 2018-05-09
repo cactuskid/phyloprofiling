@@ -12,7 +12,7 @@ import numpy as np
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
-from goatools.semantic import TermCounts 
+from goatools.semantic import TermCounts
 
 from pyoma.browser import db
 
@@ -41,7 +41,7 @@ for hog in dbObj.get_hdf5_handle().get_node('/HogLevel').where('Level == b"Droso
 # --------------------------------------------------------
 # ---------------------- With Genes ----------------------
 # --------------------------------------------------------
-  
+
 # create object for validation; set files
 validation_hogs = phyloValidationGoTerm.SemanticSimilarityAnalysis(go, h5file, termcounts)
 

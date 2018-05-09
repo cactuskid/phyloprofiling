@@ -30,18 +30,17 @@ associations = read_gaf('./data/gene_association.tair')
 
 # Get the counts of each GO term.
 termcounts = TermCounts(go, associations)
-goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(
-    go, h5OMA, termcounts)
+goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(go, h5OMA, termcounts)
 
 
 pool = mp.Pool()
 
 
 def jaccard_mp(h1, h2):
-    '''
+    """
     computes jaccard score for two hashes
     returns score and index
-    '''
+    """
     i, h1 = h1
     j, h2 = h2
 
@@ -49,12 +48,13 @@ def jaccard_mp(h1, h2):
 
 
 def result_fam_id(result):
-    '''
+    """
     returns the hog fam id for any key of the lsh
-    '''
-    fam_id = int(result.split('-', 1)[0])
+    """
+    fam_id = str(result.split('-', 1)[0])
+    hog_id = "HOG:" + (7-len(fam_id)) * '0' + fam_id
 
-    return fam_id
+    return hog_id
 
 
 events = ['duplication', 'gain', 'loss', 'presence']
@@ -63,32 +63,47 @@ result_dict = {}
 # only contains the matrices
 matrices_dict = {}
 
-with h5py.File(config.datadir + 'May_02_2018_16_19hashes.h5', 'r') as h5hashes:
-    with open(config.datadir + 'May_02_2018_16_19_0.7_newlsh.pkl', 'rb') as lsh_file:
+with h5py.File(config.datadirLaurent + 'May_09_2018_13_42hashes.h5', 'r') as h5hashes:
+    print('loading lsh')
+    with open(config.datadirLaurent + 'May_09_2018_13_42_0.7_newlsh.pkl', 'rb') as lsh_file:
 
         lsh_unpickled = pickle.Unpickler(lsh_file)
         lsh = lsh_unpickled.load()
         print('all loaded')
         # generate random queries from oma
-        gen_rand_queries = 100
-        np.random.seed(1)
-        queries = list(np.random.randint(low=1, high=len(h5OMA.root.OrthoXML.Index), size=gen_rand_queries))
+        # gen_rand_queries = 10000
+        # np.random.seed(1)
+        # queries = list(np.random.randint(low=1, high=len(h5OMA.root.OrthoXML.Index), size=gen_rand_queries))
         # filter the queries; they should contain at least one go terms
-        queries = [query for query in queries if goTermAnalysis.get_go_terms(query)]
+        drosoHogList = []
+        for hog in dbObj.get_hdf5_handle().get_node('/HogLevel').where('Level == b"Drosophila melanogaster"'):
+            drosoHogList.append((hog[0], hog[1]))
 
+        queries =[]
+
+        for fam, hog in drosoHogList:
+            if len(queries) > 100:
+                break
+            if len(goTermAnalysis.get_go_terms(hog)) > 15:
+                queries.append(fam)
+
+
+        #print('the queries are')
+        #print(hogsList)
+        #queries = [str(query) for query in hogsList if goTermAnalysis.get_go_terms(query))]
+        print(queries)
         # create all combo events, necessary to generate all the hashes
         for n in range(1, len(events)):
             for events_combo in itertools.combinations(events, n+1):
                 for fam_query in queries:
 
                     # get hash for this hog
-                    hash_query = get_hash_hog_id(fam_query, events_combo)
+                    hash_query = get_hash_hog_id(fam_query, h5hashes, events_combo)
                     # get the results for this query in the lsh
                     lsh_results_unfiltered = lsh.query(hash_query)
                     # add the query to the list of results and filter the results
                     # (if no go term, remove hog id)
-                    lsh_results_filtered = [fam_query] + \
-                        [result for result in lsh_results_unfiltered if goTermAnalysis.get_go_terms(result_fam_id(result))]
+                    lsh_results_filtered = [fam_query] + [result for result in lsh_results_unfiltered if goTermAnalysis.get_go_terms(result_fam_id(result))]
 
                     # get a list of hashes, one for each filtered results
                     hashes = [(hog_id, get_hash_hog_id(hog_id, events_combo)) for hog_id in lsh_results_filtered]
@@ -115,7 +130,7 @@ with h5py.File(config.datadir + 'May_02_2018_16_19hashes.h5', 'r') as h5hashes:
                     for jac_res in jaccard_results:
                         i, j, jac_dist = jac_res
                         jaccard_distance[i, j] = jac_dist
-                        result_dict[(lsh_results_filtered(i), lsh_results_filtered(j), events_combo)]['jaccard_distance'] = jac_dist
+                        result_dict[(lsh_results_filtered[i], lsh_results_filtered[j], events_combo)]['jaccard_distance'] = jac_dist
 
                     # save matrices
                     matrices_dict[(fam_query, events_combo)] = {
@@ -125,5 +140,5 @@ with h5py.File(config.datadir + 'May_02_2018_16_19hashes.h5', 'r') as h5hashes:
 # transform results in dataframe
 results_df = pd.DataFrame.from_dict(result_dict)
 # save datafram in a csv file with timestamp
-csv_path_filename_date = config.datadir + 'results' + time.strftime("%Y%m%d-%H%M%S")
+csv_path_filename_date = config.datadirLaurent + 'results' + time.strftime("%Y%m%d-%H%M%S")
 results_df.to_csv(csv_path_filename_date, sep='\t')
