@@ -9,6 +9,7 @@ def hogid2fam(hog_id):
 
     return fam
 
+
 def fam2hogid(fam_id):
     """
     returns the hog fam id for any key of the lsh
@@ -16,6 +17,7 @@ def fam2hogid(fam_id):
     hog_id = "HOG:" + (7-len(fam_id)) * '0' + str(fam_id)
 
     return hog_id
+
 
 def result2hogid(result):
     """
@@ -25,15 +27,41 @@ def result2hogid(result):
 
     return hog_id
 
+
 def result2fam(result):
     fam = str(result.split('-', 1)[0])
 
     return fam
 
+
 def result2events(result):
     events = [event for event in result.split('-')[1:]]
 
     return events
+
+
+def result2hash(result, tree, replacement_dic, dbObj):
+    events = result2events(result)
+    fam = result2fam(result)
+
+    treemap = hpputils.get_ham_treemap(fam, dbObj, tree, replacement_dic)
+    eventdict = tree2eventdict(treemap)
+    eventdict = {e: eventdict[e] for e in events}
+
+    minhashes = eventdict2minhashes(eventdict)
+
+    hash = combine_minhashes(minhashes)
+
+    return hash
+
+
+def combine_minhashes(hashes):
+    minhash = datasketch.MinHash(num_perm=128)
+    for name, hash in hashes:
+        minhash.merge(hash)
+
+    return minhash
+
 
 def tree2eventdict(treemap):
     eventdict = {'presence': [], 'gain': [], 'loss': [], 'duplication': []}

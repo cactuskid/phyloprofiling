@@ -2,6 +2,8 @@ import pickle
 import tables
 import pandas as pd
 import numpy as np
+import multiprocessing as mp
+import itertools
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -64,37 +66,61 @@ class Profiler:
 
         result_dict = {}
 
-
+        # semantic scores
         for query, result in results:
-            related_hog_list = [query] + [r for r in result]
-
+            related_hog_list = list(set([query] + [r for r in result]))
             events_combo = hashutils.result2events(query)
-            semantic_distance = np.zeros((len(related_hog_list), len(related_hog_list)))
-
-            for i, hog_event_1 in enumerate(related_hog_list):
-                for j, hog_event_2 in enumerate(related_hog_list):
-                    hog1 = hashutils.result2hogid(hog_event_1)
-                    hog2 = hashutils.result2hogid(hog_event_2)
-
-                    # get semantic dist between two hog (ids) and save it in matrix and in big dict
-                    semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog1, hog2)
-                    semantic_distance[i, j] = semantic_dist
-                    result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
-                    # also save the go terms in big dict
-                    result_dict[(hog1, hog2, events_combo)]['go terms'] = self.goTermAnalysis.get_go_terms(hog2)
-
-        # get semantic distance, can't do it with mp, because of the access to h5 file
+            result_dict = self.compute_semantic_distance(related_hog_list, result_dict, events_combo)
 
         # get jaccard score, here its possible to use up
+        result_dict = self.compute_jaccard_distance(related_hog_list, result_dict, events_combo)
 
-        jaccard_distance = self.compute_jaccard_distance()
+        return result_dict
 
-        return resultsDict
+    def compute_semantic_distance(self, hogs_list, result_dict, events_combo):
 
-    def compute_jaccard_distance(self, hogs_list):
+        for i, hog_event_1 in enumerate(hogs_list):
+            for j, hog_event_2 in enumerate(hogs_list):
+                hog1 = hashutils.result2hogid(hog_event_1)
+                hog2 = hashutils.result2hogid(hog_event_2)
+
+                # get semantic dist between two hog (ids) and save it in matrix and in big dict
+                semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog1, hog2)
+                result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
+                # also save the go terms in big dict
+                result_dict[(hog1, hog2, events_combo)]['go term hog 1'] = self.goTermAnalysis.get_go_terms(hog1)
+                result_dict[(hog1, hog2, events_combo)]['go term hog 2'] = self.goTermAnalysis.get_go_terms(hog2)
 
 
+        return result_dict
 
+    def jaccard_mp(self, hash1, hash2):
+        """
+        computes jaccard score for two hashes
+        returns score and index
+        """
+        i, h1 = hash1
+        j, h2 = hash2
+
+        return i, j, h1.jaccard(h2)
+
+    def compute_jaccard_distance(self, hogs_list, result_dict, events_combo):
+        # prepare data for mp stuff
+        pool = mp.Pool()
+
+        hashes = {result: hashutils.result2hash(result) for result in hogs_list}
+
+        hashcompare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
+        # compute jaccard
+        jaccard_results = pool.map_async(hashcompare, jaccard_mp).get()
+        # feed matrix and big dict with results
+        for jac_res in jaccard_results:
+            i, j, jac_dist = jac_res
+            hog1 = hashutils.result2hogid(hogs_list[i])
+            hog2 = hashutils.result2hogid(hogs_list[j])
+            result_dict[(hog1, hog2, events_combo)]['jaccard_distance'] = jac_dist
+
+        return result_dict
 
     def results_save(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
                     combination=True, scores=False, path_to_save=None):
