@@ -152,6 +152,8 @@ class SemanticSimilarityAnalysis(object):
             if newTerms:
                 godictfinal[gene] = newTerms
         godictfinal = {k: v for k, v in godictfinal.items() if v}
+
+
         return godictfinal
 
     def _get_entry_geneOntology(self, entry):
