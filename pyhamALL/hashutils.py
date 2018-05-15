@@ -1,7 +1,7 @@
 import datasketch
 import itertools
 
-import hpputils
+from pyhamALL import hpputils
 
 
 def hogid2fam(hog_id):
@@ -14,7 +14,8 @@ def fam2hogid(fam_id):
     """
     returns the hog fam id for any key of the lsh
     """
-    hog_id = "HOG:" + (7-len(fam_id)) * '0' + str(fam_id)
+
+    hog_id = "HOG:" + (7-len(str(fam_id))) * '0' + str(fam_id)
 
     return hog_id
 
@@ -29,13 +30,13 @@ def result2hogid(result):
 
 
 def result2fam(result):
-    fam = str(result.split('-', 1)[0])
+    fam = int(result.split('-', 1)[1])
 
     return fam
 
 
 def result2events(result):
-    events = [event for event in result.split('-')[1:]]
+    events = [event for event in result.split('-')[:-1]]
 
     return events
 
