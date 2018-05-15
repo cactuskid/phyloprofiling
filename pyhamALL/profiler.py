@@ -16,7 +16,6 @@ import hpputils
 import hashutils
 
 
-
 class Profiler:
 
     def __init__(self, h5_oma_path):
@@ -26,12 +25,19 @@ class Profiler:
         self.omaIdObj = db.OmaIdMapper(self.dbObj)
         self.replacement_dic, self.tree = hpputils.create_species_tree(self.h5OMA, self.omaIdObj)
 
+        self.go = None
+        self.associations = None
+        self.term_counts = None
+        self.goTermAnalysis = None
+
+        self.lsh = None
+
     def go_benchmarking_init(self, obo_file_path, gaf_file_path):
         self.go = obo_parser.GODag(obo_file_path)
         self.associations = read_gaf(gaf_file_path)
         # Get the counts of each GO term.
-        self.termcounts = TermCounts(self.go, self.associations)
-        self.goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(self.go, self.h5OMA, self.termcounts)
+        self.term_counts = TermCounts(self.go, self.associations)
+        self.goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(self.go, self.h5OMA, self.term_counts)
 
     def lsh_loader(self, lsh_path):
         lsh_file = open(lsh_path, 'rb')
@@ -49,12 +55,12 @@ class Profiler:
         # query_hashes dict keys:lminhashname, values:hashes
         query_hashes = hashutils.fam2hashes(fam_id, self.dbOjb, self.tree, self.replacement_dic, events, combination)
 
-        resultDict = {}
+        result_dict = {}
         for name, hashvalue in query_hashes:
             # lsh.query returns a list of hash (fam-event1-event2- etc)
-            resultDict[name] = self.lsh.query(hashvalue)
+            result_dict[name] = self.lsh.query(hashvalue)
 
-        return resultDict
+        return result_dict
 
     def results(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True, scores=False):
 
@@ -112,7 +118,7 @@ class Profiler:
 
         hashcompare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
         # compute jaccard
-        jaccard_results = pool.map_async(hashcompare, jaccard_mp).get()
+        jaccard_results = pool.map_async(hashcompare, self.jaccard_mp).get()
         # feed matrix and big dict with results
         for jac_res in jaccard_results:
             i, j, jac_dist = jac_res
@@ -123,7 +129,7 @@ class Profiler:
         return result_dict
 
     def results_save(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
-                    combination=True, scores=False, path_to_save=None):
+                     combination=True, scores=False, path_to_save=None):
         df_results = self.results(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination, scores=scores)
 
         if path_to_save is not None:
