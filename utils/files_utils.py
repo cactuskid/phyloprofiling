@@ -5,7 +5,7 @@ import pandas as pd
 import pyham
 
 
-def create_species_tree(h5file, omaIdObj):
+def get_species_tree_replacement_dic(h5file, omaIdObj):
     '''
     Create and fix species tree; create a replacement dictionary used to remove special characters
     Args:
@@ -132,6 +132,7 @@ def correct_orthoxml(instr, replacement_dic, verbose=False):
 
     return outstr
 
+
 def get_ham_treemap(fam, dbObj, species_tree, replacement_dic):
     ortho = dbObj.get_orthoxml(fam).decode()
 
@@ -142,3 +143,21 @@ def get_ham_treemap(fam, dbObj, species_tree, replacement_dic):
     tp = hamObj.create_tree_profile(hog=hog)
 
     return tp.treemap
+
+
+def generate_taxa_index(species_tree):
+    """
+    Generates an index for the global taxonomic tree for all OMA
+    :param species_tree: species tree in newick format
+    :return: taxaIndex: dictionary key: node name (species name); value: index
+        taxaIndexReverse: dictionary key: index: value: species name
+    """
+    t = ete3.Tree(species_tree, format=1)
+
+    taxa_index = {}
+    taxa_index_reverse = {}
+
+    for i, node in enumerate(t.traverse()):
+        taxa_index_reverse[i] = node.name
+        taxa_index[node.name] = i
+    return taxa_index, taxa_index_reverse

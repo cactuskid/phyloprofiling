@@ -10,7 +10,7 @@ from goatools.semantic import TermCounts
 from pyoma.browser import db
 
 from profiler.validation import phyloValidationGoTerm as validationGoTerm
-from utils import hpputils, hashutils
+from utils import files_utils, hashutils
 
 
 class Profiler:
@@ -20,7 +20,7 @@ class Profiler:
         self.h5OMA = tables.open_file(h5_oma_path, mode='r')
         self.dbObj = db.Database(self.h5OMA)
         self.omaIdObj = db.OmaIdMapper(self.dbObj)
-        self.replacement_dic, self.tree = hpputils.create_species_tree(self.h5OMA, self.omaIdObj)
+        self.replacement_dic, self.tree = files_utils.get_species_tree_replacement_dic(self.h5OMA, self.omaIdObj)
 
         self.go = None
         self.associations = None
