@@ -1,4 +1,3 @@
-from tables import *
 import ete3
 import re
 import pandas as pd
