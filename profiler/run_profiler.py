@@ -1,4 +1,4 @@
-import profiler
+from profiler import profiler
 
 if __name__ == '__main__':
 
@@ -7,4 +7,4 @@ if __name__ == '__main__':
 
     profiler.lsh_loader('lsh file path')
 
-    profiler.results_save(hog_id= 789, scores=True, path_to_save='path to save')
+    profiler.results_save(hog_id=789, scores=True, path_to_save='path to save')

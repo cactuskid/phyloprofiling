@@ -1,7 +1,6 @@
 import pickle
 import tables
 import pandas as pd
-import numpy as np
 import multiprocessing as mp
 import itertools
 
@@ -9,11 +8,9 @@ from goatools import obo_parser
 from goatools.associations import read_gaf
 from goatools.semantic import TermCounts
 from pyoma.browser import db
-import pyham
 
-import validation.phyloValidationGoTerm as validationGoTerm
-import hpputils
-import hashutils
+from profiler.validation import phyloValidationGoTerm as validationGoTerm
+from profiler import hpputils, hashutils
 
 
 class Profiler:
@@ -62,7 +59,8 @@ class Profiler:
 
         return result_dict
 
-    def results(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True, scores=False):
+    def results(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
+                combination=True, scores=False):
 
         results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
 
@@ -78,8 +76,8 @@ class Profiler:
             events_combo = hashutils.result2events(query)
             result_dict = self.compute_semantic_distance(related_hog_list, result_dict, events_combo)
 
-        # get jaccard score, here its possible to use up
-        result_dict = self.compute_jaccard_distance(related_hog_list, result_dict, events_combo)
+            # get jaccard score, here its possible to use up
+            result_dict = self.compute_jaccard_distance(related_hog_list, result_dict, events_combo)
 
         return result_dict
 

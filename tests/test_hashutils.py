@@ -1,5 +1,5 @@
 import unittest
-from pyhamALL import hashutils
+from profiler import hashutils
 
 
 class HashutilsTest(unittest.TestCase):
