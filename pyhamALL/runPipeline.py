@@ -1,3 +1,4 @@
+# should be useless now
 
 import pyham
 from pyoma.browser import db 

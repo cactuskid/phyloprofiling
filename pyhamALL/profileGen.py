@@ -1,9 +1,7 @@
 
 # use dask and pyham to create a big sparse matrix for each type of evolutionary event
 import ete3
-import sparse
 from scipy.sparse import csr_matrix,find , vstack
-import itertools
 from datasketch import MinHash, LeanMinHash
 import numpy as np
 import config
@@ -31,7 +29,6 @@ def FamList2RowsOnTheFly(listfam, dbObj, tree, dic):
     taxaIndex, taxaIndexReverse = generateTaxaIndex(tree)
     rows = []
 
-<<<<<<< HEAD
 	for fam in listfam:
 		# get treemap
 		treemap_fam = pyhamPipeline.get_hamTree(fam, dbObj, tree, dic)
@@ -39,28 +36,15 @@ def FamList2RowsOnTheFly(listfam, dbObj, tree, dic):
 		rows.append(Tree2mat(treemap_fam, taxaIndex))
 	stackRows = vstack(rows)
 	return stackRows
-=======
-    for fam in listfam:
-        # get treemap
-        treemap_fam = pyhamPipeline.get_hamTree(fam, dbObj, tree, dic)
-        # get mat
-        rows.append(Tree2mat(treemap_fam, taxaIndex))
-    stackRows = vstak(rows)
-    return stackRows
->>>>>>> master
 
 
 def FamList2RowsH5(h5file, listfam):
     pass
 
 
-<<<<<<< HEAD
-=======
 def jaccard_cutoff(fams, scores, cutoff):
     return fams[ np.where(scores > cutoff)]
 
-
->>>>>>> master
 # TODO debug this
 def get_hash_hog_id(fam, h5hashes, events=['duplication', 'gain', 'loss', 'presence']):
     # get hash of desired events
@@ -107,24 +91,7 @@ def jaccard_rank(query,hashdict):
 
 
 def Tree2Hashes(treemap, fam=None, LSH=None , l = None):
-<<<<<<< HEAD
-	#turn each tree into a minhash objecDes places sont encore disponibles pour nos semaines d’activités estivales, du 16 au 20 juillet et du 23 au 27 juillet 2018.t
-	#serialize and store as array
-	eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}
-	for node in treemap.traverse():
-	# traverse() returns an iterator to traverse the tree structure
-	# strategy:"levelorder" by default; nodes are visited in order from root to leaves
-	# it return treeNode instances
-		if not node.is_root():
-			if node.nbr_genes >0:
-				eventdict['presence'].append('P'+node.name)
-			if node.dupl > 0:
-				eventdict['duplication'].append('D'+node.name)
-			if node.lost > 0:
-				eventdict['loss'].append('L'+node.name)
-		else:
-			eventdict['gain'].append('G'+node.name)
-=======
+
     #turn each tree into a minhash object
     #serialize and store as array
     eventdict = { 'presence':[] , 'gain':[] , 'loss':[] , 'duplication':[]}
@@ -141,7 +108,6 @@ def Tree2Hashes(treemap, fam=None, LSH=None , l = None):
                 eventdict['loss'].append('L'+node.name)
         else:
             eventdict['gain'].append('G'+node.name)
->>>>>>> master
 
     hashes = {}
 
@@ -248,12 +214,10 @@ def DFTree2Hashes(row):
             hashes[array] = lminHash.hashvalues
 
 
-<<<<<<< HEAD
 			buf = bytearray(lminHash.bytesize())
 			lminHash.serialize(buf)
 
 			hashes[array] = buf
-=======
         #hashmat = np.hstack(buffers)
 
         for j in range(1,len(eventdict.keys())):
@@ -263,7 +227,6 @@ def DFTree2Hashes(row):
                 for array in i:
                     combName += '-'+array
                     minHash.merge(hashesDict[array])
->>>>>>> master
 
                 lminHashDict[combName] = minHash
                 lminHash = datasketch.LeanMinHash(minHash)
