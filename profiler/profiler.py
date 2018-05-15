@@ -10,7 +10,7 @@ from goatools.semantic import TermCounts
 from pyoma.browser import db
 
 from profiler.validation import phyloValidationGoTerm as validationGoTerm
-from profiler import hpputils, hashutils
+from utils import hpputils, hashutils
 
 
 class Profiler:
