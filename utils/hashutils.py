@@ -1,7 +1,7 @@
 import datasketch
 import itertools
 
-from profiler import hpputils
+from utils import hpputils
 
 
 def hogid2fam(hog_id):

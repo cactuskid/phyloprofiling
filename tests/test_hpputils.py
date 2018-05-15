@@ -1,5 +1,5 @@
 import unittest
-from profiler import hpputils
+from utils import hpputils
 
 
 class HpputilsTest(unittest.TestCase):
