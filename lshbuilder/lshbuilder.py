@@ -99,13 +99,8 @@ class LSHBuilder:
                 for dataset_name in dataset_names:
                     print(dataset_name)
                     if dataset_name not in list(h5hashes.keys()):
-                        # TODO why? this one is useless ??
-                        # dataset = h5hashes.create_dataset(dataset_name, (chunk_size, 0), maxshape=(None, None),
-                        #                                  dtype='int32')
                         h5hashes.create_dataset(dataset_name, (chunk_size, 0), maxshape=(None, None), dtype='int32')
-
                     datasets[dataset_name] = h5hashes[dataset_name]
-
                 print(datasets)
                 print('saver init ' + str(i))
 
@@ -129,8 +124,10 @@ class LSHBuilder:
                                 for i, event in enumerate(hashvals):
                                     dataset = dataset_names[i]
                                     if len(datasets[dataset]) < fam + 10:
-                                        datasets[dataset].resize((fam + chunk_size, len(hashvals[event])))
-                                    datasets[dataset][fam, :] = hashvals[event]
+                                        datasets[dataset].resize((fam + chunk_size, len(hashvals[event].hashvalues)))
+
+
+                                    datasets[dataset][fam, :] = hashvals[event].hashvalues
                                 h5hashes.flush()
                             else:
                                 print('error')
@@ -159,7 +156,6 @@ class LSHBuilder:
                             with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
                                 pickle.dump(lsh, lsh_out, -1)
                                 pickle.dump(forest, forestout, -1)
-
                         print('DONE UPDATER' + str(i))
                         break
 
