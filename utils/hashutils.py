@@ -52,7 +52,7 @@ def result2hash(result, tree, replacement_dic, db_obj):
 
     minhashes = eventdict2minhashes(eventdict)
 
-    hash_value = combine_minhashes(minhashes)
+        hash_value = combine_minhashes(minhashes)
 
     return hash_value
 
@@ -77,7 +77,6 @@ def tree2eventdict(treemap):
                 eventdict['loss'].append('L' + node.name)
         else:
             eventdict['gain'].append('G' + node.name)
-
     return eventdict
 
 
@@ -129,8 +128,7 @@ def tree2hashes(fam, treemap, events, combination):
         minhashes = eventdict2minhashes(event_dictionary)
         leanminhashes = minhashes2leanminhashes(fam, minhashes, combination)
 
-        return leanminhashes
-
+        return {'hashes': minhashes , 'dict': leanminhashes}
     else:
         return None
 
