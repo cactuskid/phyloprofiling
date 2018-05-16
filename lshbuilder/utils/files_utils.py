@@ -165,7 +165,7 @@ def get_allowed_families(db_object, hog_level):
     allowed_families_list = []
     level = '''Level == b"{}"'''.format(hog_level)
 
-    for fam in db_object.get_hdf5.handle().get_node('/HogLevel').where(level):
+    for fam in db_object.get_hdf5_handle().get_node('/HogLevel').where(level):
         allowed_families_list.append(fam[0])
 
     return allowed_families_list
