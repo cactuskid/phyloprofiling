@@ -158,7 +158,7 @@ class LSHBuilder:
                                   'wb') as lsh_out:
                             with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
                                 pickle.dump(lsh, lsh_out, -1)
-                                pickle.dump(forest.index(), forestout, -1)
+                                pickle.dump(forest, forestout, -1)
 
                         print('DONE UPDATER' + str(i))
                         break
