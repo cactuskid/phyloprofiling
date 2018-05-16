@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
         with open('errors.txt' , 'w')as errfile:
 
-            with  h5py.File(config.datadir+ datestr + 'hashes.h5','w', libver = 'latest') as h5hashes:
+            with h5py.File(config.datadir+ datestr + 'hashes.h5','w', libver = 'latest') as h5hashes:
                 dsets = {}
                 for dataset_name in dataset_names:
                     print(dataset_name)
