@@ -13,15 +13,12 @@ import h5py
 
 from pyoma.browser import db
 
-from utils import pyhamutils
-from utils import hashutils
-from utils import files_utils
-from utils import config_utils
+from utils import files_utils, config_utils, pyhamutils, hashutils
 
 
 class LSHBuilder:
 
-    def __init__(self, h5_oma, saving_path):
+    def __init__(self, h5_oma, saving_path, hog_level=None):
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
@@ -37,25 +34,32 @@ class LSHBuilder:
         self.HASH_PIPELINE = functools.partial(hashutils.tree2hashes_from_row,
                                                events=['duplication', 'gain', 'loss', 'presence'], combination=True)
         self.ROW_PIPELINE = functools.partial(hashutils.tree2mat, taxaIndex=self.taxaIndex)
-        self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, dbObj=self.db_obj, species_tree=self.tree,
-                                            replacement_dic=self.dic)
+        self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj, replacement_dic=self.dic)
 
-        self.columns = len(self.taxaIndex)
-        self.rows = len(self.h5OMA.root.OrthoXML.Index)
+        if hog_level is not None:
+            self.allowed_families = files_utils.get_allowed_families(self.db_obj, hog_level)
+            self.columns = len(self.allowed_families)
+            self.rows = len(self.allowed_families)
+        else:
+            self.allowed_families = None
+            self.columns = len(self.taxaIndex)
+            self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
     def generates_dataframes(self, size=100):
 
         families = {}
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
-            fam = row[0]
-            families[fam] = {'ortho': self.READ_ORTHO(fam)}
-            if len(families) > size:
-                pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
-                pd_dataframe['Fam'] = pd_dataframe.index
-                families = {}
-                yield pd_dataframe
 
-    def worker(self, i, q, retq, matq):
+            fam = row[0]
+            if self.allowed_families is None or fam in self.allowed_families:
+                families[fam] = {'ortho': self.READ_ORTHO(fam)}
+                if len(families) > size:
+                    pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
+                    pd_dataframe['Fam'] = pd_dataframe.index
+                    families = {}
+                    yield pd_dataframe
+
+    def worker_lsh(self, i, q, retq, matq):
 
         print('worker init ' + str(i))
         while True:
@@ -95,7 +99,7 @@ class LSHBuilder:
                 for dataset_name in dataset_names:
                     print(dataset_name)
                     if dataset_name not in list(h5hashes.keys()):
-                        # TODO why this one is useless ??
+                        # TODO why? this one is useless ??
                         # dataset = h5hashes.create_dataset(dataset_name, (chunk_size, 0), maxshape=(None, None),
                         #                                  dtype='int32')
                         h5hashes.create_dataset(dataset_name, (chunk_size, 0), maxshape=(None, None), dtype='int32')
@@ -160,9 +164,10 @@ class LSHBuilder:
                         break
 
     def run_pipeline(self):
-        self.mp_with_timeout(number_workers=int(mp.cpu_count() / 2), number_updaters=1,
-                             data_generator=self.generates_dataframes(100), worker_function=self.worker,
+        self.mp_with_timeout(number_workers=1, number_updaters=1,
+                             data_generator=self.generates_dataframes(100), worker_function=self.worker_lsh,
                              update_function=self.saver)
+    # number_workers=int(mp.cpu_count() / 2)
 
     def matrix_updater(self, i, q, retq, matq, l, rows, columns):
         hog_mat = sparse.csr_matrix((rows, columns))
@@ -240,12 +245,12 @@ class LSHBuilder:
                 break
 
         gc.collect()
-        print('DONE!!!!!')
+        print('DONE!')
 
 
 if __name__ == '__main__':
 
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5OMA:
 
-        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path="saving path")
+        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path=config_utils.datadirLaurent)
         lsh_builder.run_pipeline()
