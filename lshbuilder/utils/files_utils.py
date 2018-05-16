@@ -158,3 +158,14 @@ def generate_taxa_index(species_tree):
         taxa_index_reverse[i] = node.name
         taxa_index[node.name] = i
     return taxa_index, taxa_index_reverse
+
+
+def get_allowed_families(db_object, hog_level):
+
+    allowed_families_list = []
+    level = '''Level == b"{}"'''.format(hog_level)
+
+    for fam in db_object.get_hdf5.handle().get_node('/HogLevel').where(level):
+        allowed_families_list.append(fam[0])
+
+    return allowed_families_list

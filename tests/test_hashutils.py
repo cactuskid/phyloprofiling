@@ -1,5 +1,5 @@
 import unittest
-from utils import hashutils
+from lshbuilder.utils import hashutils
 
 
 class HashutilsTest(unittest.TestCase):
