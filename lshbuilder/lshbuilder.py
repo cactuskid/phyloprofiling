@@ -18,7 +18,8 @@ from utils import files_utils, config_utils, pyhamutils, hashutils
 
 class LSHBuilder:
 
-    def __init__(self, h5_oma, saving_path, hog_level=None):
+    def __init__(self, h5_oma, saving_path, hog_level='Drosophila melanogaster'):
+        print("starting LSH BUILDER with hog level {}".format(hog_level))
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
@@ -38,6 +39,8 @@ class LSHBuilder:
 
         if hog_level is not None:
             self.allowed_families = files_utils.get_allowed_families(self.db_obj, hog_level)
+            print(self.allowed_families)
+            print(len(self.allowed_families))
             self.columns = len(self.allowed_families)
             self.rows = len(self.allowed_families)
         else:
@@ -59,7 +62,7 @@ class LSHBuilder:
                     families = {}
                     yield pd_dataframe
 
-    def worker_lsh(self, i, q, retq, matq):
+    def worker(self, i, q, retq, matq, l):
 
         print('worker init ' + str(i))
         while True:
@@ -126,7 +129,6 @@ class LSHBuilder:
                                     if len(datasets[dataset]) < fam + 10:
                                         datasets[dataset].resize((fam + chunk_size, len(hashvals[event].hashvalues)))
 
-
                                     datasets[dataset][fam, :] = hashvals[event].hashvalues
                                 h5hashes.flush()
                             else:
@@ -160,10 +162,9 @@ class LSHBuilder:
                         break
 
     def run_pipeline(self):
-        self.mp_with_timeout(number_workers=1, number_updaters=1,
-                             data_generator=self.generates_dataframes(100), worker_function=self.worker_lsh,
+        self.mp_with_timeout(number_workers=int(mp.cpu_count() / 2), number_updaters=1,
+                             data_generator=self.generates_dataframes(100), worker_function=self.worker,
                              update_function=self.saver)
-    # number_workers=int(mp.cpu_count() / 2)
 
     def matrix_updater(self, i, q, retq, matq, l, rows, columns):
         hog_mat = sparse.csr_matrix((rows, columns))

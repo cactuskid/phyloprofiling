@@ -52,7 +52,7 @@ def result2hash(result, tree, replacement_dic, db_obj):
 
     minhashes = eventdict2minhashes(eventdict)
 
-        hash_value = combine_minhashes(minhashes)
+    hash_value = combine_minhashes(minhashes)
 
     return hash_value
 
@@ -96,11 +96,11 @@ def eventdict2minhashes(eventdict):
     return hashes_dictionary
 
 
-def minhashes2leanminhashes(fam, minhashes, combination):
+def minhashes2leanminhashes(fam, minhashes, combination=True):
 
     lean_minhashes_dictionary = {}
 
-    for name, minhash in minhashes:
+    for name, minhash in minhashes.items():
         lean_minhash = datasketch.LeanMinHash(minhash)
         lean_minhash_name = str(fam) + '-' + name
         lean_minhashes_dictionary[lean_minhash_name] = lean_minhash
@@ -128,7 +128,7 @@ def tree2hashes(fam, treemap, events, combination):
         minhashes = eventdict2minhashes(event_dictionary)
         leanminhashes = minhashes2leanminhashes(fam, minhashes, combination)
 
-        return {'hashes': minhashes , 'dict': leanminhashes}
+        return {'hashes': minhashes, 'dict': leanminhashes}
     else:
         return None
 
