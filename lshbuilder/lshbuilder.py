@@ -7,7 +7,7 @@ import time
 import h5sparse
 import pickle
 from datasketch import MinHashLSH, MinHashLSHForest
-import scipy
+from scipy import sparse
 from datetime import datetime
 import h5py
 
@@ -42,10 +42,6 @@ class LSHBuilder:
 
         self.columns = len(self.taxaIndex)
         self.rows = len(self.h5OMA.root.OrthoXML.Index)
-
-        self.mp_with_timeout(number_workers=int(mp.cpu_count() / 2), number_updaters=1,
-                             data_generator=self.generates_dataframes(100), worker_function=self.worker,
-                             update_function=self.saver)
 
     def generates_dataframes(self, size=100):
 
@@ -93,9 +89,6 @@ class LSHBuilder:
         lsh = MinHashLSH(threshold=threshold, num_perm=128)
         forest = MinHashLSHForest(num_perm=128)
 
-        dt = datetime
-
-
         with open(self.saving_path + self.date_string + 'errors.txt', 'w') as hashes_error_files:
             with h5py.File(self.saving_path + self.date_string + 'hashes.h5', 'w', libver='latest') as h5hashes:
                 datasets = {}
@@ -113,14 +106,14 @@ class LSHBuilder:
                 print('saver init ' + str(i))
 
                 while True:
-                    thisdf = retq.get()
+                    this_dataframe = retq.get()
 
                     print(time.clock() - global_time)
                     print(count)
 
-                    if thisdf is not None:
+                    if this_dataframe is not None:
 
-                        hashes = thisdf['hash'].to_dict()
+                        hashes = this_dataframe['hash'].to_dict()
                         for fam in hashes:
                             if hashes[fam] is not None:
 
@@ -141,60 +134,59 @@ class LSHBuilder:
                                 hashes_error_files.write(str(fam) + '\n')
 
                         if time.clock() - print_start > 60:
-                            print(thisdf['Fam'].max())
+                            print(this_dataframe['Fam'].max())
                             print(time.clock() - global_time)
                             print_start = time.clock()
 
                         if time.clock() - save_start > 2000:
-                            print(thisdf['Fam'].max())
+                            print(this_dataframe['Fam'].max())
                             print('saving')
                             with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl',
-                                      'wb') as lshout:
+                                      'wb') as lsh_out:
                                 with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
-                                    pickle.dump(lsh, lshout, -1)
+                                    pickle.dump(lsh, lsh_out, -1)
                                     pickle.dump(forest, forestout, -1)
                             save_start = time.clock()
                             print(time.clock() - global_time)
-                        count += len(thisdf)
+                        count += len(this_dataframe)
                     else:
                         with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl',
-                                  'wb') as lshout:
+                                  'wb') as lsh_out:
                             with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
-                                pickle.dump(lsh, lshout, -1)
+                                pickle.dump(lsh, lsh_out, -1)
                                 pickle.dump(forest.index(), forestout, -1)
 
                         print('DONE UPDATER' + str(i))
                         break
 
-    def run(self):
-        self.mp_with_timeout(int(mp.cpu_count()/2), 1,
-                                          self.generates_dataframes(100), self.worker, self.saver)
+    def run_pipeline(self):
+        self.mp_with_timeout(number_workers=int(mp.cpu_count() / 2), number_updaters=1,
+                             data_generator=self.generates_dataframes(100), worker_function=self.worker,
+                             update_function=self.saver)
 
-    def matrixupdater(self, i, q, retq, matq, l, rows, columns):
-        hogmat = scipy.sparseCSR((rows, columns))
-        printstart = time.clock()
-        savestart = time.clock()
-        globaltime = time.clock()
-
+    def matrix_updater(self, i, q, retq, matq, l, rows, columns):
+        hog_mat = sparse.csr_matrix((rows, columns))
+        save_start = time.clock()
 
         while True:
             rows = matq.get()
-            if rows != None:
-                for fam, sparserow in rows.itesm():
-                    hogmat[fam, :] = sparserow
-                if time.clock() - savestart > 2000:
+            if rows is not None:
+                for fam, sparse_row in rows.itesm():
+                    hog_mat[fam, :] = sparse_row
+                if time.clock() - save_start > 2000:
                     with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                        h5matrix.create_dataset('hogmat', data=hogmat)
+                        h5matrix.create_dataset('hogmat', data=hog_mat)
 
             else:
 
                 with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                    h5matrix.create_dataset('hogmat', data=hogmat)
+                    h5matrix.create_dataset('hogmat', data=hog_mat)
                 print('DONE MAT UPDATER' + str(i))
 
                 break
 
-    def mp_with_timeout(self, number_workers, number_updaters, data_generator, worker_function, update_function):
+    @staticmethod
+    def mp_with_timeout(number_workers, number_updaters, data_generator, worker_function, update_function):
         work_processes = {}
         update_processes = {}
         lock = mp.Lock()
@@ -219,7 +211,6 @@ class LSHBuilder:
             update_processes[i] = t
 
         count = 0
-        start = time.time()
 
         while True:
             time.sleep(.1)

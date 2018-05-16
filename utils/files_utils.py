@@ -5,51 +5,50 @@ import pandas as pd
 import pyham
 
 
-def get_species_tree_replacement_dic(h5file, omaIdObj):
-    '''
+def get_species_tree_replacement_dic(h5file, oma_id_obj):
+    """
     Create and fix species tree; create a replacement dictionary used to remove special characters
-    Args:
-        h5file: OMA database
-        omaIdObj: OMA id mapper from database object
-    Returns:
-        tree : species tree from NCBI
-        replacement_dic : replacement dictionary used to correct the species tree and orthoxml files
-    '''
+    :param h5file: OMA database
+    :param oma_id_obj: OMA id mapper from database object
+    :return: tree: species tree from NCBI; replacement_dic: replacement dictionary used to correct the species tree and
+    orthoxml files
+    """
     # load database
     # create ncbi object
     ncbi = ete3.NCBITaxa()
     # get genome list
     genome_ids_list = pd.DataFrame(h5file.root.Genome.read())["NCBITaxonId"].tolist()
-    # get tree from NCBI; takes all the genomes ids and returns a species tree; some nodes are added between the given ids
+    # get tree from NCBI; takes all the genomes ids and
+    # returns a species tree; some nodes are added between the given ids
     tree = ncbi.get_topology(genome_ids_list)
     # dictionary mapping NCBI taxa id with scientific names for all OMA genomes
-    taxonId_SciName = {}
+    taxon_id_sci_name = {}
     for genome in h5file.root.Genome.read():
-        taxonId_SciName[genome[0]] = genome[5].decode()
+        taxon_id_sci_name[genome[0]] = genome[5].decode()
 
     # initialize replacement dictonary
     replacement_dic = {}
     # turns the tree into a string to parse it more easily
     tree_string = tree.write(format=1)
     # look for all species names with only 5 letters (special names from uniprot)
-    uniprot_species = []
     uniprot_species = re.findall(r'\b[A-Z]{5}\b', tree_string)
-    uniprot_species_to_add = ["STAA3" ,"ECO57" ,"BUCAI" ,"CHLPN"]
+    uniprot_species_to_add = ["STAA3", "ECO57", "BUCAI", "CHLPN"]
     for species in uniprot_species_to_add:
         uniprot_species.append(species)
     # look for names from uniprot code for the special species names; store them in the replacement dictionary
     for species in uniprot_species:
         try:
-            replacement_dic[species] = replace_characters(omaIdObj.genome_from_UniProtCode(species)[5].decode())
+            replacement_dic[species] = replace_characters(oma_id_obj.genome_from_UniProtCode(species)[5].decode())
         except:
             pass
     # traverse the tree to fill the replacement dictionary and correct the
     for node in tree.traverse():
-        # the tree returned by ncbi contains more nodes than the provided genome id list, so the node as to be tested if its from the OMA database.
+        # the tree returned by ncbi contains more nodes than the provided genome id list,
+        # so the node as to be tested if its from the OMA database.
         # If it is the case, the scientific name needs to be changed because OMA and NCBI use different notations
-        if node.taxid in taxonId_SciName.keys():
+        if node.taxid in taxon_id_sci_name.keys():
             # replacement NCBI sci name by OMA name
-            node.name = taxonId_SciName[node.taxid]
+            node.name = taxon_id_sci_name[node.taxid]
             # take the one from uniprot
             if node.name in uniprot_species:
                 node.name = replacement_dic[node.name]
@@ -68,40 +67,38 @@ def get_species_tree_replacement_dic(h5file, omaIdObj):
 
     return replacement_dic, tree_fixed
 
+
 def replace_characters(string):
-    '''
-    replace character from string
-    Args:
-        String
-    Return:
-        Corrected string
-    '''
-    for ch in ['.',',',' ','(',')',':']:
+    """
+    Replace character from string
+    :param string: string to correct
+    :return: corrected string
+    """
+    for ch in ['.', ',', ' ', '(', ')', ':']:
         if ch in string:
-            string=string.replace(ch,'_')
+            string = string.replace(ch, '_')
 
     return string
 
 
-def correct_orthoxml(instr, replacement_dic, verbose=False):
-    '''Takes an orthoxml file as input, along with the replacement_dic, where the keys are scientific names (with
+def correct_orthoxml(in_string, replacement_dic, verbose=False):
+    """ Takes an orthoxml file as input, along with the replacement_dic, where the keys are scientific names (with
     special characters already replaced) and values are the new name which matches the species tree.
     Replaces the special characters and old scientific names with the new ones.
-    Args:
-        instr: input string; orthoxml to correct
-        replacement_dic: replacement dictionary used to correct orthoxml files and species tree
-    Return:
-        outstr: output string; corrected orthoxml
-    '''
-    outstr = ''
+    :param in_string: input string; orthoxml to correct
+    :param replacement_dic:
+    :param verbose: replacement dictionary used to correct orthoxml files and species tree
+    :return: output string; corrected orthoxml
+    """
+    output_string = ''
     exclude = []
     detected = True
 
-    for line in instr.split('\n'):
-        searchObj = re.search(r'.*<species name=\"(.*)\" NCBITaxId.*', line)
+    for line in in_string.split('\n'):
+        search_object = re.search(r'.*<species name=\"(.*)\" NCBITaxId.*', line)
 
-        if searchObj:
-            old_name = searchObj.group(1)
+        if search_object:
+            old_name = search_object.group(1)
 
             detected = False
 
@@ -110,37 +107,37 @@ def correct_orthoxml(instr, replacement_dic, verbose=False):
                     line = line.replace(key, value)
                     detected = True
 
-            if verbose == True and detected == False:
+            if verbose and not detected:
                 print(line)
 
-        if detected == False:
+        if not detected:
             if '<gene id' in line:
                 exclude += [s for s in line.split('"') if s.isdigit()]
-                if verbose == True:
+                if verbose:
                     print(exclude)
 
-        if detected == True:
+        if detected:
             if '<geneRef' in line:
-                writeLine = True
+                write_line = True
                 for ref in exclude:
                     if ref in line:
-                        writeLine = False
-                if writeLine == True:
-                    outstr += line + '\n'
+                        write_line = False
+                if write_line:
+                    output_string += line + '\n'
             else:
-                outstr += line + '\n'
+                output_string += line + '\n'
 
-    return outstr
+    return output_string
 
 
-def get_ham_treemap(fam, dbObj, species_tree, replacement_dic):
-    ortho = dbObj.get_orthoxml(fam).decode()
+def get_ham_treemap(fam, db_obj, species_tree, replacement_dic):
+    ortho = db_obj.get_orthoxml(fam).decode()
 
     ortho = correct_orthoxml(ortho, replacement_dic, verbose=False)
-    hamObj = pyham.Ham(species_tree, ortho.encode(), type_hog_file="orthoxml", use_internal_name=True,
-                       orthoXML_as_string=True)
-    hog = hamObj.get_hog_by_id(fam)
-    tp = hamObj.create_tree_profile(hog=hog)
+    ham_obj = pyham.Ham(species_tree, ortho.encode(), type_hog_file="orthoxml", use_internal_name=True,
+                        orthoXML_as_string=True)
+    hog = ham_obj.get_hog_by_id(fam)
+    tp = ham_obj.create_tree_profile(hog=hog)
 
     return tp.treemap
 

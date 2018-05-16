@@ -51,7 +51,7 @@ def get_orthoxml(fam, db_obj, replacement_dic):
     return orthoxml
 
 
-def yieldFamilies(h5file, startfam):
+def yield_families(h5file, startfam):
     """
     Given a h5file containing OMA server, returns an iterator over the families
     (not sure if still in use)
@@ -64,7 +64,7 @@ def yieldFamilies(h5file, startfam):
             yield row[0]
 
 
-def getOneFamily(i, h5file):
+def get_one_family(i, h5file):
     '''
     get one family from database
     Args:
@@ -77,15 +77,15 @@ def getOneFamily(i, h5file):
     return h5file.root.OrthoXML.Index[i][0]
 
 
-def famsToDF(h5file, verbose=False):
-    """
-    still in use ??
-    :param h5file:
-    :param verbose:
-    :return:
-    """
-    fams = h5file.root.OrthoXML.Index
-    df = dd.read_hdf(fams)
-    if verbose == True:
-        print(df)
-    return df
+# def families2dataframe(h5file, verbose=False):
+    # """
+    # still in use ??
+    # :param h5file:
+    # :param verbose:
+    # :return:
+    # """
+    # fams = h5file.root.OrthoXML.Index
+    # df = dd.read_hdf(fams)
+    # if verbose == True:
+    #     print(df)
+    # return df
