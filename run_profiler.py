@@ -1,8 +1,9 @@
-from profiler import profiler
+import profiler
+from utils import config_utils
 
 if __name__ == '__main__':
 
-    profiler = profiler.Profiler('path to oma')
+    profiler = profiler.Profiler(config_utils.omadir + 'OmaServer.h5')
     profiler.go_benchmarking_init('obo file path', 'gaf file path')
 
     profiler.lsh_loader('lsh file path')
