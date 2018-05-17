@@ -18,8 +18,8 @@ class Profiler:
     def __init__(self, h5_oma_path):
         # load all the files (oma database, go dag file, association gaf file=
         self.h5OMA = tables.open_file(h5_oma_path, mode='r')
-        self.dbObj = db.Database(self.h5OMA)
-        self.omaIdObj = db.OmaIdMapper(self.dbObj)
+        self.db_obj = db.Database(self.h5OMA)
+        self.omaIdObj = db.OmaIdMapper(self.db_obj)
         self.replacement_dic, self.tree = files_utils.get_species_tree_replacement_dic(self.h5OMA, self.omaIdObj)
 
         self.go = None
@@ -50,10 +50,10 @@ class Profiler:
             fam_id = hashutils.hogid2fam(hog_id)
 
         # query_hashes dict keys:lminhashname, values:hashes
-        query_hashes = hashutils.fam2hashes(fam_id, self.dbOjb, self.tree, self.replacement_dic, events, combination)
+        query_hashes = hashutils.fam2hashes(fam_id, self.db_obj, self.tree, self.replacement_dic, events, combination)
 
         result_dict = {}
-        for name, hashvalue in query_hashes:
+        for name, hashvalue in query_hashes['dict'].items():
             # lsh.query returns a list of hash (fam-event1-event2- etc)
             result_dict[name] = self.lsh.query(hashvalue)
 
@@ -71,7 +71,7 @@ class Profiler:
         result_dict = {}
 
         # semantic scores
-        for query, result in results:
+        for query, result in results.items():
             related_hog_list = list(set([query] + [r for r in result]))
             events_combo = hashutils.result2events(query)
             result_dict = self.compute_semantic_distance(related_hog_list, result_dict, events_combo)
@@ -90,10 +90,14 @@ class Profiler:
 
                 # get semantic dist between two hog (ids) and save it in matrix and in big dict
                 semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog1, hog2)
-                result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
+                print('hog1 {}, hog2 {}, events_combo {}, semantic_dist {}'.format(hog1, hog2, events_combo, semantic_dist))
+
+                events_combo_string = ''.join(event for event in sorted(events_combo))
+
+                result_dict[(hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
                 # also save the go terms in big dict
-                result_dict[(hog1, hog2, events_combo)]['go term hog 1'] = self.goTermAnalysis.get_go_terms(hog1)
-                result_dict[(hog1, hog2, events_combo)]['go term hog 2'] = self.goTermAnalysis.get_go_terms(hog2)
+                result_dict[(hog1, hog2, events_combo_string, 'go term hog 1')] = self.goTermAnalysis.get_go_terms(hog1)
+                result_dict[(hog1, hog2, events_combo_string, 'go term hog 2')] = self.goTermAnalysis.get_go_terms(hog2)
 
 
         return result_dict
@@ -122,7 +126,7 @@ class Profiler:
             i, j, jac_dist = jac_res
             hog1 = hashutils.result2hogid(hogs_list[i])
             hog2 = hashutils.result2hogid(hogs_list[j])
-            result_dict[(hog1, hog2, events_combo)]['jaccard_distance'] = jac_dist
+            result_dict[(hog1, hog2, events_combo, 'jaccard_distance')] = jac_dist
 
         return result_dict
 
