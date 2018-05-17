@@ -31,13 +31,13 @@ def result2hogid(result):
 
 
 def result2fam(result):
-    fam = int(result.split('-', 1)[1])
+    fam = int(result.split('-')[0])
 
     return fam
 
 
 def result2events(result):
-    events = [event for event in result.split('-')[:-1]]
+    events = [event for event in result.split('-')[1:]]
 
     return events
 
