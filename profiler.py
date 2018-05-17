@@ -9,8 +9,8 @@ from goatools.associations import read_gaf
 from goatools.semantic import TermCounts
 from pyoma.browser import db
 
-from profiler.validation import phyloValidationGoTerm as validationGoTerm
-from lshbuilder.utils import files_utils, hashutils
+from validation import phyloValidationGoTerm as validationGoTerm
+from utils import files_utils, hashutils
 
 
 class Profiler:

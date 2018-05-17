@@ -1,5 +1,5 @@
 import unittest
-from lshbuilder.utils import files_utils
+from utils import files_utils
 
 
 class HpputilsTest(unittest.TestCase):
