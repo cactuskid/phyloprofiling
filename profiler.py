@@ -12,6 +12,7 @@ from pyoma.browser import db
 from validation import phyloValidationGoTerm as validationGoTerm
 from utils import files_utils, hashutils
 
+from time import time
 
 class Profiler:
 
@@ -52,18 +53,21 @@ class Profiler:
         # query_hashes dict keys:lminhashname, values:hashes
         query_hashes = hashutils.fam2hashes(fam_id, self.db_obj, self.tree, self.replacement_dic, events, combination)
 
-        result_dict = {}
+        query_dict = {}
+        # query_hashes['dict'] contains all 15 leanminhashes
         for name, hashvalue in query_hashes['dict'].items():
             # lsh.query returns a list of hash (fam-event1-event2- etc)
-            result_dict[name] = self.lsh.query(hashvalue)
+            query_dict[name] = self.lsh.query(hashvalue)
 
-        return result_dict
+        return query_dict
 
     def results(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
                 combination=True, scores=False):
 
+        print('getting queries')
         results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
-
+        for k,v in results.items():
+            print('{} queries found for {}'.format(len(v),k))
         if not scores:
             results_df = pd.DataFrame.from_dict(results)
             return results_df
@@ -72,16 +76,20 @@ class Profiler:
 
         # semantic scores
         for query, result in results.items():
+            print('computing scores for query {}'.format({query}))
             related_hog_list = list(set([query] + [r for r in result]))
             events_combo = hashutils.result2events(query)
-            result_dict = self.compute_semantic_distance(related_hog_list, result_dict, events_combo)
+            result_dict = self.compute_semantic_distance(related_hog_list, query, result_dict, events_combo)
 
             # get jaccard score, here its possible to use up
-            result_dict = self.compute_jaccard_distance(related_hog_list, result_dict, events_combo)
+            result_dict = self.compute_jaccard_distance(related_hog_list, query, result_dict, events_combo)
 
         return result_dict
 
-    def compute_semantic_distance(self, hogs_list, result_dict, events_combo):
+    def compute_semantic_distance(self, hogs_list, query, result_dict, events_combo):
+
+        events_combo_string = ''.join(event for event in sorted(events_combo))
+
 
         for i, hog_event_1 in enumerate(hogs_list):
             for j, hog_event_2 in enumerate(hogs_list):
@@ -90,14 +98,11 @@ class Profiler:
 
                 # get semantic dist between two hog (ids) and save it in matrix and in big dict
                 semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog1, hog2)
-                print('hog1 {}, hog2 {}, events_combo {}, semantic_dist {}'.format(hog1, hog2, events_combo, semantic_dist))
-
-                events_combo_string = ''.join(event for event in sorted(events_combo))
-
-                result_dict[(hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
+                result_dict[(query, hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
                 # also save the go terms in big dict
-                result_dict[(hog1, hog2, events_combo_string, 'go term hog 1')] = self.goTermAnalysis.get_go_terms(hog1)
-                result_dict[(hog1, hog2, events_combo_string, 'go term hog 2')] = self.goTermAnalysis.get_go_terms(hog2)
+
+                #result_dict[(query, hog1, hog2, events_combo_string, 'go term hog 1')] = self.goTermAnalysis.get_go_terms(hog1)
+                #result_dict[(query, hog1, hog2, events_combo_string, 'go term hog 2')] = self.goTermAnalysis.get_go_terms(hog2)
 
 
         return result_dict
@@ -112,27 +117,30 @@ class Profiler:
 
         return i, j, h1.jaccard(h2)
 
-    def compute_jaccard_distance(self, hogs_list, result_dict, events_combo):
+    def compute_jaccard_distance(self, hogs_list, query, result_dict, events_combo):
         # prepare data for mp stuff
         pool = mp.Pool()
 
-        hashes = {result: hashutils.result2hash(result) for result in hogs_list}
+        events_combo_string = ''.join(event for event in sorted(events_combo))
+        hashes = {result: hashutils.result2hash(result, self.tree, self.replacement_dic, self.db_obj) for result in hogs_list}
 
-        hashcompare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
+        hash_compare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
         # compute jaccard
-        jaccard_results = pool.map_async(hashcompare, self.jaccard_mp).get()
+        jaccard_results = pool.map_async(hash_compare, self.jaccard_mp).get()
         # feed matrix and big dict with results
         for jac_res in jaccard_results:
             i, j, jac_dist = jac_res
             hog1 = hashutils.result2hogid(hogs_list[i])
             hog2 = hashutils.result2hogid(hogs_list[j])
-            result_dict[(hog1, hog2, events_combo, 'jaccard_distance')] = jac_dist
+            result_dict[(query, hog1, hog2, events_combo_string, 'jaccard_distance')] = jac_dist
 
         return result_dict
 
     def results_save(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
                      combination=True, scores=False, path_to_save=None):
+        print('getting results')
         df_results = self.results(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination, scores=scores)
-
+        print('saving ...')
         if path_to_save is not None:
             df_results.to_csv(path_to_save, sep='\t')
+        print('done')

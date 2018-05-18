@@ -59,7 +59,7 @@ def result2hash(result, tree, replacement_dic, db_obj):
 
 def combine_minhashes(hashes):
     minhash = datasketch.MinHash(num_perm=128)
-    for name, hashvalue in hashes:
+    for name, hashvalue in hashes.items():
         minhash.merge(hashvalue)
 
     return minhash
