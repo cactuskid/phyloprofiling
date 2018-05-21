@@ -29,6 +29,9 @@ class Profiler:
         self.goTermAnalysis = None
 
         self.lsh = None
+        # init here, so if multiple query with similar hog id, their go terms are already loaded and computed
+
+        self.best_go_terms_hog_id_dict = {}
 
     def go_benchmarking_init(self, obo_file_path, gaf_file_path):
         self.go = obo_parser.GODag(obo_file_path)
@@ -72,6 +75,10 @@ class Profiler:
             results_df = pd.DataFrame.from_dict(results)
             return results_df
 
+
+
+        self.get_best_go_term_per_hog_id(results)
+
         result_dict = {}
 
         # semantic scores
@@ -86,10 +93,23 @@ class Profiler:
 
         return result_dict
 
+    def get_best_go_term_per_hog_id(self, results):
+        # new function !
+        # best_go_term dictonary updater
+
+        hogs_id_list = []
+
+        for query, result in results.items():
+            result_list = list(set([query] + [r for r in result]))
+            hogs_id_list = list(set([hashutils.result2hogid(hog) for hog in result_list]))
+
+        for hog in hogs_id_list:
+            if hog not in self.best_go_terms_hog_id_dict.keys():
+                self.best_go_terms_hog_id_dict[hog] = self.goTermAnalysis.API_get_best_go_terms_per_gene(hog)
+
     def compute_semantic_distance(self, hogs_list, query, result_dict, events_combo):
 
         events_combo_string = ''.join(event for event in sorted(events_combo))
-
 
         for i, hog_event_1 in enumerate(hogs_list):
             for j, hog_event_2 in enumerate(hogs_list):
@@ -97,7 +117,7 @@ class Profiler:
                 hog2 = hashutils.result2hogid(hog_event_2)
 
                 # get semantic dist between two hog (ids) and save it in matrix and in big dict
-                semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog1, hog2)
+                semantic_dist = self.goTermAnalysis.API_compute_score_method_2.(self.best_go_terms_hog_id_dict[hog1], self.best_go_terms_hog_id_dict[hog2])
                 result_dict[(query, hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
                 # also save the go terms in big dict
 

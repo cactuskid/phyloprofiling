@@ -1,18 +1,5 @@
-
 from goatools.semantic import resnik_sim
 import numpy as np
-
-"""
-Created on Sun Mar 25 11:56:43 2018
-
-@author: Laurent Kilchoer
-"""
-'''
-This script takes a list of HOG ids and returns a matrix with all the semantic
-distance between them.
-
-The semantic distance score is computed using a BMA-RESNIK-BMA strategy
-'''
 
 from time import time
 
@@ -22,6 +9,7 @@ class SemanticSimilarityAnalysis(object):
         self.go = go
         self.h5file = h5file
         self.termcounts = termcounts
+        self.used_hog_dict = {}
 
     def semantic_similarity_score(self, query, result):
         ''' Runs semantic similarity analysis
@@ -33,8 +21,19 @@ class SemanticSimilarityAnalysis(object):
         '''
         from time import time
         start_time = time()
-        query_go_terms = self.get_go_terms(query)
-        result_go_terms = self.get_go_terms(result)
+
+        if query not in self.used_hog_dict:
+            query_go_terms = self.get_deepest_go_term_per_gene(self.get_go_terms(query))
+            self.used_hog_dict[query] = query_go_terms
+        else:
+            query_go_terms = self.used_hog_dict[query]
+
+        if result not in self.used_hog_dict:
+            result_go_terms = self.get_deepest_go_term_per_gene(self.get_go_terms(result))
+            self.used_hog_dict[result] = result_go_terms
+        else:
+            result_go_terms = self.used_hog_dict[result]
+
 
         #score1 = self.compute_score(query_go_terms, result_go_terms)
 
@@ -42,15 +41,27 @@ class SemanticSimilarityAnalysis(object):
         #print("score 1 is {}, score 2 is {}".format(score1, score))
         return score
 
+    def API_get_best_go_terms_per_gene(self, hog_id):
+        go_terms = self.get_go_terms(hog_id)
+        best_go_terms = self.get_deepest_go_term_per_gene(go_terms)
+        return best_go_terms
+
+    def API_compute_score_method_2(self, go_terms_1, go_terms_2):
+        dist_mat = self.compute_genes_distances(go_terms_1, go_terms_2)
+        score = self.mean_max_score_matrix(dist_mat)
+        return score
+
+
     def compute_score_method_2(self, query_go_terms, result_go_terms):
         # new function !
 
         # select the best go per gene, and change the dict
-        deepest_query_go_terms = self.get_deepest_go_term_per_gene(query_go_terms)
-        deepest_result_go_terms = self.get_deepest_go_term_per_gene(result_go_terms)
+
+        #deepest_query_go_terms = self.get_deepest_go_term_per_gene(query_go_terms)
+        #deepest_result_go_terms = self.get_deepest_go_term_per_gene(result_go_terms)
 
         # for each couple, compute resnik
-        dist_mat = self.compute_genes_distances_list_go_terms(deepest_query_go_terms, deepest_result_go_terms)
+        dist_mat = self.compute_genes_distances_list_go_terms(query_go_terms, result_go_terms)
         # bma on this matrix
         score = self.mean_max_score_matrix(dist_mat)
 
