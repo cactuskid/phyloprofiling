@@ -51,14 +51,26 @@ class SemanticSimilarityAnalysis(object):
         score = self.mean_max_score_matrix(dist_mat)
         return score
 
+    def API_compute_score_from_hog_ids(self, hog1, hog2):
+
+        go_terms_1 = self.get_go_terms(hog1)
+        best_go_terms_1 = self.get_deepest_go_term_per_gene(go_terms_1)
+
+        go_terms_2 = self.get_go_terms(hog2)
+        best_go_terms_2 = self.get_deepest_go_term_per_gene(go_terms_2)
+
+        dist_mat = self.compute_genes_distances(best_go_terms_1, best_go_terms_2)
+
+        score = self.mean_max_score_matrix(dist_mat)
+        return score
 
     def compute_score_method_2(self, query_go_terms, result_go_terms):
         # new function !
 
         # select the best go per gene, and change the dict
 
-        #deepest_query_go_terms = self.get_deepest_go_term_per_gene(query_go_terms)
-        #deepest_result_go_terms = self.get_deepest_go_term_per_gene(result_go_terms)
+        # deepest_query_go_terms = self.get_deepest_go_term_per_gene(query_go_terms)
+        # deepest_result_go_terms = self.get_deepest_go_term_per_gene(result_go_terms)
 
         # for each couple, compute resnik
         dist_mat = self.compute_genes_distances_list_go_terms(query_go_terms, result_go_terms)
