@@ -4,10 +4,10 @@ import numpy as np
 
 class SemanticSimilarityAnalysis(object):
 
-    def __init__(self, go, h5file, termcounts):
+    def __init__(self, go, h5file, term_counts):
         self.go = go
         self.h5file = h5file
-        self.term_counts = termcounts
+        self.term_counts = term_counts
 
     def semantic_similarity_score_from_go_terms(self, go_terms_1, go_terms_2):
         """
