@@ -54,7 +54,7 @@ t0 = time.time()
 for hog in drosoHogList:
     if len(hogsList) > 50:
         break
-    if len(validation_hogs.get_go_terms(hog)) > 15:
+    if len(validation_hogs._get_go_terms(hog)) > 15:
         hogsList.append(hog)
 print(time.time()-t0)
 

@@ -1,8 +1,6 @@
 from goatools.semantic import resnik_sim
 import numpy as np
 
-from time import time
-
 
 class SemanticSimilarityAnalysis(object):
 
@@ -10,123 +8,109 @@ class SemanticSimilarityAnalysis(object):
         self.go = go
         self.h5file = h5file
         self.term_counts = termcounts
-        self.used_hog_dict = {}
 
-    def semantic_similarity_score(self, query, result):
+    def semantic_similarity_score_from_go_terms(self, go_terms_1, go_terms_2):
+        """
+        Runs semantic similarity analysis from 2 lists of go terms
+        :param go_terms_1: list of go terms for one hog
+        :param go_terms_2: list of go terms for another hog
+        :return: semantic similarity score between two lists of go terms
+        """
+        return self._compute_score(go_terms_1, go_terms_2)
+
+    def semantic_similarity_score_from_hog_ids(self, hog_id_1, hog_id_2):
         """
         Runs semantic similarity analysis from 2 hog ids
-        :param query: query hog id
-        :param result: query hog id
-        :return: score: semantic similarity score between query hog and result hog
+        :param hog_id_1: first hog id
+        :param hog_id_2: second hog id
+        :return: semantic similarity score between the two hog ids
         """
-        if query not in self.used_hog_dict:
-            query_go_terms = self.get_deepest_go_term_per_gene(self.get_go_terms(query))
-            self.used_hog_dict[query] = query_go_terms
-        else:
-            query_go_terms = self.used_hog_dict[query]
+        go_terms_1 = self.get_best_go_terms_per_hog_id(hog_id_1)
+        go_terms_2 = self.get_best_go_terms_per_hog_id(hog_id_2)
+        score = self._compute_score(go_terms_1, go_terms_2)
 
-        if result not in self.used_hog_dict:
-            result_go_terms = self.get_deepest_go_term_per_gene(self.get_go_terms(result))
-            self.used_hog_dict[result] = result_go_terms
-        else:
-            result_go_terms = self.used_hog_dict[result]
-
-
-        #score1 = self.compute_score(query_go_terms, result_go_terms)
-
-        score = self.compute_score_method_2(query_go_terms, result_go_terms)
-        #print("score 1 is {}, score 2 is {}".format(score1, score))
         return score
 
-    def API_get_best_go_terms_per_gene(self, hog_id):
-        go_terms = self.get_go_terms(hog_id)
-        best_go_terms = self.get_deepest_go_term_per_gene(go_terms)
+    def get_best_go_terms_per_hog_id(self, hog_id):
+        go_terms = self._get_go_terms(hog_id)
+        best_go_terms = self._get_deepest_go_term_per_gene(go_terms)
         return best_go_terms
 
-    def API_compute_score_method_2(self, go_terms_1, go_terms_2):
-        dist_mat = self.compute_genes_distances(go_terms_1, go_terms_2)
-        score = self.mean_max_score_matrix(dist_mat)
-        return score
-
-    def API_compute_score_from_hog_ids(self, hog1, hog2):
-
-        go_terms_1 = self.get_go_terms(hog1)
-        best_go_terms_1 = self.get_deepest_go_term_per_gene(go_terms_1)
-
-        go_terms_2 = self.get_go_terms(hog2)
-        best_go_terms_2 = self.get_deepest_go_term_per_gene(go_terms_2)
-
-        dist_mat = self.compute_genes_distances(best_go_terms_1, best_go_terms_2)
-
-        score = self.mean_max_score_matrix(dist_mat)
-        return score
-
-    def compute_score_method_2(self, query_go_terms, result_go_terms):
-        # new function !
-
-        # select the best go per gene, and change the dict
-
-        # deepest_query_go_terms = self.get_deepest_go_term_per_gene(query_go_terms)
-        # deepest_result_go_terms = self.get_deepest_go_term_per_gene(result_go_terms)
-
+    def _compute_score(self, query_go_terms, result_go_terms):
+        """
+        Computes semantic similarity score between two hogs
+        :param query_go_terms: dict of genes: list of go terms
+        :param result_go_terms: dict of genes: list of go terms
+        :return: semantic similarity score
+        """
         # for each couple, compute resnik
-        dist_mat = self.compute_genes_distances_list_go_terms(query_go_terms, result_go_terms)
+        dist_mat = self._compute_genes_distance(query_go_terms, result_go_terms)
         # bma on this matrix
-        score = self.mean_max_score_matrix(dist_mat)
+        score = self._mean_max_score_matrix(dist_mat)
 
         return score
 
-    def get_deepest_go_term_per_gene(self, go_terms_dict):
-        # new function !
-
+    def _get_deepest_go_term_per_gene(self, go_terms_dict):
+        """
+        Get deepest go term per gene
+        :param go_terms_dict: dictionary gene name: go terms
+        :return: dictionary gene name: deepest go term
+        """
         sign_go_terms = []
         for gen_name, go_terms in go_terms_dict.items():
-            sign_go_terms.append(self.get_deepest_go_term(go_terms))
+            sign_go_terms.append(self._get_deepest_go_term(go_terms))
 
         sign_go_terms = list(set(sign_go_terms))
         return sign_go_terms
 
-    def get_deepest_go_term(self, go_terms):
+    def _get_deepest_go_term(self, go_terms):
+        """
+        Get deepest go term
+        :param go_terms: list of go terms
+        :return: deepest go term
+        """
         return max(go_terms, key=lambda t: self.go[t].depth)
 
-    def compute_genes_distances_list_go_terms(self, query_go_terms, result_go_terms):
-        # new function !
+    def _compute_genes_distance(self, go_terms_1, go_terms_2):
+        """
+        Computes matrix of distance between the genes of two hogs
+        :param go_terms_1: list of go terms
+        :param go_terms_2: list of go terms
+        :return: matrix of distance between genes of hogs
+        """
+        gene_dist = np.zeros((len(go_terms_1), len(go_terms_2)))
 
-        gene_dist = np.zeros((len(query_go_terms), len(result_go_terms)))
-
-        for k in range(len(query_go_terms)):
-            for l in range(len(result_go_terms)):
+        for k in range(len(go_terms_1)):
+            for l in range(len(go_terms_2)):
                 try:
-                    gene_dist[k, l] = resnik_sim(query_go_terms[k], result_go_terms[l], self.go, self.term_counts)
+                    gene_dist[k, l] = resnik_sim(go_terms_1[k], go_terms_2[l], self.go, self.term_counts)
                 except:
                     pass
         return gene_dist
 
-    def compute_score(self, query_go_terms, result_go_terms):
-        '''
+    def old_compute_score(self, query_go_terms, result_go_terms):
+        # not used anymore ?
+        """
         Computes semantic similarity score between two hogs
-        Args:
-            query_go_terms: dict of genes:list of go terms
-            result_go_terms: dict of genes:list of go terms
-        Returns:
-            score: semantic similarity score
-        '''
-        # 1. compute distances between all genes
-        distance_mat = self.compute_genes_distances(query_go_terms, result_go_terms)
-        # 2. from all the distance, select BMA
-        score = self.mean_max_score_matrix(distance_mat)
+        :param query_go_terms: dict of genes: list of go terms
+        :param result_go_terms: dict of genes: list of go terms
+        :return: semantic similarity score
+        """
+        # compute distances between all genes
+        distance_mat = self.old_compute_genes_distances(query_go_terms, result_go_terms)
+        # from all the distance, select BMA
+        score = self._mean_max_score_matrix(distance_mat)
 
         return score
 
-    def compute_genes_distances(self, query_go_terms, result_go_terms):
-        '''
-        Compute matrix of distances between the genes of two hogs
-        Args:
-            query_go_terms: dict of genes:list of go terms
-            result_go_terms: dict of genes:list of go terms
-        Returns:
-            gene_dist: matrix of distance between genes of hogs
-        '''
+    def old_compute_genes_distances(self, query_go_terms, result_go_terms):
+        # not used anymore ?
+        """
+        Computes matrix of distance between the genes of two hogs
+        :param query_go_terms: dict of genes: list of go terms
+        :param result_go_terms: dict of genes: list of go terms
+        :return: matrix of distance between genes of hogs
+        """
         query_keys = query_go_terms.keys()
         result_keys = result_go_terms.keys()
 
@@ -135,40 +119,39 @@ class SemanticSimilarityAnalysis(object):
         for k in range(len(query_keys)):
             for l in range(len(result_keys)):
 
-                goterms1 = list(query_go_terms[list(query_keys)[k]])
-                goterms2 = list(result_go_terms[list(result_keys)[l]])
+                go_terms_1 = list(query_go_terms[list(query_keys)[k]])
+                go_terms_2 = list(result_go_terms[list(result_keys)[l]])
 
-                if goterms1 and goterms2:
-                    gene_dist[k, l] = self.compute_genes_score(goterms1, goterms2)
+                if go_terms_1 and go_terms_2:
+                    gene_dist[k, l] = self.old_compute_genes_score(go_terms_1, go_terms_2)
 
         return gene_dist
 
-    def compute_genes_score(self, goterms1, goterms2):
-        '''
+    def old_compute_genes_score(self, go_terms_gene_1, go_terms_gene_2):
+        # not used anymore ??
+        """
         Computes the semantic similarity score between two genes
-        Args:
-            goterms1: list of go terms from one of the gene of the query
-            goterms2: list of go terms from one of the gene of the result
-        Returns:
-            gene_score: semantic similarity score between two genes
-        '''
-        ss_dist = np.zeros((len(goterms1), len(goterms2)))
+        :param go_terms_gene_1: list of go terms from one of the gene 
+        :param go_terms_gene_2: list of go terms from one of the gene 
+        :return: semantic similarity score between two genes
+        """
+        ss_dist = np.zeros((len(go_terms_gene_1), len(go_terms_gene_2)))
 
-        for m in range(len(goterms1)):
-            for n in range(len(goterms2)):
+        for m in range(len(go_terms_gene_1)):
+            for n in range(len(go_terms_gene_2)):
 
                 try:
-                    dist = resnik_sim(goterms1[m], goterms2[n], self.go, self.term_counts)
+                    dist = resnik_sim(go_terms_gene_1[m], go_terms_gene_2[n], self.go, self.term_counts)
                     ss_dist[m, n] = dist
                 except:
-                    # TODO catch real error
                     pass
 
-        gene_score = self.mean_max_score_matrix(ss_dist)
+        gene_score = self._mean_max_score_matrix(ss_dist)
 
         return gene_score
 
-    def mean_max_score_matrix(self, matrix):
+    @staticmethod
+    def _mean_max_score_matrix(matrix):
         """
         Computes the BMA of a matrix
         :param matrix: matrix
@@ -180,13 +163,13 @@ class SemanticSimilarityAnalysis(object):
 
         return sum(matrix.max(0))+sum(matrix.max(1)) / matrix_size
 
-    def get_go_terms(self, hog_id):
+    def _get_go_terms(self, hog_id):
         """
         Fetch the genes from hog id, then get all GO terms from it
         :param hog_id: hog id
         :return: list of GO term
         """
-        genes = self.get_hog_members(hog_id)
+        genes = self._get_hog_members(hog_id)
         go_dict = {entry: {self._format_go_term(e) for e in self._get_entry_gene_ontology(entry)} for entry in genes}
         go_dict_filtered = self._filter_result(go_dict)
 
@@ -201,7 +184,7 @@ class SemanticSimilarityAnalysis(object):
         go_dict_filtered = {}
 
         for gene_name, terms in go_dict.items():
-            filtered_terms = self.filter_namespace(terms)
+            filtered_terms = self._filter_namespace(terms)
             if filtered_terms:
                 go_dict_filtered[gene_name] = filtered_terms
 
@@ -214,7 +197,7 @@ class SemanticSimilarityAnalysis(object):
     def _get_entry_gene_ontology(self, entry):
         return self.h5file.root.Annotations.GeneOntology.read_where('EntryNr == {}'.format(entry))
 
-    def get_hog_members(self, hog_id):
+    def _get_hog_members(self, hog_id):
         """
         Gets all gene members from the hog
         :param hog_id: hog id
@@ -245,7 +228,7 @@ class SemanticSimilarityAnalysis(object):
         for row in it:
             yield row.fetch_all_fields()
 
-    def filter_namespace(self, list_terms, name='biological_process'):
+    def _filter_namespace(self, list_terms, name='biological_process'):
         """
         Keep only go terms within the correct ontology
         :param list_terms: list of go terms

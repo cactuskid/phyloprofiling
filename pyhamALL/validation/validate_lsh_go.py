@@ -75,7 +75,7 @@ with h5py.File(config.datadir + 'May_04_2018_18_07hashes.h5', 'r') as h5hashes:
         np.random.seed(1)
         queries = list(np.random.randint(low=1, high=len(h5OMA.root.OrthoXML.Index), size=gen_rand_queries))
         # filter the queries; they should contain at least one go terms
-        queries = [query for query in queries if goTermAnalysis.get_go_terms(query)]
+        queries = [query for query in queries if goTermAnalysis._get_go_terms(query)]
         print(queries)
         # create all combo events, necessary to generate all the hashes
         for n in range(1, len(events)):
@@ -90,7 +90,7 @@ with h5py.File(config.datadir + 'May_04_2018_18_07hashes.h5', 'r') as h5hashes:
                     # add the query to the list of results and filter the results
                     # (if no go term, remove hog id)
                     lsh_results_filtered = [fam_query] + \
-                        [result for result in lsh_results_unfiltered if goTermAnalysis.get_go_terms(result_fam_id(result))]
+                        [result for result in lsh_results_unfiltered if goTermAnalysis._get_go_terms(result_fam_id(result))]
 
                     # get a list of hashes, one for each filtered results
                     hashes = [(hog_id, get_hash_hog_id(hog_id, events_combo)) for hog_id in lsh_results_filtered]
@@ -105,7 +105,7 @@ with h5py.File(config.datadir + 'May_04_2018_18_07hashes.h5', 'r') as h5hashes:
                             semantic_distance[i, j] = semantic_dist
                             result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
                             # also save the go terms in big dict
-                            result_dict[(hog1, hog2, events_combo)]['go_terms'] = goTermAnalysis.get_go_terms(hog2)
+                            result_dict[(hog1, hog2, events_combo)]['go_terms'] = goTermAnalysis._get_go_terms(hog2)
 
                     # prepare matrix for the jaccard distances
                     jaccard_distance = np.zeros((len(lsh_results_filtered), len(lsh_results_filtered)))
