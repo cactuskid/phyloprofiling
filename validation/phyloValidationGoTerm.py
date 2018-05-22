@@ -3,25 +3,22 @@ import numpy as np
 
 from time import time
 
+
 class SemanticSimilarityAnalysis(object):
 
     def __init__(self, go, h5file, termcounts):
         self.go = go
         self.h5file = h5file
-        self.termcounts = termcounts
+        self.term_counts = termcounts
         self.used_hog_dict = {}
 
     def semantic_similarity_score(self, query, result):
-        ''' Runs semantic similarity analysis
-        Args:
-            query: query hog id
-            result: resulquery_go_termst hog ids
-        Returns:
-            score : semantic similarity score between query hog and result hog
-        '''
-        from time import time
-        start_time = time()
-
+        """
+        Runs semantic similarity analysis from 2 hog ids
+        :param query: query hog id
+        :param result: query hog id
+        :return: score: semantic similarity score between query hog and result hog
+        """
         if query not in self.used_hog_dict:
             query_go_terms = self.get_deepest_go_term_per_gene(self.get_go_terms(query))
             self.used_hog_dict[query] = query_go_terms
@@ -100,7 +97,7 @@ class SemanticSimilarityAnalysis(object):
         for k in range(len(query_go_terms)):
             for l in range(len(result_go_terms)):
                 try:
-                    gene_dist[k, l] = resnik_sim(query_go_terms[k], result_go_terms[l], self.go, self.termcounts)
+                    gene_dist[k, l] = resnik_sim(query_go_terms[k], result_go_terms[l], self.go, self.term_counts)
                 except:
                     pass
         return gene_dist
@@ -161,7 +158,7 @@ class SemanticSimilarityAnalysis(object):
             for n in range(len(goterms2)):
 
                 try:
-                    dist = resnik_sim(goterms1[m], goterms2[n], self.go, self.termcounts)
+                    dist = resnik_sim(goterms1[m], goterms2[n], self.go, self.term_counts)
                     ss_dist[m, n] = dist
                 except:
                     # TODO catch real error
@@ -171,108 +168,90 @@ class SemanticSimilarityAnalysis(object):
 
         return gene_score
 
-    def mean_max_score_matrix(self, sem_mat):
-        '''
-        computes the BMA of a matrix
-        Args:
-            sem_mat: scores matrix
-        Returns:
-            score: BMA of the scores matrix
-        '''
-
-        mat_size = np.prod(sem_mat.shape)
-        if not mat_size:
+    def mean_max_score_matrix(self, matrix):
+        """
+        Computes the BMA of a matrix
+        :param matrix: matrix
+        :return: score: BMA of the matrix; returns -1 if matrix has 0 or 1 dimension
+        """
+        matrix_size = np.prod(matrix.shape)
+        if not matrix_size:
             return -1
 
-        return sum(sem_mat.max(0))+sum(sem_mat.max(1)) / mat_size
+        return sum(matrix.max(0))+sum(matrix.max(1)) / matrix_size
 
-    # returns go terms
     def get_go_terms(self, hog_id):
-        '''Fetch the genes from hog id, then get all GO terms from it
-        Args:
-            hog_id: hog id
-        Returns:
-            golist: list of GO term
-        '''
-        population = self.get_hog_members(hog_id)
+        """
+        Fetch the genes from hog id, then get all GO terms from it
+        :param hog_id: hog id
+        :return: list of GO term
+        """
+        genes = self.get_hog_members(hog_id)
+        go_dict = {entry: {self._format_go_term(e) for e in self._get_entry_gene_ontology(entry)} for entry in genes}
+        go_dict_filtered = self._filter_result(go_dict)
 
-        # turn into godict
-        # for each gene, we have the go terms
-        start_time = time()
-        godict = {entry: {('GO:{:07d}'.format(e['TermNr'])) for e in self._get_entry_geneOntology(entry)} for entry in population}
-        print("get go terms {}".format(time()-start_time))
-        godict = {k: v for k, v in godict.items() if v}
-        godictfinal = {}
+        return self._clean_dictionary(go_dict_filtered)
 
-        for gene, terms in godict.items():
-            newTerms = self.filter_namespace(terms)
-            if newTerms:
-                godictfinal[gene] = newTerms
-        godictfinal = {k: v for k, v in godictfinal.items() if v}
+    @staticmethod
+    def _format_go_term(e):
+        return 'GO:{:07d}'.format(e['TermNr'])
 
+    def _filter_result(self, go_dict):
 
-        return godictfinal
+        go_dict_filtered = {}
 
-    def _get_entry_geneOntology(self, entry):
+        for gene_name, terms in go_dict.items():
+            filtered_terms = self.filter_namespace(terms)
+            if filtered_terms:
+                go_dict_filtered[gene_name] = filtered_terms
+
+        return go_dict_filtered
+
+    @staticmethod
+    def _clean_dictionary(dictionary):
+        return {k: v for k, v in dictionary.items() if v}
+
+    def _get_entry_gene_ontology(self, entry):
         return self.h5file.root.Annotations.GeneOntology.read_where('EntryNr == {}'.format(entry))
 
-    def get_hog_members(self, hog_id, maxEntries=None):
-        '''Get all gene members from the hog
-        Args:
-            hog_id: hog id
-            maxEntries: max entries before breaking
-        Returns:
-            population: list containing the genes of the Hog
-        '''
-
-        iterator = self.iter_hog_member(hog_id)
-        start_time = time()
-        if maxEntries is None:
-            population = frozenset([x['EntryNr'] for x in iterator])
-        else:
-            population = []
-            for i, x in enumerate(iterator):
-                if i > maxEntries:
-                    break
-
-                population.append(x['EntryNr'])
-            population = list(population)
-        print('time for hog members stuff {}'.format(time()-start_time))
+    def get_hog_members(self, hog_id):
+        """
+        Gets all gene members from the hog
+        :param hog_id: hog id
+        :return: list of genes from the hog
+        """
+        iterator = self._iter_hog_member(hog_id)
+        population = frozenset([x['EntryNr'] for x in iterator])
         return population
 
-    # decode hog format
-    def _hog_lex_range(self, hog):
-        '''decode hog format
-        Args:
-            hog (bytes or string): hog id
-        Returns:
-            hog_str: encoded hog id
-        '''
+    @staticmethod
+    def _hog_lex_range(hog):
+        """
+        Decodes hog format
+        :param hog: (bytes or string): hog id
+        :return: hog_str: encoded hog id
+        """
         hog_str = hog.decode() if isinstance(hog, bytes) else hog
         return hog_str.encode('ascii'), (hog_str[0:-1] + chr(1 + ord(hog_str[-1]))).encode('ascii')
 
-    # yield hog members given hog id and oma database
-    def iter_hog_member(self, hog_id):
-        '''iter over hog members
-        Args:
-            hog_id: hog id
-        Returns:
-            yield members of hog
-        '''
+    def _iter_hog_member(self, hog_id):
+        """
+        iterator over hog members
+        :param hog_id: hog id
+        :return: yields members of hog
+        """
         hog_range = self._hog_lex_range(hog_id)
         it = self.h5file.root.Protein.Entries.where('({!r} <= OmaHOG) & (OmaHOG < {!r})'.format(*hog_range))
         for row in it:
             yield row.fetch_all_fields()
 
     def filter_namespace(self, list_terms, name='biological_process'):
-        '''
-        return list of terms with the correct namespace
-        Args:
-            list_terms: list of go terms
-            name: namespace to keep
-        Returns:
-            terms_to_keep: list of terms with the correct namespace
-        '''
+        """
+        Keep only go terms within the correct ontology
+        :param list_terms: list of go terms
+        :param name: namespace to keep; default: 'biological_process'
+        :return: list of terms with the correct namespace
+        """
         terms_to_keep = []
         for term in list_terms:
             try:
