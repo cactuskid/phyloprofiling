@@ -88,7 +88,7 @@ with h5py.File(config.datadirLaurent + 'May_09_2018_13_42hashes.h5', 'r') as h5h
                 break
             # be less restrictive here. Like, only one go term per hog is enough. Create a list with ALL of them.
             # Then pick a few (10, 20, 50 ?) randomly (--> store that in "queries")
-            if len(goTermAnalysis.get_go_terms(hog)) > 15:
+            if len(goTermAnalysis._get_go_terms(hog)) > 15:
                 queries.append(fam)
 
 
@@ -115,7 +115,7 @@ with h5py.File(config.datadirLaurent + 'May_09_2018_13_42hashes.h5', 'r') as h5h
                     lsh_results_unfiltered = lsh.query(hash_query)
                     # add the query to the list of results and filter the results
                     # (if no go term, remove hog id)
-                    lsh_results_filtered = [fam_query] + [result for result in lsh_results_unfiltered if goTermAnalysis.get_go_terms(result_fam_id(result))]
+                    lsh_results_filtered = [fam_query] + [result for result in lsh_results_unfiltered if goTermAnalysis._get_go_terms(result_fam_id(result))]
 
                     # get a list of hashes, one for each filtered results
                     hashes = [(hog_id, get_hash_hog_id(hog_id, events_combo)) for hog_id in lsh_results_filtered]
@@ -130,7 +130,7 @@ with h5py.File(config.datadirLaurent + 'May_09_2018_13_42hashes.h5', 'r') as h5h
                             semantic_distance[i, j] = semantic_dist
                             result_dict[(hog1, hog2, events_combo)]['semantic_distance'] = semantic_dist
                             # also save the go terms in big dict
-                            result_dict[(hog1, hog2, events_combo)]['go terms'] = goTermAnalysis.get_go_terms(hog2)
+                            result_dict[(hog1, hog2, events_combo)]['go terms'] = goTermAnalysis._get_go_terms(hog2)
 
                     # prepare matrix for the jaccard distances
                     jaccard_distance = np.zeros((len(lsh_results_filtered), len(lsh_results_filtered)))

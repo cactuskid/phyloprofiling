@@ -105,7 +105,7 @@ class Profiler:
 
         for hog in hogs_id_list:
             if hog not in self.best_go_terms_hog_id_dict.keys():
-                self.best_go_terms_hog_id_dict[hog] = self.goTermAnalysis.API_get_best_go_terms_per_gene(hog)
+                self.best_go_terms_hog_id_dict[hog] = self.goTermAnalysis.get_best_go_terms_per_hog_id(hog)
 
     def compute_semantic_distance(self, hogs_list, query, result_dict, events_combo):
 
