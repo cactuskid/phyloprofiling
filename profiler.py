@@ -3,6 +3,7 @@ import tables
 import pandas as pd
 import multiprocessing as mp
 import itertools
+from functools import partial
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -12,7 +13,9 @@ from pyoma.browser import db
 from validation import phyloValidationGoTerm as validationGoTerm
 from utils import files_utils, hashutils
 
+# to remove
 from time import time
+
 
 class Profiler:
 
@@ -69,28 +72,29 @@ class Profiler:
 
         print('getting queries')
         results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
-        for k,v in results.items():
-            print('{} queries found for {}'.format(len(v),k))
+        for k, v in results.items():
+            print('{} queries found for {}'.format(len(v), k))
         if not scores:
             results_df = pd.DataFrame.from_dict(results)
             return results_df
 
-
-
+        start_time = time()
         self.get_best_go_term_per_hog_id(results)
+        print('time to load best got : {}'.format(time()-start_time))
 
         result_dict = {}
-
+        start_time = time()
         # semantic scores
         for query, result in results.items():
             print('computing scores for query {}'.format({query}))
+
             related_hog_list = list(set([query] + [r for r in result]))
             events_combo = hashutils.result2events(query)
             result_dict = self.compute_semantic_distance(related_hog_list, query, result_dict, events_combo)
 
-            # get jaccard score, here its possible to use up
+            # get jaccard score, here its possible to use mp
             result_dict = self.compute_jaccard_distance(related_hog_list, query, result_dict, events_combo)
-
+            print('computing scores for query {} took {}'.format(query, time()-start_time))
         return result_dict
 
     def get_best_go_term_per_hog_id(self, results):
@@ -101,29 +105,40 @@ class Profiler:
 
         for query, result in results.items():
             result_list = list(set([query] + [r for r in result]))
-            hogs_id_list = list(set([hashutils.result2hogid(hog) for hog in result_list]))
+            result_hogs_id_list = list(set([hashutils.result2hogid(result) for result in result_list]))
+            hogs_id_list = list(set(hogs_id_list + result_hogs_id_list))
 
+        start_time_big = time()
         for hog in hogs_id_list:
-            if hog not in self.best_go_terms_hog_id_dict.keys():
+            start_time = time()
+            if hog not in self.best_go_terms_hog_id_dict.keys() and len(self.best_go_terms_hog_id_dict.keys())<20:
+                print('looking for go terms for {}'.format(hog))
                 self.best_go_terms_hog_id_dict[hog] = self.goTermAnalysis.get_best_go_terms_per_hog_id(hog)
+                print(time()-start_time)
+
+        print('time to update the dict {}'.format(time()-start_time_big))
 
     def compute_semantic_distance(self, hogs_list, query, result_dict, events_combo):
 
         events_combo_string = ''.join(event for event in sorted(events_combo))
 
         for i, hog_event_1 in enumerate(hogs_list):
+            start_time = time()
+
             for j, hog_event_2 in enumerate(hogs_list):
                 hog1 = hashutils.result2hogid(hog_event_1)
                 hog2 = hashutils.result2hogid(hog_event_2)
+                if hog1 in self.best_go_terms_hog_id_dict.keys() and hog2 in self.best_go_terms_hog_id_dict.keys():
+                    start_time = time()
 
-                # get semantic dist between two hog (ids) and save it in matrix and in big dict
-                semantic_dist = self.goTermAnalysis.API_compute_score_method_2.(self.best_go_terms_hog_id_dict[hog1], self.best_go_terms_hog_id_dict[hog2])
-                result_dict[(query, hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
-                # also save the go terms in big dict
+                    # get semantic dist between two hog (ids) and save it in matrix and in big dict
+                    semantic_dist = self.goTermAnalysis.semantic_similarity_score_from_go_terms(self.best_go_terms_hog_id_dict[hog1], self.best_go_terms_hog_id_dict[hog2])
+                    result_dict[(query, hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
+                    # also save the go terms in big dict
 
-                #result_dict[(query, hog1, hog2, events_combo_string, 'go term hog 1')] = self.goTermAnalysis.get_go_terms(hog1)
-                #result_dict[(query, hog1, hog2, events_combo_string, 'go term hog 2')] = self.goTermAnalysis.get_go_terms(hog2)
-
+                    # result_dict[(query, hog1, hog2, events_combo_string, 'go term hog 1')] = self.goTermAnalysis.get_go_terms(hog1)
+                    # result_dict[(query, hog1, hog2, events_combo_string, 'go term hog 2')] = self.goTermAnalysis.get_go_terms(hog2)
+            print('computing results for {}, took {}'.format(hog_event_1, time()-start_time))
 
         return result_dict
 
@@ -139,20 +154,28 @@ class Profiler:
 
     def compute_jaccard_distance(self, hogs_list, query, result_dict, events_combo):
         # prepare data for mp stuff
+        print('start computing jaccard')
         pool = mp.Pool()
-
+        print('test')
         events_combo_string = ''.join(event for event in sorted(events_combo))
+        print('test1')
         hashes = {result: hashutils.result2hash(result, self.tree, self.replacement_dic, self.db_obj) for result in hogs_list}
-
+        print('test2')
         hash_compare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
         # compute jaccard
-        jaccard_results = pool.map_async(hash_compare, self.jaccard_mp).get()
+        print('test3')
+        jaccard_results = pool.map_async(self.jaccard_mp, hash_compare).get()
         # feed matrix and big dict with results
+        print('test4')
         for jac_res in jaccard_results:
+            print('test5')
             i, j, jac_dist = jac_res
             hog1 = hashutils.result2hogid(hogs_list[i])
             hog2 = hashutils.result2hogid(hogs_list[j])
+            print('test6')
             result_dict[(query, hog1, hog2, events_combo_string, 'jaccard_distance')] = jac_dist
+            print(result_dict)
+            print('test7')
 
         return result_dict
 
