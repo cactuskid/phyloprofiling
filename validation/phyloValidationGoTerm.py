@@ -88,68 +88,6 @@ class SemanticSimilarityAnalysis(object):
                     pass
         return gene_dist
 
-    def old_compute_score(self, query_go_terms, result_go_terms):
-        # not used anymore ?
-        """
-        Computes semantic similarity score between two hogs
-        :param query_go_terms: dict of genes: list of go terms
-        :param result_go_terms: dict of genes: list of go terms
-        :return: semantic similarity score
-        """
-        # compute distances between all genes
-        distance_mat = self.old_compute_genes_distances(query_go_terms, result_go_terms)
-        # from all the distance, select BMA
-        score = self._mean_max_score_matrix(distance_mat)
-
-        return score
-
-    def old_compute_genes_distances(self, query_go_terms, result_go_terms):
-        # not used anymore ?
-        """
-        Computes matrix of distance between the genes of two hogs
-        :param query_go_terms: dict of genes: list of go terms
-        :param result_go_terms: dict of genes: list of go terms
-        :return: matrix of distance between genes of hogs
-        """
-        query_keys = query_go_terms.keys()
-        result_keys = result_go_terms.keys()
-
-        gene_dist = np.zeros((len(query_keys), len(result_keys)))
-
-        for k in range(len(query_keys)):
-            for l in range(len(result_keys)):
-
-                go_terms_1 = list(query_go_terms[list(query_keys)[k]])
-                go_terms_2 = list(result_go_terms[list(result_keys)[l]])
-
-                if go_terms_1 and go_terms_2:
-                    gene_dist[k, l] = self.old_compute_genes_score(go_terms_1, go_terms_2)
-
-        return gene_dist
-
-    def old_compute_genes_score(self, go_terms_gene_1, go_terms_gene_2):
-        # not used anymore ??
-        """
-        Computes the semantic similarity score between two genes
-        :param go_terms_gene_1: list of go terms from one of the gene 
-        :param go_terms_gene_2: list of go terms from one of the gene 
-        :return: semantic similarity score between two genes
-        """
-        ss_dist = np.zeros((len(go_terms_gene_1), len(go_terms_gene_2)))
-
-        for m in range(len(go_terms_gene_1)):
-            for n in range(len(go_terms_gene_2)):
-
-                try:
-                    dist = resnik_sim(go_terms_gene_1[m], go_terms_gene_2[n], self.go, self.term_counts)
-                    ss_dist[m, n] = dist
-                except:
-                    pass
-
-        gene_score = self._mean_max_score_matrix(ss_dist)
-
-        return gene_score
-
     @staticmethod
     def _mean_max_score_matrix(matrix):
         """
