@@ -9,32 +9,18 @@ class SemanticSimilarityAnalysis(object):
         self.h5file = h5file
         self.term_counts = term_counts
 
-    def semantic_similarity_score_from_go_terms(self, go_terms_1, go_terms_2):
-        """
-        Runs semantic similarity analysis from 2 lists of go terms
-        :param go_terms_1: list of go terms for one hog
-        :param go_terms_2: list of go terms for another hog
-        :return: semantic similarity score between two lists of go terms
-        """
-        return self._compute_score(go_terms_1, go_terms_2)
-
-    def semantic_similarity_score_from_hog_ids(self, hog_id_1, hog_id_2):
+    def semantic_similarity_score(self, hog_id_1, hog_id_2):
         """
         Runs semantic similarity analysis from 2 hog ids
         :param hog_id_1: first hog id
         :param hog_id_2: second hog id
         :return: semantic similarity score between the two hog ids
         """
-        go_terms_1 = self.get_best_go_terms_per_hog_id(hog_id_1)
-        go_terms_2 = self.get_best_go_terms_per_hog_id(hog_id_2)
+        go_terms_1 = self._get_go_terms(hog_id_1)
+        go_terms_2 = self._get_go_terms(hog_id_2)
         score = self._compute_score(go_terms_1, go_terms_2)
 
         return score
-
-    def get_best_go_terms_per_hog_id(self, hog_id):
-        go_terms = self._get_go_terms(hog_id)
-        best_go_terms = self._get_deepest_go_term_per_gene(go_terms)
-        return best_go_terms
 
     def _compute_score(self, query_go_terms, result_go_terms):
         """
@@ -50,43 +36,50 @@ class SemanticSimilarityAnalysis(object):
 
         return score
 
-    def _get_deepest_go_term_per_gene(self, go_terms_dict):
-        """
-        Get deepest go term per gene
-        :param go_terms_dict: dictionary gene name: go terms
-        :return: dictionary gene name: deepest go term
-        """
-        sign_go_terms = []
-        for gen_name, go_terms in go_terms_dict.items():
-            sign_go_terms.append(self._get_deepest_go_term(go_terms))
-
-        sign_go_terms = list(set(sign_go_terms))
-        return sign_go_terms
-
-    def _get_deepest_go_term(self, go_terms):
-        """
-        Get deepest go term
-        :param go_terms: list of go terms
-        :return: deepest go term
-        """
-        return max(go_terms, key=lambda t: self.go[t].depth)
-
-    def _compute_genes_distance(self, go_terms_1, go_terms_2):
+    def _compute_genes_distance(self, go_terms_genes_1, go_terms_genes_2):
         """
         Computes matrix of distance between the genes of two hogs
-        :param go_terms_1: list of go terms
-        :param go_terms_2: list of go terms
+        :param go_terms_genes_1: dictionary of genes
+        :param go_terms_genes_2: dictionary of genes
         :return: matrix of distance between genes of hogs
         """
-        gene_dist = np.zeros((len(go_terms_1), len(go_terms_2)))
+        keys_1 = go_terms_genes_1.keys()
+        keys_2 = go_terms_genes_2.keys()
 
-        for k in range(len(go_terms_1)):
-            for l in range(len(go_terms_2)):
+        gene_dist = np.zeros((len(keys_1), len(keys_2)))
+
+        for k in range(len(keys_1)):
+            for l in range(len(keys_2)):
+
+                go_terms_genes_1 = list(go_terms_genes_1[list(keys_1)[k]])
+                go_terms_genes_2 = list(go_terms_genes_2[list(keys_2)[l]])
+
+                if go_terms_genes_1 and go_terms_genes_2:
+                    gene_dist[k, l] = self._compute_genes_score(go_terms_genes_1, go_terms_genes_2)
+
+        return gene_dist
+
+    def _compute_genes_score(self, go_terms_gene_1, go_terms_gene_2):
+        """
+        Computes the semantic similarity score between two genes
+        :param go_terms_gene_1: list of go terms from one of the gene
+        :param go_terms_gene_2: list of go terms from one of the gene
+        :return: semantic similarity score between two genes
+        """
+        ss_dist = np.zeros((len(go_terms_gene_1), len(go_terms_gene_2)))
+
+        for m in range(len(go_terms_gene_1)):
+            for n in range(len(go_terms_gene_2)):
+
                 try:
-                    gene_dist[k, l] = resnik_sim(go_terms_1[k], go_terms_2[l], self.go, self.term_counts)
+                    dist = resnik_sim(go_terms_gene_1[m], go_terms_gene_2[n], self.go, self.term_counts)
+                    ss_dist[m, n] = dist
                 except:
                     pass
-        return gene_dist
+
+        gene_score = self._mean_max_score_matrix(ss_dist)
+
+        return gene_score
 
     @staticmethod
     def _mean_max_score_matrix(matrix):
