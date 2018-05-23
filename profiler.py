@@ -157,7 +157,7 @@ class Profiler:
 
         with h5py.File(config_utils.datadirLaurent + 'May_16_2018_16_07hashes.h5', 'r') as h5hashes:
 
-            hashes = {result: hashutils.get_hash_hog_id(fam=hashutils.result2fam(result), h5mat=h5hashes, events=events_combo) for result in hogs_list}
+            hashes = {result: hashutils.fam2hash_hdf5(fam=hashutils.result2fam(result), hdf5=h5hashes, events=events_combo) for result in hogs_list}
 
         print(list(hashes.values())[0])
         # take from hash5 instead

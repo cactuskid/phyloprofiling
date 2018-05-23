@@ -2,22 +2,27 @@ import datasketch
 import itertools
 from scipy.sparse import csr_matrix
 
+from utils import files_utils
 
-from utils import files_utils, config_utils
 
-
-def get_hash_hog_id(fam, h5mat, events=['duplication', 'gain', 'loss', 'presence']):
-
+def fam2hash_hdf5(fam, hdf5, events=['duplication', 'gain', 'loss', 'presence']):
+    """
+    Get the minhash corresponding to the given hog id number
+    :param fam: hog id number
+    :param hdf5: hdf5 file containing hashes
+    :param events: list of events the hashes are build on; default: all four events
+    :return: list of hashes for the given fam and events
+    """
     minhash1 = None
     for event in events:
         query_minhash = datasketch.MinHash(num_perm=128)
 
         try:
-            query_minhash.hashvalues = h5mat[event][fam, :]
+            query_minhash.hashvalues = hdf5[event][fam, :]
         except:
             print(fam)
             print(event)
-            print(h5mat[event].shape)
+            print(hdf5[event].shape)
 
         query_minhash.seed = 1
 
@@ -31,6 +36,11 @@ def get_hash_hog_id(fam, h5mat, events=['duplication', 'gain', 'loss', 'presence
 
 
 def hogid2fam(hog_id):
+    """
+    Get fam given hog id
+    :param hog_id: hog id
+    :return: fam
+    """
     fam = int(hog_id.split(':')[1])
 
     return fam
@@ -38,9 +48,10 @@ def hogid2fam(hog_id):
 
 def fam2hogid(fam_id):
     """
-    returns the hog fam id for any key of the lsh
+    Get hog id given fam
+    :param fam_id: fam
+    :return: hog id
     """
-
     hog_id = "HOG:" + (7-len(str(fam_id))) * '0' + str(fam_id)
 
     return hog_id
@@ -48,7 +59,9 @@ def fam2hogid(fam_id):
 
 def result2hogid(result):
     """
-    returns the hog fam id for any key of the lsh
+    Get hog id given result
+    :param result: result
+    :return: hog id
     """
     hog_id = fam2hogid(result2fam(result))
 
@@ -56,18 +69,36 @@ def result2hogid(result):
 
 
 def result2fam(result):
+    """
+    Get fam given result
+    :param result: result
+    :return: fam
+    """
     fam = int(result.split('-')[0])
 
     return fam
 
 
 def result2events(result):
+    """
+    Get list of events given result
+    :param result: result
+    :return: list of events
+    """
     events = [event for event in result.split('-')[1:]]
 
     return events
 
 
 def result2hash(result, tree, replacement_dic, db_obj):
+    """
+    Get minhash given result. Look for the corresponding fam and events, compute the correct hash
+    :param result: result in the format FAM-EVENT1-EVENT2-etc.
+    :param tree: species tree in newick format
+    :param replacement_dic: replacement dictionary to correct ortho xml files
+    :param db_obj: database object
+    :return: minhash
+    """
     events = result2events(result)
     fam = result2fam(result)
 
@@ -83,6 +114,11 @@ def result2hash(result, tree, replacement_dic, db_obj):
 
 
 def combine_minhashes(hashes):
+    """
+    Combine minHashes together to form one minHash
+    :param hashes: list of minHashes
+    :return: combined minHash
+    """
     minhash = datasketch.MinHash(num_perm=128)
     for name, hashvalue in hashes.items():
         minhash.merge(hashvalue)
@@ -91,6 +127,11 @@ def combine_minhashes(hashes):
 
 
 def tree2eventdict(treemap):
+    """
+    Get events dictionary from treemap object from pyham
+    :param treemap: treemap object from pyham
+    :return: dictionary of evolutionary events
+    """
     eventdict = {'presence': [], 'gain': [], 'loss': [], 'duplication': []}
     for node in treemap.traverse():
         if not node.is_root():
@@ -106,6 +147,11 @@ def tree2eventdict(treemap):
 
 
 def eventdict2minhashes(eventdict):
+    """
+    Get minhashes from events dictionary
+    :param eventdict: dictionary of evolutionary events
+    :return: minHashes
+    """
     hashes_dictionary = {}
 
     for event in eventdict:
@@ -122,7 +168,13 @@ def eventdict2minhashes(eventdict):
 
 
 def minhashes2leanminhashes(fam, minhashes, combination=True):
-
+    """
+    Get leanMinHashes from MinHashes
+    :param fam: fam
+    :param minhashes: list of minHashes
+    :param combination: boolean, combination wanted or not
+    :return: dictionary of leanMinHashes
+    """
     lean_minhashes_dictionary = {}
 
     for name, minhash in minhashes.items():
@@ -146,7 +198,14 @@ def minhashes2leanminhashes(fam, minhashes, combination=True):
 
 
 def tree2hashes(fam, treemap, events, combination):
-
+    """
+    Get hashes from tree
+    :param fam: fam
+    :param treemap: pyham treemap object
+    :param events: list of events
+    :param combination: boolean, combination wanted or not
+    :return: dictionary containing two lists: one of minHashes and one of LeanMinHashes
+    """
     if treemap is not None:
         event_dictionary = tree2eventdict(treemap)
         event_dictionary = {e: event_dictionary[e] for e in events}
@@ -159,6 +218,13 @@ def tree2hashes(fam, treemap, events, combination):
 
 
 def tree2hashes_from_row(row, events, combination):
+    """
+    Get hashes from tree
+    :param row: tumple containing fam and treemap (pyham object)
+    :param events: list of events
+    :param combination: boolean, combination wanted or not
+    :return: dictionary containing two lists: one of minHashes and one of LeanMinHashes
+    """
     fam, treemap = row.tolist()
 
     return tree2hashes(fam, treemap, events, combination)
