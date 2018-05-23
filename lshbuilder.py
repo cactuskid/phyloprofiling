@@ -91,10 +91,10 @@ class LSHBuilder:
         count = 0
 
         dataset_names = ['duplication', 'gain', 'loss', 'presence']
-        threshold = 0.9
+        threshold = 0.7
 
         lsh = MinHashLSH(threshold=threshold, num_perm=128)
-        forest = MinHashLSHForest(num_perm=128)
+        # forest = MinHashLSHForest(num_perm=128)
 
         with open(self.saving_path + self.date_string + 'errors.txt', 'w') as hashes_error_files:
             with h5py.File(self.saving_path + self.date_string + 'hashes.h5', 'w', libver='latest') as h5hashes:
@@ -121,7 +121,7 @@ class LSHBuilder:
 
                                 for famhashname in hashes[fam]['dict']:
                                     lsh.insert(famhashname, hashes[fam]['dict'][famhashname])
-                                    forest.add(famhashname, hashes[fam]['dict'][famhashname])
+                                    # forest.add(famhashname, hashes[fam]['dict'][famhashname])
                                 hashvals = hashes[fam]['hashes']
 
                                 for event in hashvals:
@@ -145,18 +145,18 @@ class LSHBuilder:
                             print('saving')
                             with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl',
                                       'wb') as lsh_out:
-                                with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
-                                    pickle.dump(lsh, lsh_out, -1)
-                                    pickle.dump(forest, forestout, -1)
+                                # with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
+                                pickle.dump(lsh, lsh_out, -1)
+                                #     pickle.dump(forest, forestout, -1)
                             save_start = time.clock()
                             print(time.clock() - global_time)
                         count += len(this_dataframe)
                     else:
                         with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl',
                                   'wb') as lsh_out:
-                            with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
-                                pickle.dump(lsh, lsh_out, -1)
-                                pickle.dump(forest, forestout, -1)
+                            # with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
+                            pickle.dump(lsh, lsh_out, -1)
+                                # pickle.dump(forest, forestout, -1)
                         print('DONE UPDATER' + str(i))
                         break
 
@@ -214,7 +214,7 @@ class LSHBuilder:
         count = 0
 
         while True:
-            time.sleep(.1)
+            # time.sleep(.1)
             try:
                 data = next(data_generator)
                 q.put(data)
@@ -226,20 +226,21 @@ class LSHBuilder:
                 for p in range(2*number_workers):
                     q.put(None)
 
+                # for p in work_processes:
+                #     work_processes[p].join()
+
                 break
 
         for p in range(2*number_updaters):
             retq.put(None)
 
-                # for p in work_processes:
-                #     work_processes[p].join()
-                # for p in update_processes:
-                #     update_processes[p].join()
-                #
-                # for p in work_processes:
-                #     work_processes[p].terminate()
-                # for p in update_processes:
-                #     update_processes[p].terminate()
+        for p in update_processes:
+            update_processes[p].join()
+
+        # for p in work_processes:
+        #     work_processes[p].terminate()
+        # for p in update_processes:
+        #     update_processes[p].terminate()
 
         gc.collect()
         print('DONE!')
