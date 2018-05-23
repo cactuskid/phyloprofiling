@@ -1,38 +1,9 @@
 import datasketch
 import itertools
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, vstack
+import numpy as np
 
-from utils import files_utils
-
-
-def fam2hash_hdf5(fam, hdf5, events=['duplication', 'gain', 'loss', 'presence']):
-    """
-    Get the minhash corresponding to the given hog id number
-    :param fam: hog id number
-    :param hdf5: hdf5 file containing hashes
-    :param events: list of events the hashes are build on; default: all four events
-    :return: list of hashes for the given fam and events
-    """
-    minhash1 = None
-    for event in events:
-        query_minhash = datasketch.MinHash(num_perm=128)
-
-        try:
-            query_minhash.hashvalues = hdf5[event][fam, :]
-        except:
-            print(fam)
-            print(event)
-            print(hdf5[event].shape)
-
-        query_minhash.seed = 1
-
-        if minhash1 is None:
-            minhash1 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
-        else:
-            minhash2 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
-            minhash1.merge(minhash2)
-
-    return minhash1
+from utils import files_utils, pyhamutils
 
 
 def hogid2fam(hog_id):
@@ -288,3 +259,80 @@ def tree2mat(treemap, taxa_index, verbose=False):
 
     else:
         return csr_matrix((1, 4 * len(taxa_index)))
+
+
+def list_fam2row(list_fam, db_obj, tree, replacement_dic):
+    # UNTESTED !!
+    taxa_index, taxa_index_reverse = files_utils.generate_taxa_index(tree)
+    rows = []
+
+    for fam in list_fam:
+        treemap_fam = pyhamutils.get_ham_treemap_from_fam(fam, db_obj, tree, replacement_dic)
+        rows.append(tree2mat(treemap_fam, taxa_index))
+    stack_rows = vstack(rows)
+
+    return stack_rows
+
+
+def jaccard_cutoff(list_fam, scores, cutoff):
+    # UNTESTED !!
+    return list_fam[np.where(scores > cutoff)]
+
+
+def fam2hash_hdf5(fam, hdf5, events=['duplication', 'gain', 'loss', 'presence']):
+    """
+    Get the minhash corresponding to the given hog id number
+    :param fam: hog id number
+    :param hdf5: hdf5 file containing hashes
+    :param events: list of events the hashes are build on; default: all four events
+    :return: list of hashes for the given fam and events
+    """
+    minhash1 = None
+    for event in events:
+        query_minhash = datasketch.MinHash(num_perm=128)
+
+        try:
+            query_minhash.hashvalues = hdf5[event][fam, :]
+        except:
+            print(fam)
+            print(event)
+            print(hdf5[event].shape)
+
+        query_minhash.seed = 1
+
+        if minhash1 is None:
+            minhash1 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
+        else:
+            minhash2 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
+            minhash1.merge(minhash2)
+
+    return minhash1
+
+
+def fam2hash_hdf5_to_dict(list_fam, h5hashes, events=['duplication', 'gain', 'loss', 'presence']):
+    # UNTESTED !!
+    hash_dictionary = {}
+
+    for fam in list_fam:
+        hash_dictionary[fam] = fam2hash_hdf5(fam, h5hashes, events)
+
+    return hash_dictionary
+
+
+def jaccard_rank(query_hash, hash_dictionary):
+    # UNTESTED !!
+
+    list_hashes = np.asarray(list(hash_dictionary.values()))
+
+    list_fam = np.asarray(list(hash_dictionary.keys()))
+
+    scores = [query_hash.jaccard(result_hash) for result_hash in list_hashes]
+
+    # index = np.argsort(scores)
+    #
+    # for array in [list_hashes, list_fam, index]:
+    #     array = array[index]
+
+    ordered_scores = {list_fam[i]:list_hashes[i] for i in np.argsort(scores)}
+
+    return ordered_scores
