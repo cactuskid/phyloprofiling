@@ -71,7 +71,7 @@ def test_gethoghash():
     with File( config.datadir + 'hashes.h5', 'r') as h5hashes:
         entries = range(100,200)
         for i in entries:
-            print(get_hash_hog_id(i, h5h5hashes))
+            print(get_hash_hog_id(i, h5hashes))
 
 
 def get_hashdict(fams, h5hashes, events = ['duplication', 'gain', 'loss', 'presence']):

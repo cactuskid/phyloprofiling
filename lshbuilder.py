@@ -18,7 +18,7 @@ from utils import files_utils, config_utils, pyhamutils, hashutils
 
 class LSHBuilder:
 
-    def __init__(self, h5_oma, saving_path, hog_level='Drosophila melanogaster'):
+    def __init__(self, h5_oma, saving_path, hog_level=None):
         print("starting LSH BUILDER with hog level {}".format(hog_level))
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
@@ -90,8 +90,8 @@ class LSHBuilder:
         chunk_size = 100
         count = 0
 
-        dataset_names = ['Fam', 'duplication', 'gain', 'loss', 'presence']
-        threshold = 0.7
+        dataset_names = ['duplication', 'gain', 'loss', 'presence']
+        threshold = 0.9
 
         lsh = MinHashLSH(threshold=threshold, num_perm=128)
         forest = MinHashLSHForest(num_perm=128)
@@ -124,12 +124,11 @@ class LSHBuilder:
                                     forest.add(famhashname, hashes[fam]['dict'][famhashname])
                                 hashvals = hashes[fam]['hashes']
 
-                                for i, event in enumerate(hashvals):
-                                    dataset = dataset_names[i]
-                                    if len(datasets[dataset]) < fam + 10:
-                                        datasets[dataset].resize((fam + chunk_size, len(hashvals[event].hashvalues)))
+                                for event in hashvals:
+                                    if len(datasets[event]) < fam + 10:
+                                        datasets[event].resize((fam + chunk_size, len(hashvals[event].hashvalues)))
 
-                                    datasets[dataset][fam, :] = hashvals[event].hashvalues
+                                    datasets[event][fam, :] = hashvals[event].hashvalues
                                 h5hashes.flush()
                             else:
                                 print('error')
@@ -224,22 +223,23 @@ class LSHBuilder:
             except StopIteration:
                 print('stop iteration')
 
-                for p in range(number_workers):
+                for p in range(2*number_workers):
                     q.put(None)
-                for p in range(number_updaters):
-                    retq.put(None)
-
-                for p in work_processes:
-                    work_processes[p].join()
-                for p in update_processes:
-                    update_processes[p].join()
-
-                for p in work_processes:
-                    work_processes[p].terminate()
-                for p in update_processes:
-                    update_processes[p].terminate()
 
                 break
+
+        for p in range(2*number_updaters):
+            retq.put(None)
+
+                # for p in work_processes:
+                #     work_processes[p].join()
+                # for p in update_processes:
+                #     update_processes[p].join()
+                #
+                # for p in work_processes:
+                #     work_processes[p].terminate()
+                # for p in update_processes:
+                #     update_processes[p].terminate()
 
         gc.collect()
         print('DONE!')

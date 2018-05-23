@@ -1,9 +1,9 @@
-import pickle
+import _pickle as pickle
 import tables
 import pandas as pd
 import multiprocessing as mp
 import itertools
-from functools import partial
+import h5py
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -11,7 +11,7 @@ from goatools.semantic import TermCounts
 from pyoma.browser import db
 
 from validation import phyloValidationGoTerm as validationGoTerm
-from utils import files_utils, hashutils
+from utils import files_utils, hashutils, config_utils
 
 # to remove
 from time import time
@@ -86,16 +86,20 @@ class Profiler:
         start_time = time()
         # semantic scores
         for query, result in results.items():
-            print('computing scores for query {}'.format({query}))
+            if 'duplication-loss-presence-gain' in query:
+                print('computing scores for query {}'.format({query}))
 
-            related_hog_list = list(set([query] + [r for r in result]))
-            events_combo = hashutils.result2events(query)
-            result_dict = self.compute_semantic_distance(related_hog_list, query, result_dict, events_combo)
+                related_hog_list = list(set([query] + [r for r in result]))
+                events_combo = hashutils.result2events(query)
+                # result_dict = self.compute_semantic_distance(related_hog_list, query, result_dict, events_combo)
 
-            # get jaccard score, here its possible to use mp
-            result_dict = self.compute_jaccard_distance(related_hog_list, query, result_dict, events_combo)
-            print('computing scores for query {} took {}'.format(query, time()-start_time))
-        return result_dict
+                # get jaccard score, here its possible to use mp
+                result_dict = self.compute_jaccard_distance(related_hog_list, query, result_dict, events_combo)
+                print('computing scores for query {} took {}'.format(query, time()-start_time))
+
+        print(result_dict)
+        results_df = pd.DataFrame.from_dict(result_dict, orient='index')
+        return results_df
 
     def get_best_go_term_per_hog_id(self, results):
         # new function !
@@ -133,7 +137,7 @@ class Profiler:
 
                     # get semantic dist between two hog (ids) and save it in matrix and in big dict
                     semantic_dist = self.goTermAnalysis.semantic_similarity_score_from_go_terms(self.best_go_terms_hog_id_dict[hog1], self.best_go_terms_hog_id_dict[hog2])
-                    result_dict[(query, hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
+                    result_dict[(hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
                     # also save the go terms in big dict
 
                     # result_dict[(query, hog1, hog2, events_combo_string, 'go term hog 1')] = self.goTermAnalysis.get_go_terms(hog1)
@@ -142,40 +146,41 @@ class Profiler:
 
         return result_dict
 
-    def jaccard_mp(self, hash1, hash2):
-        """
-        computes jaccard score for two hashes
-        returns score and index
-        """
-        i, h1 = hash1
-        j, h2 = hash2
-
-        return i, j, h1.jaccard(h2)
-
     def compute_jaccard_distance(self, hogs_list, query, result_dict, events_combo):
         # prepare data for mp stuff
         print('start computing jaccard')
-        pool = mp.Pool()
-        print('test')
+
+
         events_combo_string = ''.join(event for event in sorted(events_combo))
-        print('test1')
-        hashes = {result: hashutils.result2hash(result, self.tree, self.replacement_dic, self.db_obj) for result in hogs_list}
-        print('test2')
-        hash_compare = [(h1, h2) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
+        print('before hashes')
+        start = time()
+
+        with h5py.File(config_utils.datadirLaurent + 'May_16_2018_16_07hashes.h5', 'r') as h5hashes:
+
+            hashes = {result: hashutils.get_hash_hog_id(fam=hashutils.result2fam(result), h5mat=h5hashes, events=events_combo) for result in hogs_list}
+
+        print(list(hashes.values())[0])
+        # take from hash5 instead
+        print('after hashes {}'.format(time()-start))
+        hash_compare = [((h1[0],hashes[h1[1]]), (h2[0],hashes[h2[1]])) for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
         # compute jaccard
-        print('test3')
-        jaccard_results = pool.map_async(self.jaccard_mp, hash_compare).get()
+        pool = mp.Pool(10)
+        print('before jac')
+        jaccard_results = pool.map_async(jaccard_mp, hash_compare, 20).get()
+
+
+        print(jaccard_results)
         # feed matrix and big dict with results
-        print('test4')
+        print('after jac')
         for jac_res in jaccard_results:
-            print('test5')
+
             i, j, jac_dist = jac_res
             hog1 = hashutils.result2hogid(hogs_list[i])
             hog2 = hashutils.result2hogid(hogs_list[j])
-            print('test6')
-            result_dict[(query, hog1, hog2, events_combo_string, 'jaccard_distance')] = jac_dist
+
+            result_dict[(hog1, hog2, events_combo_string, 'jaccard_distance')] = jac_dist #
             print(result_dict)
-            print('test7')
+        pool.close()
 
         return result_dict
 
@@ -186,4 +191,20 @@ class Profiler:
         print('saving ...')
         if path_to_save is not None:
             df_results.to_csv(path_to_save, sep='\t')
+            print(df_results)
         print('done')
+
+
+def jaccard_mp(args):
+    """
+    computes jaccard score for two hashes
+    returns score and index
+    """
+    hash1, hash2 = args
+    i, h1 = hash1
+    j, h2 = hash2
+
+    print(type(h1))
+    print(h1)
+
+    return i, j, h1.jaccard(h2)
