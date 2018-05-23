@@ -2,7 +2,32 @@ import datasketch
 import itertools
 from scipy.sparse import csr_matrix
 
-from utils import files_utils
+
+from utils import files_utils, config_utils
+
+
+def get_hash_hog_id(fam, h5mat, events=['duplication', 'gain', 'loss', 'presence']):
+
+    minhash1 = None
+    for event in events:
+        query_minhash = datasketch.MinHash(num_perm=128)
+
+        try:
+            query_minhash.hashvalues = h5mat[event][fam, :]
+        except:
+            print(fam)
+            print(event)
+            print(h5mat[event].shape)
+
+        query_minhash.seed = 1
+
+        if minhash1 is None:
+            minhash1 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
+        else:
+            minhash2 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
+            minhash1.merge(minhash2)
+
+    return minhash1
 
 
 def hogid2fam(hog_id):
