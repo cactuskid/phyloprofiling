@@ -63,6 +63,27 @@ class Profiler:
 
         return query_dict
 
+    def validation(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
+                   combination=True, scores=True):
+
+        results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
+        for k, v in results.items():
+            print('{} queries found for {}'.format(len(v), k))
+        if not scores:
+            results_df = pd.DataFrame.from_dict(results)
+            return results_df
+
+        validation_dict = {}
+
+        for query, results_list in results.items():
+
+            for result in results_list:
+                validation_dict[(query, result)] = self.compute_jaccard_distance_query(query, result)
+
+        validation_df = pd.DataFrame.from_dict(validation_dict, orient='index')
+
+        return validation_df
+
     def results(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
                 combination=True, scores=False):
 
@@ -77,16 +98,15 @@ class Profiler:
 
         # semantic scores
         for query, result in results.items():
-            if 'duplication-loss-presence-gain' in query:
-                print('computing scores for query {}'.format({query}))
+            print('computing scores for query {}'.format({query}))
 
-                related_hog_list = list(set([query] + [r for r in result]))
-                events_combo = hashutils.result2events(query)
+            related_hog_list = list(set([query] + [r for r in result]))
+            events_combo = hashutils.result2events(query)
 
-                result_dict = self.compute_semantic_distance(related_hog_list, result_dict, events_combo)
+            result_dict = self.compute_semantic_distance(related_hog_list, result_dict, events_combo)
 
-                # get jaccard score, here its possible to use mp
-                result_dict = self.compute_jaccard_distance(related_hog_list, result_dict, events_combo)
+            # get jaccard score, here its possible to use mp
+            result_dict = self.compute_jaccard_distance(related_hog_list, result_dict, events_combo)
 
         results_df = pd.DataFrame.from_dict(result_dict, orient='index')
         return results_df
@@ -100,6 +120,34 @@ class Profiler:
                 hog2 = hashutils.result2hogid(hog_event_2)
                 semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog1, hog2)
                 result_dict[(hog1, hog2, events_combo_string, 'semantic_distance')] = semantic_dist
+
+        return result_dict
+
+    def compute_jaccard_distance_query(self, query, results_list, result_dict, events_combo):
+
+        events_combo_string = ''.join(event for event in sorted(events_combo))
+
+        with h5py.File(self.hashes, 'r') as h5hashes:
+            query_hash = {query: hashutils.fam2hash_hdf5(hashutils.result2fam(query), h5hashes, events_combo)}
+            results_hashes = {result: hashutils.fam2hash_hdf5(hashutils.result2fam(result), h5hashes, events_combo)
+                              for result in results_list}
+
+        hash_compare_query = [((0, query_hash), (i, result_hash)) for i, result_hash in enumerate(results_hashes)]
+
+        pool = mp.Pool(10)
+
+        jaccard_results = pool.map_async(jaccard_mp, hash_compare_query, 10).get()
+
+        # feed matrix and big dict with results
+        for jac_res in jaccard_results:
+
+            i, j, jac_dist = jac_res
+            hog1 = hashutils.result2hogid(query)
+            hog2 = hashutils.result2hogid(results_list[j])
+
+            result_dict[(hog1, hog2, events_combo_string, 'jaccard_distance')] = jac_dist
+
+        pool.close()
 
         return result_dict
 
@@ -142,6 +190,18 @@ class Profiler:
             print(df_results)
         print('done')
 
+    def validation_save(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
+                        combination=True, scores=True, path_to_save=None):
+
+        print('getting results')
+        df_results = self.validation(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination,
+                                  scores=scores)
+        print('saving ...')
+        if path_to_save is not None:
+            df_results.to_csv(path_to_save, sep='\t')
+            print(df_results)
+        print('done')
+
 
 def jaccard_mp(args):
     """
@@ -151,8 +211,5 @@ def jaccard_mp(args):
     hash1, hash2 = args
     i, h1 = hash1
     j, h2 = hash2
-
-    print(type(h1))
-    print(h1)
 
     return i, j, h1.jaccard(h2)
