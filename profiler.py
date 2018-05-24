@@ -187,7 +187,6 @@ class Profiler:
         print('saving ...')
         if path_to_save is not None:
             df_results.to_csv(path_to_save, sep='\t')
-<<<<<<< Updated upstream
             print(df_results)
         print('done')
 
