@@ -18,9 +18,29 @@ class SemanticSimilarityAnalysis(object):
         """
         go_terms_1 = self._get_go_terms(hog_id_1)
         go_terms_2 = self._get_go_terms(hog_id_2)
+
         score = self._compute_score(go_terms_1, go_terms_2)
 
         return score
+
+    def semantic_similarity_score_from_go_terms(self, go_terms_1, go_terms_2):
+        """
+        Runs semantic similarity analysis from 2 dictionaries of go terms
+        :param go_terms_1: first dictionary of go terms
+        :param go_terms_2: second dictionary of go terms
+        :return: semantic similarity score between the two dictionaries of go terms
+        """
+        score = self._compute_score(go_terms_1, go_terms_2)
+
+        return score
+
+    def get_go_terms(self, hog_id):
+        """
+        Fetch the genes from hog id, then get all GO terms from it
+        :param hog_id: hog id
+        :return: list of GO term
+        """
+        return self._get_go_terms(hog_id)
 
     def _compute_score(self, query_go_terms, result_go_terms):
         """
@@ -51,11 +71,11 @@ class SemanticSimilarityAnalysis(object):
         for k in range(len(keys_1)):
             for l in range(len(keys_2)):
 
-                go_terms_genes_1 = list(go_terms_genes_1[list(keys_1)[k]])
-                go_terms_genes_2 = list(go_terms_genes_2[list(keys_2)[l]])
+                go_terms_1 = list(go_terms_genes_1[list(keys_1)[k]])
+                go_terms_2 = list(go_terms_genes_2[list(keys_2)[l]])
 
-                if go_terms_genes_1 and go_terms_genes_2:
-                    gene_dist[k, l] = self._compute_genes_score(go_terms_genes_1, go_terms_genes_2)
+                if go_terms_1 and go_terms_2:
+                    gene_dist[k, l] = self._compute_genes_score(go_terms_1, go_terms_2)
 
         return gene_dist
 
