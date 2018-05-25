@@ -84,9 +84,11 @@ class Profiler:
                 validation_dict = {}
                 print('getting score for {}'.format(query))
 
-                validation_dict.update(self.compute_jaccard_distance_query(query, results_list, validation_dict, events))
+                validation_dict.update(
+                    self.compute_jaccard_distance_query(query, results_list, validation_dict, events))
 
-                validation_dict.update(self.compute_semantic_distance_query(results_list, validation_dict, events, query))
+                validation_dict.update(
+                    self.compute_semantic_distance_query(results_list, validation_dict, events, query))
 
                 validation_df = pd.DataFrame.from_dict(validation_dict, orient='index')
                 validation_df['event'] = query
@@ -137,7 +139,6 @@ class Profiler:
                 hog1 = hashutils.result2hogid(hog_event_1)
                 hog2 = hashutils.result2hogid(hog_event_2)
 
-
                 semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog1, hog2)
                 result_dict[(hog1, hog2)] = {'Semantic': semantic_dist}
 
@@ -177,9 +178,9 @@ class Profiler:
 
         hash_compare_query = [((0, query_hash[query]), (i, results_hashes[h])) for i, h in enumerate(results_hashes)]
         print(hash_compare_query)
-        #pool = mp.Pool(10)
+        # pool = mp.Pool(10)
         print('before pool')
-        #jaccard_results = pool.map_async(jaccard_mp, hash_compare_query, 10).get(9999999)
+        # jaccard_results = pool.map_async(jaccard_mp, hash_compare_query, 10).get(9999999)
 
         jaccard_results = list(map(jaccard_mp, hash_compare_query))
 
@@ -192,7 +193,7 @@ class Profiler:
 
             result_dict[(hog1, hog2)] = {'Jaccard': jac_dist}
 
-        #pool.close()
+        # pool.close()
 
         return result_dict
 
@@ -201,10 +202,8 @@ class Profiler:
         events_combo_string = ''.join(event for event in sorted(events_combo))
 
         with h5py.File(self.hashes, 'r') as h5hashes:
-
             hashes = {result: hashutils.fam2hash_hdf5(hashutils.result2fam(result), h5hashes, events_combo)
                       for result in hogs_list}
-
 
         hash_compare = [((h1[0], hashes[h1[1]]), (h2[0], hashes[h2[1]]))
                         for h1, h2 in itertools.combinations(enumerate(hashes), 2)]
@@ -215,7 +214,6 @@ class Profiler:
 
         # feed matrix and big dict with results
         for jac_res in jaccard_results:
-
             i, j, jac_dist = jac_res
             hog1 = hashutils.result2hogid(hogs_list[i])
             hog2 = hashutils.result2hogid(hogs_list[j])
@@ -232,7 +230,6 @@ class Profiler:
         df_results = self.results(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination, scores=scores)
         print('saving ...')
         if path_to_save is not None:
-
             concat_result = pd.concat(list(df_results))
             concat_result.to_csv(path_to_save, sep='\t')
             print(df_results)
@@ -243,7 +240,7 @@ class Profiler:
 
         print('getting results')
         df_results = self.validation(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination,
-                                  scores=scores)
+                                     scores=scores)
         print('saving ...')
         if path_to_save is not None:
             concat_validation = pd.concat(df_results)
