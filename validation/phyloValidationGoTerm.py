@@ -4,9 +4,9 @@ import numpy as np
 
 class SemanticSimilarityAnalysis(object):
 
-    def __init__(self, go, h5file, term_counts):
+    def __init__(self, go, oma, term_counts):
         self.go_file = go
-        self.h5file = h5file
+        self.oma = oma
         self.term_counts = term_counts
 
     def semantic_similarity_score(self, hog_id_1, hog_id_2):
@@ -146,7 +146,7 @@ class SemanticSimilarityAnalysis(object):
         return {k: v for k, v in dictionary.items() if v}
 
     def _get_entry_gene_ontology(self, entry):
-        return self.h5file.root.Annotations.GeneOntology.read_where('EntryNr == {}'.format(entry))
+        return self.oma.root.Annotations.GeneOntology.read_where('EntryNr == {}'.format(entry))
 
     def _get_hog_members(self, hog_id):
         """
@@ -175,7 +175,7 @@ class SemanticSimilarityAnalysis(object):
         :return: yields members of hog
         """
         hog_range = self._hog_lex_range(hog_id)
-        it = self.h5file.root.Protein.Entries.where('({!r} <= OmaHOG) & (OmaHOG < {!r})'.format(*hog_range))
+        it = self.oma.root.Protein.Entries.where('({!r} <= OmaHOG) & (OmaHOG < {!r})'.format(*hog_range))
         for row in it:
             yield row.fetch_all_fields()
 
