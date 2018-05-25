@@ -5,7 +5,7 @@ import numpy as np
 class SemanticSimilarityAnalysis(object):
 
     def __init__(self, go, h5file, term_counts):
-        self.go = go
+        self.go_file = go
         self.h5file = h5file
         self.term_counts = term_counts
 
@@ -75,11 +75,11 @@ class SemanticSimilarityAnalysis(object):
                 go_terms_2 = list(go_terms_genes_2[list(keys_2)[l]])
 
                 if go_terms_1 and go_terms_2:
-                    gene_dist[k, l] = self._compute_genes_score(go_terms_1, go_terms_2)
+                    gene_dist[k, l] = self._compute_go_terms_score_per_gene(go_terms_1, go_terms_2)
 
         return gene_dist
 
-    def _compute_genes_score(self, go_terms_gene_1, go_terms_gene_2):
+    def _compute_go_terms_score_per_gene(self, go_terms_gene_1, go_terms_gene_2):
         """
         Computes the semantic similarity score between two genes
         :param go_terms_gene_1: list of go terms from one of the gene
@@ -92,7 +92,7 @@ class SemanticSimilarityAnalysis(object):
             for n in range(len(go_terms_gene_2)):
 
                 try:
-                    dist = resnik_sim(go_terms_gene_1[m], go_terms_gene_2[n], self.go, self.term_counts)
+                    dist = resnik_sim(go_terms_gene_1[m], go_terms_gene_2[n], self.go_file, self.term_counts)
                     ss_dist[m, n] = dist
                 except:
                     pass
@@ -189,7 +189,7 @@ class SemanticSimilarityAnalysis(object):
         terms_to_keep = []
         for term in list_terms:
             try:
-                if self.go[term].namespace == name:
+                if self.go_file[term].namespace == name:
                     terms_to_keep.append(term)
             except KeyError:
                 pass
