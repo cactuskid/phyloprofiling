@@ -74,8 +74,10 @@ class Profiler:
 
         for query, results_list in results.items():
 
+            print('update dictionary')
             self.update_go_terms_dictionary([query] + results_list)
 
+            print('getting results for {}'.format(query))
             if all_vs_all:
                 results_query_dict = self.results_all_vs_all(query, results_list)
             else:
@@ -85,6 +87,8 @@ class Profiler:
             results_query_df['event'] = query
 
             dataframe_list.append(results_query_df)
+
+            print('{} done'.format(query))
 
         return dataframe_list
 
@@ -319,7 +323,7 @@ class Profiler:
     #         print(df_results)
     #     print('done')
 
-    def save_results(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
+    def save_results(self, hog_id=None, fam_id=None, events=['gain', 'loss', 'presence'],
                      combination=True, path_to_save=None, all_vs_all=False):
 
         print('getting results')
@@ -349,4 +353,3 @@ class Profiler:
 def see_results(results):
     for k, v in results.items():
         print('{} queries found for {}'.format(len(v), k))
-        print(v)
