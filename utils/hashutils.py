@@ -156,14 +156,14 @@ def minhashes2leanminhashes(fam, minhashes, combination=True):
     if combination:
         for j in range(1, len(minhashes.keys())):
             for i in itertools.combinations(minhashes.keys(), j + 1):
-                combName = str(fam)
+                comb_name = str(fam)
                 minHash = datasketch.MinHash(num_perm=128)
                 for array in i:
-                    combName += '-' + array
+                    comb_name += '-' + array
                     minHash.merge(minhashes[array])
 
                 lean_minhash = datasketch.LeanMinHash(minHash)
-                lean_minhashes_dictionary[combName] = lean_minhash
+                lean_minhashes_dictionary[comb_name] = lean_minhash
 
     return lean_minhashes_dictionary
 
@@ -294,6 +294,7 @@ def fam2hash_hdf5(fam, hdf5, events=['duplication', 'gain', 'loss', 'presence'])
         try:
             query_minhash.hashvalues = hdf5[event][fam, :]
         except:
+            print('bug fam2hash_hdf5')
             print(fam)
             print(event)
             print(hdf5[event].shape)
@@ -333,6 +334,6 @@ def jaccard_rank(query_hash, hash_dictionary):
     # for array in [list_hashes, list_fam, index]:
     #     array = array[index]
 
-    ordered_scores = {list_fam[i]:list_hashes[i] for i in np.argsort(scores)}
+    ordered_scores = {list_fam[i]: list_hashes[i] for i in np.argsort(scores)}
 
     return ordered_scores
