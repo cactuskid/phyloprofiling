@@ -1,5 +1,6 @@
 from goatools import semantic
 
+
 def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
     '''
         Computes Resnik's similarity measure.
