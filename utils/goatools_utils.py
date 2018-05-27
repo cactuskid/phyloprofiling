@@ -5,7 +5,7 @@ def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
     '''
         Computes Resnik's similarity measure.
     '''
-    msca_goid = deepest_common_ancestor_hdf5([go_id1, go_id2], godag, hdf5)
+    msca_goid = deepest_common_ancestor_hdf5([goterm2id(go_id1), goterm2id(go_id2)], godag, hdf5)
     return semantic.get_info_content(msca_goid, termcounts)
 
 
@@ -25,14 +25,14 @@ def common_parent_go_ids_hdf5(go_ids, hdf5):
         tree of the list of goids in the input.
     '''
 
-    candidates = hdf5['go_terms'][go_ids[0]].tolist()
+    candidates = set(hdf5['go_terms'][go_ids[0]].tolist())
 
     for go_id in go_ids[1:]:
-        candidates_to_add = hdf5['go_terms'][go_ids[go_id]].tolist()
+        candidates_to_add = set(hdf5['go_terms'][go_id].tolist())
 
         candidates.intersection_update(candidates_to_add)
 
-    corrected_candidates = set([id2goterm(c) for c in candidates])
+    corrected_candidates = [id2goterm(c) for c in candidates]
     return corrected_candidates
 
 

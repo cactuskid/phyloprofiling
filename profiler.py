@@ -11,6 +11,8 @@ from pyoma.browser import db
 from validation import phyloValidationGoTerm as validationGoTerm
 from utils import files_utils, hashutils
 
+from time import time
+
 
 class Profiler:
 
@@ -93,11 +95,12 @@ class Profiler:
         return dataframe_list
 
     def update_go_terms_dictionary(self, hog_events_list):
-
+        time_start = time()
         for hog_event in hog_events_list:
             hog_id = hashutils.result2hogid(hog_event)
             if hog_id not in self.go_terms_dict:
                 self.go_terms_dict[hog_id] = self.goTermAnalysis.get_go_terms(hog_id)
+        print('time to update dico {}'.format(time() - time_start))
 
     def results_all_vs_all(self, query, results_list):
 
@@ -111,13 +114,14 @@ class Profiler:
         return results_dict
 
     def results_query(self, query, results_list):
-
+        time_start = time()
         results_dict = {}
         hog_event_1 = query
 
-        for j, hog_event_2 in enumerate(results_list):
+        for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
 
+        print('query results {}'.format(time()-time_start))
         return results_dict
 
     def get_scores(self, hog_event_1, hog_event_2, results_dict):
@@ -194,16 +198,25 @@ class Profiler:
 
     def compute_semantic_distance(self, hog_1, hog_2):
 
+        time_start = time()
+
         semantic_dist = self.goTermAnalysis.semantic_similarity_score_from_go_terms(
             self.go_terms_dict[hog_1], self.go_terms_dict[hog_2])
+
+        print('semantic {}'.format(time()-time_start))
 
         return semantic_dist
 
     def compute_jaccard_distance(self, hog_event_1, hog_event_2):
 
+        time_start = time()
+
         hash_1, hash_2 = [hashutils.fam2hash_hdf5(hashutils.result2fam(hog_event), self.hashes)
                           for hog_event in [hog_event_1, hog_event_2]]
         jaccard_dist = hash_1.jaccard(hash_2)
+
+        print('jaccard {}'.format(time() - time_start))
+
         return jaccard_dist
 
     # def compute_semantic_distance(self, hogs_list, result_dict, events_combo):
@@ -323,7 +336,7 @@ class Profiler:
     #         print(df_results)
     #     print('done')
 
-    def save_results(self, hog_id=None, fam_id=None, events=['gain', 'loss', 'presence'],
+    def save_results(self, hog_id=None, fam_id=None, events=['loss', 'presence'],
                      combination=True, path_to_save=None, all_vs_all=False):
 
         print('getting results')

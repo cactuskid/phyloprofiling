@@ -2,6 +2,7 @@ import numpy as np
 
 from utils import goatools_utils
 
+from time import time
 
 class SemanticSimilarityAnalysis(object):
 
@@ -32,6 +33,7 @@ class SemanticSimilarityAnalysis(object):
         :param go_terms_2: second dictionary of go terms
         :return: semantic similarity score between the two dictionaries of go terms
         """
+
         score = self._compute_score(go_terms_1, go_terms_2)
 
         return score
@@ -52,8 +54,13 @@ class SemanticSimilarityAnalysis(object):
         :return: semantic similarity score
         """
         # for each couple, compute resnik
+        start_time = time()
+
         dist_mat = self._compute_genes_distance(query_go_terms, result_go_terms)
+
+        print('time to compute dist mat {}'.format(time()-start_time))
         # bma on this matrix
+
         score = self._mean_max_score_matrix(dist_mat)
 
         return score
@@ -92,12 +99,8 @@ class SemanticSimilarityAnalysis(object):
 
         for m in range(len(go_terms_gene_1)):
             for n in range(len(go_terms_gene_2)):
-
-                try:
-                    dist = goatools_utils.resnik_sim_hdf5(go_terms_gene_1[m], go_terms_gene_2[n], self.go_file, self.term_counts, self.go_terms_parents)
-                    ss_dist[m, n] = dist
-                except:
-                    pass
+                dist = goatools_utils.resnik_sim_hdf5(go_terms_gene_1[m], go_terms_gene_2[n], self.go_file, self.term_counts, self.go_terms_parents)
+                ss_dist[m, n] = dist
 
         gene_score = self._mean_max_score_matrix(ss_dist)
 
@@ -130,8 +133,8 @@ class SemanticSimilarityAnalysis(object):
 
     @staticmethod
     def _format_go_term(e):
-        return e['TermNr']
-        #return 'GO:{:07d}'.format(e['TermNr'])
+        #return e['TermNr']
+        return 'GO:{:07d}'.format(e['TermNr'])
 
     def _filter_result(self, go_dict):
 
