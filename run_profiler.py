@@ -4,7 +4,7 @@ from utils import config_utils
 if __name__ == '__main__':
 
     profiler = profiler.Profiler(config_utils.omadir + 'OmaServer.h5')
-    profiler.go_benchmarking_init(config_utils.datadirLaurent + 'project/data/go.obo', config_utils.datadirLaurent + 'project/data/gene_association.tair')
+    profiler.go_benchmarking_init(config_utils.datadirLaurent + 'project/data/go.obo', config_utils.datadirLaurent + 'project/data/gene_association.tair', config_utils.datadirLaurent + 'project/data/parents.h5',)
 
     profiler.lsh_loader(config_utils.datadirLaurent + 'May_16_2018_17_33_0.7_newlsh.pkl')
 

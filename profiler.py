@@ -32,12 +32,12 @@ class Profiler:
 
         self.go_terms_dict = {}
 
-    def go_benchmarking_init(self, obo_file_path, gaf_file_path):
+    def go_benchmarking_init(self, obo_file_path, gaf_file_path, h5_go_terms_parents_path):
         self.go = obo_parser.GODag(obo_file_path)
         self.associations = read_gaf(gaf_file_path)
         # Get the counts of each GO term.
         self.term_counts = TermCounts(self.go, self.associations)
-        self.goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(self.go, self.h5OMA, self.term_counts)
+        self.goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(self.go, self.h5OMA, self.term_counts, h5py.File(h5_go_terms_parents_path, mode='r'))
 
     def lsh_loader(self, lsh_path, hashes_path):
         lsh_file = open(lsh_path, 'rb')
@@ -133,7 +133,6 @@ class Profiler:
 
     def compute_semantic_distance(self, hogs_list, result_dict, events_combo):
 
-        events_combo_string = ''.join(event for event in sorted(events_combo))
         for i, hog_event_1 in enumerate(hogs_list):
             for j, hog_event_2 in enumerate(hogs_list):
                 hog1 = hashutils.result2hogid(hog_event_1)
@@ -163,6 +162,8 @@ class Profiler:
             result_dict[(hog_query, hog_other)]['Semantic'] = semantic_dist
 
         return result_dict
+
+
 
     def compute_jaccard_distance_query(self, query, results_list, result_dict, events_combo):
 

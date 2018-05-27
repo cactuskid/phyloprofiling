@@ -1,13 +1,15 @@
-from goatools.semantic import resnik_sim
 import numpy as np
+
+from utils import goatools_utils
 
 
 class SemanticSimilarityAnalysis(object):
 
-    def __init__(self, go, oma, term_counts):
+    def __init__(self, go, oma, term_counts, parents):
         self.go_file = go
         self.oma = oma
         self.term_counts = term_counts
+        self.go_terms_parents = parents
 
     def semantic_similarity_score(self, hog_id_1, hog_id_2):
         """
@@ -92,7 +94,7 @@ class SemanticSimilarityAnalysis(object):
             for n in range(len(go_terms_gene_2)):
 
                 try:
-                    dist = resnik_sim(go_terms_gene_1[m], go_terms_gene_2[n], self.go_file, self.term_counts)
+                    dist = goatools_utils.resnik_sim_hdf5(go_terms_gene_1[m], go_terms_gene_2[n], self.go_file, self.term_counts, self.go_terms_parents)
                     ss_dist[m, n] = dist
                 except:
                     pass
@@ -128,7 +130,8 @@ class SemanticSimilarityAnalysis(object):
 
     @staticmethod
     def _format_go_term(e):
-        return 'GO:{:07d}'.format(e['TermNr'])
+        return e['TermNr']
+        #return 'GO:{:07d}'.format(e['TermNr'])
 
     def _filter_result(self, go_dict):
 
