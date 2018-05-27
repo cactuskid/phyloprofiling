@@ -55,7 +55,7 @@ class Profiler:
 
         # query_hashes dict keys:lminhashname, values:hashes
         # get it from h5hashes instead of recomputing it
-        query_hashes = hashutils.fam2hash(fam_id, self.hashes, events, combination)
+        query_hashes = hashutils.fam2hashes(fam_id, self.db_obj, self.tree, self.replacement_dic, events, combination)
 
         query_dict = {}
         # query_hashes['dict'] contains all 15 leanminhashes
