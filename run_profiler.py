@@ -15,11 +15,11 @@ if __name__ == '__main__':
 %autoreload 2
 import profiler
 from utils import config_utils
-profiler = profiler.Profiler(config_utils.omadir + 'OmaServer.h5')
-profiler.go_benchmarking_init(config_utils.datadirLaurent + 'project/data/go.obo', config_utils.datadirLaurent + 'project/data/gene_association.tair', config_utils.datadirLaurent + 'project/data/parents.h5')
-profiler.lsh_loader(config_utils.datadirLaurent + 'May_23_2018_18_29_0.7_newlsh.pkl', config_utils.datadirLaurent + 'May_23_2018_18_29hashes.h5')
+profilerObj = profiler.Profiler(config_utils.omadir + 'OmaServer.h5')
+profilerObj.go_benchmarking_init(config_utils.datadirLaurent + 'project/data/go.obo', config_utils.datadirLaurent + 'project/data/gene_association.tair', config_utils.datadirLaurent + 'project/data/parents.h5')
+profilerObj.lsh_loader(config_utils.datadirLaurent + 'May_23_2018_18_29_0.7_newlsh.pkl', config_utils.datadirLaurent + 'May_23_2018_18_29hashes.h5')
 
 
-profiler.save_results(fam_id=399563, path_to_save=config_utils.datadirLaurent + 'test?03.txt')
+profilerObj.save_results(fam_id=399563, path_to_save=config_utils.datadirLaurent + 'test_06.txt')
 
 

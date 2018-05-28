@@ -21,10 +21,22 @@ def get_species_tree_replacement_dic(h5file, oma_id_obj):
     # get tree from NCBI; takes all the genomes ids and
     # returns a species tree; some nodes are added between the given ids
     tree = ncbi.get_topology(genome_ids_list)
+    # remove interm. node if only one child
+    for node in tree.traverse():
+        #print(node.name)
+        #if node.is_leaf() and node.name not in genome_ids_list:
+        #    #print(node.name)
+        #    node.delete()
+        if len(node.children) == 1:
+            # print(node)
+            node.delete()
+
     # dictionary mapping NCBI taxa id with scientific names for all OMA genomes
     taxon_id_sci_name = {}
     for genome in h5file.root.Genome.read():
         taxon_id_sci_name[genome[0]] = genome[5].decode()
+
+
 
     # initialize replacement dictonary
     replacement_dic = {}
@@ -54,13 +66,15 @@ def get_species_tree_replacement_dic(h5file, oma_id_obj):
                 node.name = replacement_dic[node.name]
             # correct names; remove special characters breaking the species tree
             elif ',' in node.name or \
-                    ('(' in node.name and ')' in node.name) or ':' in node.name or '.' in node.name or ' ' in node.name:
+                    ('(' in node.name and ')' in node.name) or ':' in node.name or '.' in node.name or ' ' in node.name or '/' in node.name:
                 name = replace_characters(node.name)
                 replacement_dic[node.name] = name
                 node.name = name
         else:
             # the node is not present in OMA, keep NCBI notation
-            node.name = node.sci_name
+            print(node.name)
+            node.delete()
+            #node.name = node.sci_name
 
     # turns the tree into a string
     tree_fixed = tree.write(format=1)
@@ -74,7 +88,7 @@ def replace_characters(string):
     :param string: string to correct
     :return: corrected string
     """
-    for ch in ['.', ',', ' ', '(', ')', ':']:
+    for ch in ['.', ',', ' ', '(', ')', ':', '/']:
         if ch in string:
             string = string.replace(ch, '_')
 

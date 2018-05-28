@@ -27,5 +27,3 @@ with h5py.File('/home/laurent/Documents/project/phyloprofiling/data/parents.h5',
                 print(go_term_parents_int)
             except:
                 print('BUG')
-
-
