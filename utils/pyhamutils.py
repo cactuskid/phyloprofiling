@@ -13,18 +13,24 @@ def get_orthoxml(fam, db_obj):
 
 def get_species_tree_from_orthoxml(orthoxml, replacement_dic):
     species = get_species_from_orthoxml(orthoxml)
+    print(len(species))
     ncbi = ete3.NCBITaxa()
     tree = ncbi.get_topology(species.keys())
+    # tree = ncbi.get_topology(ncbi.get_lineage(tree.name))
+    print(tree)
     # prune tree, remove inter. node if only one child
     # correct nodes name
     for node in tree.traverse():
-        if len(node.children) == 1:
-            node.delete()
-        elif node.name in species.key():
+        # if len(node.children) == 1:
+        #     print(node.name)
+        #     node.delete()
+        if node.name in species.keys():
             node.name = replacement_dic[species[node.name]]
 
     # turns the tree into a string
+
     tree_string = tree.write(format=1)
+
 
     return tree_string
 
@@ -32,8 +38,9 @@ def get_species_tree_from_orthoxml(orthoxml, replacement_dic):
 def get_species_from_orthoxml(orthoxml):
     NCBITaxId2name = {}
     root = ET.fromstring(orthoxml)
-    for species in root.iter('species'):
-        NCBITaxId2name[species['NCBITaxId']] = species['name']
+    for child in root:
+        if 'species' in child.tag:
+            NCBITaxId2name[child.attrib['NCBITaxId']] = child.attrib['name']
 
     return NCBITaxId2name
 
@@ -63,6 +70,7 @@ def get_ham_treemap(row, replacement_dic):
     :return: tp.treemap or none if fail
     """
     fam, orthoxml = row
+
     species_tree = get_species_tree_from_orthoxml(orthoxml, replacement_dic)
     try:
         ham_obj = pyham.Ham(species_tree, orthoxml.encode(), type_hog_file="orthoxml",
