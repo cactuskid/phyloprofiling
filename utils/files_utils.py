@@ -18,10 +18,10 @@ def get_replacement_dict(h5file, oma_id_obj):
     for species in uniprot_species:
         try:
             replacement_dic[species] = replace_characters(oma_id_obj.genome_from_UniProtCode(species)[5].decode())
-        except KeyError:
+        except:
             pass
 
-    char_to_remove = ['.', ',', ' ', '(', ')', ':', '/']
+    char_to_remove = ['.', ',', ' ', '(', ')', ':', '/', '-']
 
     for genome in genome_list:
         if any(character in genome for character in char_to_remove):
@@ -171,9 +171,9 @@ def correct_orthoxml(in_string, replacement_dic, verbose=False):
 def get_ham_treemap(fam, db_obj, replacement_dic):
 
     orthoxml = pyhamutils.get_orthoxml(fam, db_obj)
-
+    species_tree = pyhamutils.get_species_tree_from_orthoxml(orthoxml, replacement_dic)
     orthoxml = correct_orthoxml(orthoxml, replacement_dic, verbose=False)
-    species_tree = pyhamutils.get_species_from_orthoxml(orthoxml)
+
     ham_obj = pyham.Ham(species_tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=True,
                         orthoXML_as_string=True)
     hog = ham_obj.get_hog_by_id(fam)
