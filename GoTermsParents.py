@@ -160,18 +160,16 @@ if __name__ == '__main__':
         count = 1
         start_time = time()
 
-        for fam in iter_hog(omah5):
+        for i, row in enumerate(omah5.root.OrthoXML.Index):
+            fam = row[0]
 
-            if fam == count:
-                hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
+            hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
 
-                dataset_hog2genes[fam] = json.dumps(hog_dict).encode()
+            dataset_hog2genes[fam] = json.dumps(hog_dict).encode()
 
-                if count % 1000 == 0:
-                    print('saving {} {}'.format(time()-start_time, fam))
-                    h5_go_terms.flush()
-
-                count += 1
+            if i % 1000 == 0:
+                print('saving {} {}'.format(time()-start_time, fam))
+                h5_go_terms.flush()
 
         h5_go_terms.flush()
 

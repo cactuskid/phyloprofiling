@@ -6,7 +6,7 @@ import pandas as pd
 import time
 import h5sparse
 import pickle
-from datasketch import MinHashLSH, MinHashLSHForest
+from datasketch import MinHashLSH
 from scipy import sparse
 from datetime import datetime
 import h5py
@@ -23,15 +23,15 @@ class LSHBuilder:
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
-        self.dic, self.tree = files_utils.get_species_tree_replacement_dic(h5_oma, self.oma_id_obj)
-        self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.tree)
+        self.dic = files_utils.get_replacement_dict(h5_oma, self.oma_id_obj)
+        self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.h5OMA)
 
         self.saving_path = saving_path
         self.datetime = datetime
         self.date_string = "{:%B_%d_%Y_%H_%M}".format(datetime.now())
 
         # define functions
-        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap, species_tree=self.tree)
+        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap, replacement_dic=self.dic)
         self.HASH_PIPELINE = functools.partial(hashutils.tree2hashes_from_row,
                                                events=['duplication', 'gain', 'loss', 'presence'], combination=True)
         self.ROW_PIPELINE = functools.partial(hashutils.tree2mat, taxaIndex=self.taxaIndex)
