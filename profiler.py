@@ -20,7 +20,7 @@ class Profiler:
         self.h5OMA = tables.open_file(h5_oma_path, mode='r')
         self.db_obj = db.Database(self.h5OMA)
         self.omaIdObj = db.OmaIdMapper(self.db_obj)
-        self.replacement_dic, self.tree = files_utils.get_species_tree_replacement_dic(self.h5OMA, self.omaIdObj)
+        self.replacement_dic = files_utils.get_replacement_dict(self.h5OMA, self.omaIdObj)
 
         self.go = None
         self.associations = None
@@ -57,7 +57,7 @@ class Profiler:
 
         # query_hashes dict keys:lminhashname, values:hashes
         # get it from h5hashes instead of recomputing it
-        query_hashes = hashutils.fam2hashes(fam_id, self.db_obj, self.tree, self.replacement_dic, events, combination)
+        query_hashes = hashutils.fam2hashes(fam_id, self.db_obj, self.replacement_dic, events, combination)
 
         query_dict = {}
         # query_hashes['dict'] contains all 15 leanminhashes

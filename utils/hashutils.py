@@ -1,9 +1,9 @@
 import datasketch
 import itertools
-from scipy.sparse import csr_matrix, vstack
+from scipy.sparse import csr_matrix
 import numpy as np
 
-from utils import files_utils, pyhamutils
+from utils import files_utils
 
 
 def hogid2fam(hog_id):
@@ -73,7 +73,7 @@ def result2hash(result, tree, replacement_dic, db_obj):
     events = result2events(result)
     fam = result2fam(result)
 
-    treemap = files_utils.get_ham_treemap(fam, db_obj, tree, replacement_dic)
+    treemap = files_utils.get_ham_treemap(fam, db_obj, replacement_dic)
     eventdict = tree2eventdict(treemap)
     eventdict = {e: eventdict[e] for e in events}
 
@@ -201,18 +201,17 @@ def tree2hashes_from_row(row, events, combination):
     return tree2hashes(fam, treemap, events, combination)
 
 
-def fam2hashes(fam, db_obj, tree, replacement_dic, events, combination):
+def fam2hashes(fam, db_obj, replacement_dic, events, combination):
     """
     Turn the family into minhash object
     :param fam: hog family id
     :param db_obj: database object
-    :param tree: tree
     :param replacement_dic: replacement dictionary
     :param events: list of evolutionary events
     :param combination: boolean: True for combination of events
     :return: hashes corresponding to this tree
     """
-    treemap = files_utils.get_ham_treemap(fam, db_obj, tree, replacement_dic)
+    treemap = files_utils.get_ham_treemap(fam, db_obj, replacement_dic)
     hashes = tree2hashes(fam, treemap, events, combination)
 
     return hashes
@@ -261,17 +260,17 @@ def tree2mat(treemap, taxa_index, verbose=False):
         return csr_matrix((1, 4 * len(taxa_index)))
 
 
-def list_fam2row(list_fam, db_obj, tree, replacement_dic):
-    # UNTESTED !!
-    taxa_index, taxa_index_reverse = files_utils.generate_taxa_index(tree)
-    rows = []
-
-    for fam in list_fam:
-        treemap_fam = pyhamutils.get_ham_treemap_from_fam(fam, db_obj, tree, replacement_dic)
-        rows.append(tree2mat(treemap_fam, taxa_index))
-    stack_rows = vstack(rows)
-
-    return stack_rows
+# def list_fam2row(list_fam, db_obj, tree, replacement_dic):
+#     # UNTESTED !!
+#     taxa_index, taxa_index_reverse = files_utils.generate_taxa_index(tree)
+#     rows = []
+#
+#     for fam in list_fam:
+#         treemap_fam = pyhamutils.get_ham_treemap_from_fam(fam, db_obj, tree, replacement_dic)
+#         rows.append(tree2mat(treemap_fam, taxa_index))
+#     stack_rows = vstack(rows)
+#
+#     return stack_rows
 
 
 def jaccard_cutoff(list_fam, scores, cutoff):
