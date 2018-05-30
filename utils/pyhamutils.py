@@ -15,8 +15,17 @@ def get_species_tree_from_orthoxml(orthoxml, replacement_dic):
     species = get_species_from_orthoxml(orthoxml)
     print(len(species))
     ncbi = ete3.NCBITaxa()
+
+
     tree = ncbi.get_topology(species.keys())
+
+    lineage = tree.get_linage(tree.get_tree_root().name)
+
+    tree = ncbi.get_topology(lineage)
+
     # tree = ncbi.get_topology(ncbi.get_lineage(tree.name))
+
+
     print(tree)
     # prune tree, remove inter. node if only one child
     # correct nodes name
