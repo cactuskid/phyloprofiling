@@ -124,52 +124,53 @@ if __name__ == '__main__':
     dt = h5py.special_dtype(vlen=np.dtype('int32'))
     omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
 
-    with h5py.File(config_utils.datadirLaurent + 'project/data/parents.h5', 'w', libver='latest') as h5_go_terms:
+    with h5py.File(config_utils.datadirLaurent + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
 
-        start_time = time()
+        # start_time = time()
+        #
+        # h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
+        # dataset_go_terms_parents = h5_go_terms['goterms2parents']
+        #
+        # count = 0
+        #
+        # for go_term in obo_reader:
+        #
+        #     go_term_read = obo_reader[go_term]
+        #
+        #     if go_term_read.namespace == 'biological_process':
+        #
+        #         go_term_parents = go_term_read.get_all_parents()
+        #         go_term_parents_int = [goterm2id(go_term_read.id)] + [goterm2id(parent) for parent in go_term_parents]
+        #         dataset_go_terms_parents[goterm2id(go_term_read.id)] = go_term_parents_int
+        #
+        #         count += 1
+        #
+        #         if count % 1000 == 0:
+        #             print('saving')
+        #             h5_go_terms.flush()
+        #
+        # h5_go_terms.flush()
+        # print('Done with the parents in {} seconds'.format(time()-start_time))
 
-        h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
-        dataset_go_terms_parents = h5_go_terms['goterms2parents']
-
-        count = 0
-
-        for go_term in obo_reader:
-
-            go_term_read = obo_reader[go_term]
-
-            if go_term_read.namespace == 'biological_process':
-
-                go_term_parents = go_term_read.get_all_parents()
-                go_term_parents_int = [goterm2id(go_term_read.id)] + [goterm2id(parent) for parent in go_term_parents]
-                dataset_go_terms_parents[goterm2id(go_term_read.id)] = go_term_parents_int
-
-                count += 1
-
-                if count % 1000 == 0:
-                    print('saving')
-                    h5_go_terms.flush()
-
-        h5_go_terms.flush()
-        print('Done with the parents in {} seconds'.format(time()-start_time))
-
-        dt_2 = h5py.special_dtype(vlen=bytes)
-
-        h5_go_terms.create_dataset('hog2goterms', (1000000,), dtype=dt_2)
+        # dt_2 = h5py.special_dtype(vlen=bytes)
+        #
+        # h5_go_terms.create_dataset('hog2goterms', (1000000,), dtype=dt_2)
         dataset_hog2genes = h5_go_terms['hog2goterms']
 
         count = 1
         start_time = time()
 
         for i, row in enumerate(omah5.root.OrthoXML.Index):
-            fam = row[0]
+            if i > 586001:
+                fam = row[0]
 
-            hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
+                hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
 
-            dataset_hog2genes[fam] = json.dumps(hog_dict).encode()
+                dataset_hog2genes[fam] = json.dumps(hog_dict).encode()
 
-            if i % 1000 == 0:
-                print('saving {} {}'.format(time()-start_time, fam))
-                h5_go_terms.flush()
+                if i % 1000 == 0:
+                    print('saving {} {}'.format(time()-start_time, fam))
+                    h5_go_terms.flush()
 
         h5_go_terms.flush()
 
