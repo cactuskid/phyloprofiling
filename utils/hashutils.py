@@ -3,7 +3,7 @@ import itertools
 from scipy.sparse import csr_matrix
 import numpy as np
 
-from utils import files_utils
+from utils import files_utils, pyhamutils
 
 
 def hogid2fam(hog_id):
@@ -61,19 +61,18 @@ def result2events(result):
     return events
 
 
-def result2hash(result, tree, replacement_dic, db_obj):
+def result2hash(result, tree, db_obj):
     """
     Get minhash given result. Look for the corresponding fam and events, compute the correct hash
     :param result: result in the format FAM-EVENT1-EVENT2-etc.
     :param tree: species tree in newick format
-    :param replacement_dic: replacement dictionary to correct ortho xml files
     :param db_obj: database object
     :return: minhash
     """
     events = result2events(result)
     fam = result2fam(result)
 
-    treemap = files_utils.get_ham_treemap(fam, db_obj, replacement_dic)
+    treemap = files_utils.get_ham_treemap(fam, tree, db_obj)
     eventdict = tree2eventdict(treemap)
     eventdict = {e: eventdict[e] for e in events}
 
@@ -201,7 +200,7 @@ def tree2hashes_from_row(row, events, combination):
     return tree2hashes(fam, treemap, events, combination)
 
 
-def fam2hashes(fam, db_obj, replacement_dic, events, combination):
+def fam2hashes(fam, db_obj, tree, leaves, events, combination):
     """
     Turn the family into minhash object
     :param fam: hog family id
@@ -211,7 +210,7 @@ def fam2hashes(fam, db_obj, replacement_dic, events, combination):
     :param combination: boolean: True for combination of events
     :return: hashes corresponding to this tree
     """
-    treemap = files_utils.get_ham_treemap(fam, db_obj, replacement_dic)
+    treemap = pyhamutils.get_ham_treemap_from_fam(fam, tree, db_obj)
     hashes = tree2hashes(fam, treemap, events, combination)
 
     return hashes
@@ -260,24 +259,6 @@ def tree2mat(treemap, taxa_index, verbose=False):
         return csr_matrix((1, 4 * len(taxa_index)))
 
 
-# def list_fam2row(list_fam, db_obj, tree, replacement_dic):
-#     # UNTESTED !!
-#     taxa_index, taxa_index_reverse = files_utils.generate_taxa_index(tree)
-#     rows = []
-#
-#     for fam in list_fam:
-#         treemap_fam = pyhamutils.get_ham_treemap_from_fam(fam, db_obj, tree, replacement_dic)
-#         rows.append(tree2mat(treemap_fam, taxa_index))
-#     stack_rows = vstack(rows)
-#
-#     return stack_rows
-
-
-def jaccard_cutoff(list_fam, scores, cutoff):
-    # UNTESTED !!
-    return list_fam[np.where(scores > cutoff)]
-
-
 def fam2hash_hdf5(fam, hdf5, events=['duplication', 'gain', 'loss', 'presence']):
     """
     Get the minhash corresponding to the given hog id number
@@ -308,31 +289,50 @@ def fam2hash_hdf5(fam, hdf5, events=['duplication', 'gain', 'loss', 'presence'])
 
     return minhash1
 
+## usused functions
 
-def fam2hash_hdf5_to_dict(list_fam, h5hashes, events=['duplication', 'gain', 'loss', 'presence']):
-    # UNTESTED !!
-    hash_dictionary = {}
+# def fam2hash_hdf5_to_dict(list_fam, h5hashes, events=['duplication', 'gain', 'loss', 'presence']):
+#     # UNTESTED !!
+#     hash_dictionary = {}
+#
+#     for fam in list_fam:
+#         hash_dictionary[fam] = fam2hash_hdf5(fam, h5hashes, events)
+#
+#     return hash_dictionary
 
-    for fam in list_fam:
-        hash_dictionary[fam] = fam2hash_hdf5(fam, h5hashes, events)
 
-    return hash_dictionary
+# def list_fam2row(list_fam, db_obj, tree, replacement_dic):
+#     # UNTESTED !!
+#     taxa_index, taxa_index_reverse = files_utils.generate_taxa_index(tree)
+#     rows = []
+#
+#     for fam in list_fam:
+#         treemap_fam = pyhamutils.get_ham_treemap_from_fam(fam, db_obj, tree, replacement_dic)
+#         rows.append(tree2mat(treemap_fam, taxa_index))
+#     stack_rows = vstack(rows)
+#
+#     return stack_rows
 
 
-def jaccard_rank(query_hash, hash_dictionary):
-    # UNTESTED !!
-
-    list_hashes = np.asarray(list(hash_dictionary.values()))
-
-    list_fam = np.asarray(list(hash_dictionary.keys()))
-
-    scores = [query_hash.jaccard(result_hash) for result_hash in list_hashes]
-
-    # index = np.argsort(scores)
-    #
-    # for array in [list_hashes, list_fam, index]:
-    #     array = array[index]
-
-    ordered_scores = {list_fam[i]: list_hashes[i] for i in np.argsort(scores)}
-
-    return ordered_scores
+# def jaccard_cutoff(list_fam, scores, cutoff):
+#     # UNTESTED !!
+#     return list_fam[np.where(scores > cutoff)]
+#
+#
+# def jaccard_rank(query_hash, hash_dictionary):
+#     # UNTESTED !!
+#
+#     list_hashes = np.asarray(list(hash_dictionary.values()))
+#
+#     list_fam = np.asarray(list(hash_dictionary.keys()))
+#
+#     scores = [query_hash.jaccard(result_hash) for result_hash in list_hashes]
+#
+#     # index = np.argsort(scores)
+#     #
+#     # for array in [list_hashes, list_fam, index]:
+#     #     array = array[index]
+#
+#     ordered_scores = {list_fam[i]: list_hashes[i] for i in np.argsort(scores)}
+#
+#     return ordered_scores

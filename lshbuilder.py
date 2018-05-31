@@ -23,7 +23,10 @@ class LSHBuilder:
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
-        self.dic = files_utils.get_replacement_dict(h5_oma, self.oma_id_obj)
+
+        self.tree = files_utils.get_tree(self.h5OMA)
+        self.tree_leaves = files_utils.get_leaves(self.tree)
+
         self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.h5OMA)
 
         self.saving_path = saving_path
@@ -31,11 +34,11 @@ class LSHBuilder:
         self.date_string = "{:%B_%d_%Y_%H_%M}".format(datetime.now())
 
         # define functions
-        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap, replacement_dic=self.dic)
+        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree, leaves=self.tree_leaves)
         self.HASH_PIPELINE = functools.partial(hashutils.tree2hashes_from_row,
                                                events=['duplication', 'gain', 'loss', 'presence'], combination=True)
         self.ROW_PIPELINE = functools.partial(hashutils.tree2mat, taxaIndex=self.taxaIndex)
-        self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj, replacement_dic=self.dic)
+        self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
 
         if hog_level is not None:
             self.allowed_families = files_utils.get_allowed_families(self.db_obj, hog_level)
