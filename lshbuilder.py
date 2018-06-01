@@ -18,7 +18,7 @@ from utils import files_utils, config_utils, pyhamutils, hashutils
 
 class LSHBuilder:
 
-    def __init__(self, h5_oma, saving_path, hog_level='Drosophila melanogaster'):
+    def __init__(self, h5_oma, saving_path, hog_level=None):
         print("starting LSH BUILDER with hog level {}".format(hog_level))
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
@@ -120,6 +120,7 @@ class LSHBuilder:
 
                         hashes = this_dataframe['hash'].to_dict()
                         for fam in hashes:
+
                             if hashes[fam] is not None:
 
                                 for famhashname in hashes[fam]['dict']:

@@ -11,8 +11,7 @@ def get_tree(oma):
 
 
 def get_leaves(newick_tree):
-    tree = ete3.Tree(newick_tree, format=1)
-    leaves = set(tree.get_leaves())
+    leaves = set(newick_tree.get_leaves())
 
     return leaves
 
@@ -27,8 +26,8 @@ def generate_taxa_index(h5file):
     taxa_index = {}
     taxa_index_reverse = {}
     for i, genome in enumerate(h5file.root.Genome.read()):
-        taxa_index_reverse[i] = genome
-        taxa_index[genome] = i
+        taxa_index_reverse[i] = genome[5]
+        taxa_index[genome[5]] = i
 
     return taxa_index, taxa_index_reverse
 
