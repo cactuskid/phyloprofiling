@@ -6,11 +6,13 @@ from time import time
 
 class SemanticSimilarityAnalysis(object):
 
-    def __init__(self, go, oma, term_counts, parents):
+    def __init__(self, go, oma, term_counts, go_terms_hdf5):
         self.go_file = go
         self.oma = oma
         self.term_counts = term_counts
-        self.go_terms_parents = parents
+
+        self.goterms2parents = go_terms_hdf5['goterms2parents']
+        self.hog2goterms = go_terms_hdf5['hog2goterms']
 
     def semantic_similarity_score(self, hog_id_1, hog_id_2):
         """
@@ -19,8 +21,8 @@ class SemanticSimilarityAnalysis(object):
         :param hog_id_2: second hog id
         :return: semantic similarity score between the two hog ids
         """
-        go_terms_1 = self._get_go_terms(hog_id_1)
-        go_terms_2 = self._get_go_terms(hog_id_2)
+        go_terms_1 = goatools_utils.get_go_terms_hdf5(hog_id_1, self.hog2goterms)
+        go_terms_2 = goatools_utils.get_go_terms_hdf5(hog_id_2, self.hog2goterms)
 
         score = self._compute_score(go_terms_1, go_terms_2)
 
@@ -99,7 +101,7 @@ class SemanticSimilarityAnalysis(object):
 
         for m in range(len(go_terms_gene_1)):
             for n in range(len(go_terms_gene_2)):
-                dist = goatools_utils.resnik_sim_hdf5(go_terms_gene_1[m], go_terms_gene_2[n], self.go_file, self.term_counts, self.go_terms_parents)
+                dist = goatools_utils.resnik_sim_hdf5(go_terms_gene_1[m], go_terms_gene_2[n], self.go_file, self.term_counts, self.goterms2parents)
                 ss_dist[m, n] = dist
 
         gene_score = self._mean_max_score_matrix(ss_dist)

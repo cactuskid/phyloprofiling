@@ -2,6 +2,7 @@ import _pickle as pickle
 import tables
 import pandas as pd
 import h5py
+import itertools
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -31,8 +32,6 @@ class Profiler:
         self.lsh = None
         self.hashes = None
 
-        self.go_terms_dict = {}
-
     def go_benchmarking_init(self, obo_file_path, gaf_file_path, h5_go_terms_parents_path):
         self.go = obo_parser.GODag(obo_file_path)
         self.associations = read_gaf(gaf_file_path)
@@ -58,13 +57,28 @@ class Profiler:
 
         # query_hashes dict keys:lminhashname, values:hashes
         # get it from h5hashes instead of recomputing it
-        query_hashes = hashutils.fam2hashes(fam_id, self.db_obj, self.tree, self.tree_leaves, events, combination)
-
         query_dict = {}
-        # query_hashes['dict'] contains all 15 leanminhashes
-        for name, hashvalue in query_hashes['dict'].items():
-            # lsh.query returns a list of hash (fam-event1-event2- etc)
-            query_dict[name] = self.lsh.query(hashvalue)
+        for event in events:
+            query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, [event])
+            name = fam_id + '-' + event
+            query_dict[name] = self.lsh.query(query_hashe)
+
+        if combination:
+            for j in range(1, len(events)):
+                for i in itertools.combinations(events, j + 1):
+                    comb_name = str(fam_id)
+                    for array in i:
+                        comb_name += '-' + array
+                    query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, i)
+                    query_dict[comb_name] = self.lsh.query(query_hashe)
+
+        # query_hashes = hashutils.fam2hash_hdf5(fam_id, self.hashes, events=['duplication', 'gain', 'loss', 'presence'])
+        #
+        #
+        # # query_hashes['dict'] contains all 15 leanminhashes
+        # for name, hashvalue in query_hashes['dict'].items():
+        #     # lsh.query returns a list of hash (fam-event1-event2- etc)
+        #     query_dict[name] = self.lsh.query(hashvalue)
 
         return query_dict
 
@@ -77,8 +91,8 @@ class Profiler:
 
         for query, results_list in results.items():
 
-            print('update dictionary')
-            self.update_go_terms_dictionary([query] + results_list)
+            # print('update dictionary')
+            # self.update_go_terms_dictionary([query] + results_list)
 
             print('getting results for {}'.format(query))
             if all_vs_all:
@@ -95,13 +109,13 @@ class Profiler:
 
         return dataframe_list
 
-    def update_go_terms_dictionary(self, hog_events_list):
-        time_start = time()
-        for hog_event in hog_events_list:
-            hog_id = hashutils.result2hogid(hog_event)
-            if hog_id not in self.go_terms_dict:
-                self.go_terms_dict[hog_id] = self.goTermAnalysis.get_go_terms(hog_id)
-        print('time to update dico {}'.format(time() - time_start))
+    # def update_go_terms_dictionary(self, hog_events_list):
+    #     time_start = time()
+    #     for hog_event in hog_events_list:
+    #         hog_id = hashutils.result2hogid(hog_event)
+    #         if hog_id not in self.go_terms_dict:
+    #             self.go_terms_dict[hog_id] = self.goTermAnalysis.get_go_terms(hog_id)
+    #     print('time to update dico {}'.format(time() - time_start))
 
     def results_all_vs_all(self, query, results_list):
 
@@ -201,8 +215,7 @@ class Profiler:
 
         time_start = time()
 
-        semantic_dist = self.goTermAnalysis.semantic_similarity_score_from_go_terms(
-            self.go_terms_dict[hog_1], self.go_terms_dict[hog_2])
+        semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog_1, hog_2)
 
         print('semantic {}'.format(time()-time_start))
 
@@ -337,7 +350,7 @@ class Profiler:
     #         print(df_results)
     #     print('done')
 
-    def save_results(self, hog_id=None, fam_id=None, events=['loss', 'presence'],
+    def save_results(self, hog_id=None, fam_id=None, events=['gain', 'loss', 'presence'],
                      combination=True, path_to_save=None, all_vs_all=False):
 
         print('getting results')

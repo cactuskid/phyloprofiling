@@ -1,7 +1,7 @@
 import datasketch
 import itertools
 from scipy.sparse import csr_matrix
-import numpy as np
+
 
 from utils import files_utils, pyhamutils
 
@@ -63,6 +63,7 @@ def result2events(result):
 
 def result2hash(result, tree, db_obj):
     """
+    NOT USED ANYMORE, LOOK INTO H5
     Get minhash given result. Look for the corresponding fam and events, compute the correct hash
     :param result: result in the format FAM-EVENT1-EVENT2-etc.
     :param tree: species tree in newick format
@@ -72,7 +73,7 @@ def result2hash(result, tree, db_obj):
     events = result2events(result)
     fam = result2fam(result)
 
-    treemap = files_utils.get_ham_treemap(fam, tree, db_obj)
+    treemap = pyhamutils.get_ham_treemap_from_fam(fam, tree, db_obj)
     eventdict = tree2eventdict(treemap)
     eventdict = {e: eventdict[e] for e in events}
 
