@@ -60,7 +60,7 @@ class Profiler:
         query_dict = {}
         for event in events:
             query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, [event])
-            name = fam_id + '-' + event
+            name = str(fam_id) + '-' + event
             query_dict[name] = self.lsh.query(query_hashe)
 
         if combination:
@@ -213,23 +213,15 @@ class Profiler:
 
     def compute_semantic_distance(self, hog_1, hog_2):
 
-        time_start = time()
-
         semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog_1, hog_2)
-
-        print('semantic {}'.format(time()-time_start))
 
         return semantic_dist
 
     def compute_jaccard_distance(self, hog_event_1, hog_event_2):
 
-        time_start = time()
-
         hash_1, hash_2 = [hashutils.fam2hash_hdf5(hashutils.result2fam(hog_event), self.hashes)
                           for hog_event in [hog_event_1, hog_event_2]]
         jaccard_dist = hash_1.jaccard(hash_2)
-
-        print('jaccard {}'.format(time() - time_start))
 
         return jaccard_dist
 

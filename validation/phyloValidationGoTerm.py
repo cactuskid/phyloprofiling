@@ -60,7 +60,6 @@ class SemanticSimilarityAnalysis(object):
 
         dist_mat = self._compute_genes_distance(query_go_terms, result_go_terms)
 
-        print('time to compute dist mat {}'.format(time()-start_time))
         # bma on this matrix
 
         score = self._mean_max_score_matrix(dist_mat)
