@@ -57,8 +57,10 @@ def switch_name_ncbiid(orthoxml):
 
     for child in root:
         if 'species' in child.tag:
-            orthoxml = orthoxml.replace(child.attrib['name'], child.attrib['NCBITaxId'])
+            child.attrib['name'] = child.attrib['NCBITaxId']
 
+    orthoxml = ET.tostring(root, encoding='unicode', method='xml')
+    #orthoxml = orthoxml.replace('ns0:', '')
     return orthoxml
 
 
