@@ -1,10 +1,6 @@
 import ete3
 import pandas as pd
 
-import pyham
-
-from utils import pyhamutils
-
 
 def get_tree(oma):
     ncbi = ete3.NCBITaxa()

@@ -1,5 +1,4 @@
 import pyham
-import ete3
 import xml.etree.ElementTree as ET
 
 
@@ -9,37 +8,37 @@ def get_orthoxml(fam, db_obj):
     return orthoxml
 
 
-def get_species_tree_from_orthoxml(orthoxml):
-    species = get_species_from_orthoxml(orthoxml)
-    print(len(species))
-    ncbi = ete3.NCBITaxa()
-
-
-    tree = ncbi.get_topology(species.keys())
-
-    lineage = tree.get_linage(tree.get_tree_root().name)
-
-    tree = ncbi.get_topology(lineage)
-
-    # tree = ncbi.get_topology(ncbi.get_lineage(tree.name))
-
-
-    print(tree)
-    # prune tree, remove inter. node if only one child
-    # correct nodes name
-    for node in tree.traverse():
-        # if len(node.children) == 1:
-        #     print(node.name)
-        #     node.delete()
-        if node.name in species.keys():
-            node.name = replacement_dic[species[node.name]]
-
-    # turns the tree into a string
-
-    tree_string = tree.write(format=1)
-
-
-    return tree_string
+# def get_species_tree_from_orthoxml(orthoxml):
+#     species = get_species_from_orthoxml(orthoxml)
+#     print(len(species))
+#     ncbi = ete3.NCBITaxa()
+#
+#
+#     tree = ncbi.get_topology(species.keys())
+#
+#     lineage = tree.get_linage(tree.get_tree_root().name)
+#
+#     tree = ncbi.get_topology(lineage)
+#
+#     # tree = ncbi.get_topology(ncbi.get_lineage(tree.name))
+#
+#
+#     print(tree)
+#     # prune tree, remove inter. node if only one child
+#     # correct nodes name
+#     for node in tree.traverse():
+#         # if len(node.children) == 1:
+#         #     print(node.name)
+#         #     node.delete()
+#         if node.name in species.keys():
+#             node.name = replacement_dic[species[node.name]]
+#
+#     # turns the tree into a string
+#
+#     tree_string = tree.write(format=1)
+#
+#
+#     return tree_string
 
 
 def get_species_from_orthoxml(orthoxml):
@@ -50,6 +49,16 @@ def get_species_from_orthoxml(orthoxml):
             NCBITaxId2name[child.attrib['NCBITaxId']] = child.attrib['name']
 
     return NCBITaxId2name
+
+def switch_name_ncbiid(orthoxml):
+
+    root = ET.fromstring(orthoxml)
+    #orthoxml = orthoxml.decode('utf-8')
+    for child in root:
+        if 'species' in child.tag:
+            orthoxml = orthoxml.replace(child.attrib['name'], child.attrib['NCBITaxId'])
+
+    return orthoxml#.encode()
 
 
 # def get_ham_treemap_from_fam(fam, db_obj, species_tree, replacement_dic):
@@ -72,9 +81,11 @@ def get_species_from_orthoxml(orthoxml):
 def get_ham_treemap_from_fam(fam, tree, db_obj):
 
     orthoxml = get_orthoxml(fam, db_obj)
-    species_tree = get_species_tree_from_orthoxml(orthoxml, replacement_dic)
+    orthoxml = switch_name_ncbiid(orthoxml)
 
-    ham_obj = pyham.Ham(species_tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=True,
+    row = (fam, orthoxml)
+
+    ham_obj = pyham.Ham(tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=False,
                         orthoXML_as_string=True)
     hog = ham_obj.get_hog_by_id(fam)
     tp = ham_obj.create_tree_profile(hog=hog)
@@ -82,27 +93,40 @@ def get_ham_treemap_from_fam(fam, tree, db_obj):
     return tp.treemap
 
 
-def get_ham_treemap_from_row(row, tree, leaves):
-    """
-    Get treemap ham object from row (tuple: fam and orthoxml)
-    :param row: tuple: fam and orthoxml
-    :return: tp.treemap or none if fail
-    """
+def get_ham_treemap_from_row(row, tree):
+
     fam, orthoxml = row
-
-    # TODO
-    # check if tree is ok, repair it
-    # TODO remove/change this
-    species_tree = get_species_tree_from_orthoxml(orthoxml, replacement_dic)
-
     try:
-        ham_obj = pyham.Ham(species_tree, orthoxml.encode(), type_hog_file="orthoxml",
+        ham_obj = pyham.Ham(tree, orthoxml.decode(), type_hog_file="orthoxml",
                             use_internal_name=True, orthoXML_as_string=True)
         hog = ham_obj.get_hog_by_id(fam)
         tp = ham_obj.create_tree_profile(hog=hog)
         return tp.treemap
     except:
         return None
+
+
+# def get_ham_treemap_from_row(row, tree, leaves):
+#     """
+#     Get treemap ham object from row (tuple: fam and orthoxml)
+#     :param row: tuple: fam and orthoxml
+#     :return: tp.treemap or none if fail
+#     """
+#     fam, orthoxml = row
+#
+#     # TODO
+#     # check if tree is ok, repair it
+#     # TODO remove/change this
+#     species_tree = get_species_tree_from_orthoxml(orthoxml, replacement_dic)
+#
+#     try:
+#         ham_obj = pyham.Ham(species_tree, orthoxml.encode(), type_hog_file="orthoxml",
+#                             use_internal_name=True, orthoXML_as_string=True)
+#         hog = ham_obj.get_hog_by_id(fam)
+#         tp = ham_obj.create_tree_profile(hog=hog)
+#         return tp.treemap
+#     except:
+#         return None
 
 
 def yield_families(h5file, start_fam):

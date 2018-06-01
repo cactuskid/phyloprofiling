@@ -1,4 +1,7 @@
 from goatools import semantic
+import ujson as json
+
+from utils import hashutils
 
 
 def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
@@ -19,21 +22,28 @@ def deepest_common_ancestor_hdf5(go_ids, godag, hdf5):
     return max(common_parent_go_ids_hdf5(go_ids, hdf5), key=lambda t: godag[t].depth)
 
 
-def common_parent_go_ids_hdf5(go_ids, hdf5):
+def common_parent_go_ids_hdf5(go_ids, hdf5_set):
     '''
         This function finds the common ancestors in the GO
         tree of the list of goids in the input.
     '''
 
-    candidates = set(hdf5['go_terms'][go_ids[0]].tolist())
+    candidates = set(hdf5_set[go_ids[0]].tolist())
 
     for go_id in go_ids[1:]:
-        candidates_to_add = set(hdf5['go_terms'][go_id].tolist())
+        candidates_to_add = set(hdf5_set[go_id].tolist())
 
         candidates.intersection_update(candidates_to_add)
 
     corrected_candidates = [id2goterm(c) for c in candidates]
     return corrected_candidates
+
+
+def get_go_terms_hdf5(hog_id, hdf5_set):
+    fam = hashutils.hogid2fam(hog_id)
+    go_terms = json.loads(hdf5_set[fam])
+
+    return go_terms
 
 
 def goterm2id(go_term_to_modif):

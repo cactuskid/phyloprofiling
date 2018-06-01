@@ -20,6 +20,6 @@ profilerObj.go_benchmarking_init(config_utils.datadirLaurent + 'project/data/go.
 profilerObj.lsh_loader(config_utils.datadirLaurent + 'May_23_2018_18_29_0.7_newlsh.pkl', config_utils.datadirLaurent + 'May_23_2018_18_29hashes.h5')
 
 
-profilerObj.save_results(fam_id=399563, path_to_save=config_utils.datadirLaurent + 'test_06.txt')
+profilerObj.save_results(fam_id=589123, path_to_save=config_utils.datadirLaurent + 'test_06.txt')
 
 
