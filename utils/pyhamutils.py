@@ -92,6 +92,8 @@ def get_species_tree_from_orthoxml(orthoxml , tree, leaves , verbose = False):
         if verbose:
             print(orphans)
         return tree.write(format=1)
+def getParents(orphans, hog , verbose):
+    parentDict={}
 
 
 def getParents(orphans, orthoxml , verbose):
@@ -126,6 +128,14 @@ def getParents(orphans, orthoxml , verbose):
 
     return parentDict
 
+<<<<<<< HEAD
+def addOrphans(parentDict, t , verbose = False):
+    added =[]
+    newdict = parentDict
+    leaves = set([leaf.name for leaf in t.get_leaves()])
+
+    if verbose == True:
+=======
 
 def addOrphans(parentDict, t, verbose=False):
     # add orphans to tree
@@ -133,6 +143,7 @@ def addOrphans(parentDict, t, verbose=False):
     newdict = parentDict
     leftovers = set()
     if verbose:
+>>>>>>> master
         print(newdict)
     for n in t.traverse():
         try:
@@ -145,6 +156,23 @@ def addOrphans(parentDict, t, verbose=False):
         # second attempt shortening the names...
         leftovers = set(newdict.keys()) - set(added)
     if len(leftovers)>0:
+<<<<<<< HEAD
+        if verbose == True:
+
+            print('iterative start with leftovers:')
+            print(leftovers)
+
+
+        values = [ newdict[leftover] for leftover in leftovers]
+        reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftovers ]
+        newdict = dict(zip(reduced,values))
+
+        reducedSet = set(reduced)
+        reducedOld = set([])
+
+        while reducedSet != reducedOld :
+            leaves = set([leaf.name for leaf in t.get_leaves()])
+=======
         if verbose:
             print('iterative start with leftovers:')
             print(leftovers)
@@ -154,6 +182,7 @@ def addOrphans(parentDict, t, verbose=False):
         reducedSet = set(reduced)
         reducedOld = set([])
         while reducedSet != reducedOld:
+>>>>>>> master
             for n in t.traverse():
                 try:
                     if n.sci_name in newdict and newdict[n.sci_name] not in leaves:
