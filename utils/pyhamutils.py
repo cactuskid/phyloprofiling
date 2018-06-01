@@ -47,7 +47,6 @@ def get_species_from_orthoxml(orthoxml):
     for child in root:
         if 'species' in child.tag:
             NCBITaxId2name[child.attrib['NCBITaxId']] = child.attrib['name']
-
     return NCBITaxId2name
 
 
@@ -148,8 +147,8 @@ def addOrphans(parent_dict, t, verbose=False):
             pass
         # second attempt shortening the names...
         leftovers = set(newdict.keys()) - set(added)
-    if len(leftovers) > 0:
-
+    if len(leftovers)>0:
+<<<<<<< HEAD
         if verbose == True:
 
             print('iterative start with leftovers:')
@@ -164,6 +163,17 @@ def addOrphans(parent_dict, t, verbose=False):
 
         while reducedSet != reducedOld :
             leaves = set([leaf.name for leaf in t.get_leaves()])
+=======
+        if verbose:
+            print('iterative start with leftovers:')
+            print(leftovers)
+        values = [newdict[leftover] for leftover in leftovers]
+        reduced = [''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftovers ]
+        newdict = dict(zip(reduced, values))
+        reducedSet = set(reduced)
+        reducedOld = set([])
+        while reducedSet != reducedOld:
+>>>>>>> master
             for n in t.traverse():
                 try:
                     if n.sci_name in newdict and newdict[n.sci_name] not in leaves:
