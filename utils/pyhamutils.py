@@ -1,5 +1,5 @@
 import pyham
-import xml.etree.ElementTree as ET
+import xml.etree.cElementTree as ET
 
 
 def get_orthoxml(fam, db_obj):
@@ -78,6 +78,106 @@ def switch_name_ncbiid(orthoxml):
 #     return treemap
 
 
+def get_species_tree_from_orthoxml(orthoxml , tree, leaves , verbose = False):
+	#configure this function using a partial and give it the tree and the set of all leaf names
+	#only adjust the tree when there is stuff in the orthoxml that isnt in the tree
+    species = get_species_from_orthoxml(orthoxml)
+	orphans  = (set(species)- leaves)
+	if len(orphans) == 0:
+        return tree.write(format=1)
+    else:
+        parents = getParents(orphans, orthoxml , verbose)
+        tree = addOrphans( parents , tree, verbose)
+        orphans = (set(species)- set( [node.name for node in tree.get_leaves()]))
+        if verbose ==True:
+            print(orphans)
+        return tree.write(format=1)
+
+
+def getParents(orphans, hog , verbose):
+	#find stuff thats not in the species tree in the orthoxml and assign it to a taxonomic node
+	parentDict={}
+    genes={}
+    root = ET.fromstring(hog)
+    for elem in root:
+        if 'species' in elem.tag:
+            if elem.attrib['NCBITaxId'] in orphans:
+                if elem.attrib['NCBITaxId'] not in genes:
+                    genes[elem.attrib['NCBITaxId']] =[]
+                for gene in elem.iter():
+                    if 'gene' in gene.tag:
+                        try:
+                            genes[gene.attrib['id']] = elem.attrib['NCBITaxId']
+                        except KeyError:
+                            pass
+        if 'groups' in elem.tag:
+            parent_map = dict((c, p) for p in elem.getiterator() for c in p)
+            for groups in elem.iter():
+                if 'geneRef' in groups.tag:
+                    if groups.attrib['id'] in genes:
+                        species = genes[groups.attrib['id']]
+                        if species not in parentDict:
+                            orthogroup = parent_map[groups]
+                            for prop in orthogroup:
+                                if 'property' in prop.tag:
+                                    sciname = prop.get('value')
+                                    parentDict[sciname] = species
+                                    break
+    return parentDict
+
+def addOrphans(parentDict, t , verbose = False):
+	#add orphans to tree
+    added =[]
+    newdict = parentDict
+    if verbose == True:
+        print(newdict)
+    for n in t.traverse():
+        try:
+            if n.sci_name in newdict:
+                n.add_child(name = newdict[n.sci_name])
+                added.append(n.sci_name)
+        except AttributeError:
+            pass
+        #second attempt shortening the names...
+        leftovers = set(newdict.keys()) - set(added)
+    if len(leftovers)>0:
+        if verbose == True:
+            print('iterative start with leftovers:')
+            print(leftovers)
+        values = [ newdict[leftover] for leftover in leftovers]
+        reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftovers ]
+        newdict = dict(zip(reduced,values))
+        reducedSet = set(reduced)
+        reducedOld = set([])
+        while reducedSet != reducedOld :
+            for n in t.traverse():
+                try:
+                    if n.sci_name in newdict:
+                        n.add_child(name = newdict[n.sci_name])
+                        added.append(n.sci_name)
+                        if verbose == True:
+                            print(n.sci_name)
+                except AttributeError:
+                    pass
+            leftoversNew = set(newdict.keys()) - set(added)
+            if verbose == True:
+                print(leftoversNew)
+            if len(leftoversNew) ==0:
+                if verbose == True:
+                    print('DONE!')
+                break
+            values = [ newdict[leftover] for leftover in leftoversNew]
+            reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftoversNew ]
+            reducedOld = reducedSet
+            reducedSet = set(reduced)
+            newdict = dict(zip(reduced,values))
+            if verbose == True:
+                print('newdict')
+                print(newdict)
+                print('newleftovers')
+                print(leftoversNew)
+    return t
+
 def get_ham_treemap_from_fam(fam, tree, db_obj):
 
     orthoxml = get_orthoxml(fam, db_obj)
@@ -93,11 +193,11 @@ def get_ham_treemap_from_fam(fam, tree, db_obj):
     return tp.treemap
 
 
-def get_ham_treemap_from_row(row, tree):
-
+def get_ham_treemap_from_row(row, tree , leaves):
     fam, orthoxml = row
+	treestr = get_species_tree_from_orthoxml(orthoxml.decode() , tree, leaves , verbose = False)
     try:
-        ham_obj = pyham.Ham(tree, orthoxml.decode(), type_hog_file="orthoxml",
+        ham_obj = pyham.Ham(treestr, orthoxml.decode(), type_hog_file="orthoxml",
                             use_internal_name=True, orthoXML_as_string=True)
         hog = ham_obj.get_hog_by_id(fam)
         tp = ham_obj.create_tree_profile(hog=hog)

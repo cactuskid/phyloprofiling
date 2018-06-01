@@ -6,9 +6,8 @@ def get_tree(oma):
     ncbi = ete3.NCBITaxa()
     genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
     tree = ncbi.get_topology(genome_ids_list)
-    newick_tree = tree.write(format=1)
 
-    return newick_tree
+    return tree
 
 
 def get_leaves(newick_tree):
