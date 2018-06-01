@@ -50,15 +50,16 @@ def get_species_from_orthoxml(orthoxml):
 
     return NCBITaxId2name
 
+
 def switch_name_ncbiid(orthoxml):
 
     root = ET.fromstring(orthoxml)
-    #orthoxml = orthoxml.decode('utf-8')
+
     for child in root:
         if 'species' in child.tag:
             orthoxml = orthoxml.replace(child.attrib['name'], child.attrib['NCBITaxId'])
 
-    return orthoxml#.encode()
+    return orthoxml
 
 
 # def get_ham_treemap_from_fam(fam, db_obj, species_tree, replacement_dic):
@@ -78,7 +79,7 @@ def switch_name_ncbiid(orthoxml):
 #     return treemap
 
 
-def get_species_tree_from_orthoxml(orthoxml , tree, leaves , verbose = False):
+def get_species_tree_from_orthoxml(orthoxml, tree, leaves, verbose=False):
     # configure this function using a partial and give it the tree and the set of all leaf names
     # only adjust the tree when there is stuff in the orthoxml that isnt in the tree
     species = get_species_from_orthoxml(orthoxml)
@@ -92,11 +93,9 @@ def get_species_tree_from_orthoxml(orthoxml , tree, leaves , verbose = False):
         if verbose:
             print(orphans)
         return tree.write(format=1)
-def getParents(orphans, hog , verbose):
-    parentDict={}
 
 
-def getParents(orphans, orthoxml , verbose):
+def getParents(orphans, hog, verbose=False):
     # find stuff that is not in the species tree in the orthoxml and assign it to a taxonomic node
     parentDict = {}
     genes={}
@@ -128,22 +127,14 @@ def getParents(orphans, orthoxml , verbose):
 
     return parentDict
 
-<<<<<<< HEAD
-def addOrphans(parentDict, t , verbose = False):
-    added =[]
-    newdict = parentDict
+
+def addOrphans(parent_dict, t, verbose=False):
+    added = []
+    newdict = parent_dict
     leaves = set([leaf.name for leaf in t.get_leaves()])
-
-    if verbose == True:
-=======
-
-def addOrphans(parentDict, t, verbose=False):
-    # add orphans to tree
-    added =[]
-    newdict = parentDict
     leftovers = set()
+
     if verbose:
->>>>>>> master
         print(newdict)
     for n in t.traverse():
         try:
@@ -155,34 +146,22 @@ def addOrphans(parentDict, t, verbose=False):
             pass
         # second attempt shortening the names...
         leftovers = set(newdict.keys()) - set(added)
-    if len(leftovers)>0:
-<<<<<<< HEAD
+    if len(leftovers) > 0:
+
         if verbose == True:
 
             print('iterative start with leftovers:')
             print(leftovers)
 
-
-        values = [ newdict[leftover] for leftover in leftovers]
-        reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftovers ]
-        newdict = dict(zip(reduced,values))
+        values = [newdict[leftover] for leftover in leftovers]
+        reduced = [''.join([word+' ' for word in leftover.split()[0:max(1, len(leftover.split())-1)]]).strip() for leftover in leftovers ]
+        newdict = dict(zip(reduced, values))
 
         reducedSet = set(reduced)
         reducedOld = set([])
 
         while reducedSet != reducedOld :
             leaves = set([leaf.name for leaf in t.get_leaves()])
-=======
-        if verbose:
-            print('iterative start with leftovers:')
-            print(leftovers)
-        values = [newdict[leftover] for leftover in leftovers]
-        reduced = [''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftovers ]
-        newdict = dict(zip(reduced, values))
-        reducedSet = set(reduced)
-        reducedOld = set([])
-        while reducedSet != reducedOld:
->>>>>>> master
             for n in t.traverse():
                 try:
                     if n.sci_name in newdict and newdict[n.sci_name] not in leaves:
@@ -197,15 +176,15 @@ def addOrphans(parentDict, t, verbose=False):
             leftoversNew = set(newdict.keys()) - set(added)
             if verbose:
                 print(leftoversNew)
-            if len(leftoversNew) ==0:
+            if len(leftoversNew) == 0:
                 if verbose:
                     print('DONE!')
                 break
             values = [ newdict[leftover] for leftover in leftoversNew]
-            reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftoversNew]
+            reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1, len(leftover.split())-1)]]).strip() for leftover in leftoversNew]
             reducedOld = reducedSet
             reducedSet = set(reduced)
-            newdict = dict(zip(reduced,values))
+            newdict = dict(zip(reduced, values))
             if verbose:
                 print('newdict')
                 print(newdict)
