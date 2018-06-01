@@ -94,11 +94,11 @@ def get_species_tree_from_orthoxml(orthoxml , tree, leaves , verbose = False):
         return tree.write(format=1)
 
 
-def getParents(orphans, hog , verbose):
+def getParents(orphans, orthoxml , verbose):
 	#find stuff thats not in the species tree in the orthoxml and assign it to a taxonomic node
 	parentDict={}
     genes={}
-    root = ET.fromstring(hog)
+    root = ET.fromstring(orthoxml)
     for elem in root:
         if 'species' in elem.tag:
             if elem.attrib['NCBITaxId'] in orphans:
@@ -179,17 +179,13 @@ def addOrphans(parentDict, t , verbose = False):
     return t
 
 def get_ham_treemap_from_fam(fam, tree, db_obj):
-
     orthoxml = get_orthoxml(fam, db_obj)
     orthoxml = switch_name_ncbiid(orthoxml)
-
     row = (fam, orthoxml)
-
     ham_obj = pyham.Ham(tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=False,
                         orthoXML_as_string=True)
     hog = ham_obj.get_hog_by_id(fam)
     tp = ham_obj.create_tree_profile(hog=hog)
-
     return tp.treemap
 
 
@@ -197,8 +193,7 @@ def get_ham_treemap_from_row(row, tree , leaves):
     fam, orthoxml = row
 	treestr = get_species_tree_from_orthoxml(orthoxml.decode() , tree, leaves , verbose = False)
     try:
-        ham_obj = pyham.Ham(treestr, orthoxml.decode(), type_hog_file="orthoxml",
-                            use_internal_name=True, orthoXML_as_string=True)
+        ham_obj = pyham.Ham(treestr, orthoxml.decode(), type_hog_file="orthoxml", use_internal_name=True, orthoXML_as_string=True)
         hog = ham_obj.get_hog_by_id(fam)
         tp = ham_obj.create_tree_profile(hog=hog)
         return tp.treemap
