@@ -120,6 +120,7 @@ class LSHBuilder:
 
                         hashes = this_dataframe['hash'].to_dict()
                         for fam in hashes:
+
                             if hashes[fam] is not None:
 
                                 for famhashname in hashes[fam]['dict']:

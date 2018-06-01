@@ -194,14 +194,14 @@ def get_ham_treemap_from_fam(fam, tree, db_obj):
 
 def get_ham_treemap_from_row(row, tree , leaves):
     fam, orthoxml = row
-    treestr = get_species_tree_from_orthoxml(orthoxml.decode() , tree, leaves , verbose = False)
-    try:
-        ham_obj = pyham.Ham(treestr, orthoxml.decode(), type_hog_file="orthoxml", use_internal_name=True, orthoXML_as_string=True)
-        hog = ham_obj.get_hog_by_id(fam)
-        tp = ham_obj.create_tree_profile(hog=hog)
-        return tp.treemap
-    except:
-        return None
+    treestr = get_species_tree_from_orthoxml(orthoxml, tree, leaves , verbose = False)
+    # try:
+    ham_obj = pyham.Ham(treestr, orthoxml, type_hog_file="orthoxml", use_internal_name=True, orthoXML_as_string=True)
+    hog = ham_obj.get_hog_by_id(fam)
+    tp = ham_obj.create_tree_profile(hog=hog)
+    return tp.treemap
+    # except:
+    #     return None
 
 
 # def get_ham_treemap_from_row(row, tree, leaves):
