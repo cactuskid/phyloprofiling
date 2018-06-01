@@ -198,7 +198,7 @@ def addOrphans(parent_dict, t, verbose=False):
 def get_ham_treemap_from_fam(fam, tree, db_obj):
     orthoxml = get_orthoxml(fam, db_obj)
     orthoxml = switch_name_ncbiid(orthoxml)
-    row = (fam, orthoxml)
+
     ham_obj = pyham.Ham(tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=False,
                         orthoXML_as_string=True)
     hog = ham_obj.get_hog_by_id(fam)
@@ -206,8 +206,11 @@ def get_ham_treemap_from_fam(fam, tree, db_obj):
     return tp.treemap
 
 
-def get_ham_treemap_from_row(row, tree , leaves):
+def get_ham_treemap_from_row(row, tree, leaves):
     fam, orthoxml = row
+
+    orthoxml = switch_name_ncbiid(orthoxml)
+
     treestr = get_species_tree_from_orthoxml(orthoxml, tree, leaves , verbose = False)
     # try:
     ham_obj = pyham.Ham(treestr, orthoxml, type_hog_file="orthoxml", use_internal_name=True, orthoXML_as_string=True)
