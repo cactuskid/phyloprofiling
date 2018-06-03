@@ -6,7 +6,10 @@ def get_tree(oma):
     ncbi = ete3.NCBITaxa()
     genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
     tree = ncbi.get_topology(genome_ids_list)
-
+	for n in tree.traverse():
+		if n.get_descendants() ==1:
+			#remove node with one Child
+			n.delete()
     return tree
 
 
