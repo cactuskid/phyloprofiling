@@ -22,7 +22,6 @@ class Profiler:
         self.db_obj = db.Database(self.h5OMA)
         self.omaIdObj = db.OmaIdMapper(self.db_obj)
         self.tree = files_utils.get_tree(self.h5OMA)
-        self.tree_leaves = files_utils.get_leaves(self.tree)
 
         self.go = None
         self.associations = None
