@@ -55,9 +55,14 @@ def switch_name_ncbiid(orthoxml):
     #orthoxml = orthoxml.decode('utf-8')
     for child in root:
         if 'species' in child.tag:
-            orthoxml = orthoxml.replace(child.attrib['name'], child.attrib['NCBITaxId'])
+            #this doesnt work !
+            #orthoxml = orthoxml.replace(child.attrib['name'], child.attrib['NCBITaxId'])
+            child.attrib['name'] = child.attrib['NCBITaxId']
 
-    return orthoxml#.encode()
+    orthoxml = ET.tostring(root, encoding='unicode', method='xml')
+    #orthoxml = orthoxml.replace('ns0:', '')
+    return orthoxml
+    #return orthoxml#.encode()
 
 
 # def get_ham_treemap_from_fam(fam, db_obj, species_tree, replacement_dic):
@@ -77,7 +82,7 @@ def switch_name_ncbiid(orthoxml):
 #     return treemap
 
 
-def get_species_tree_from_orthoxml(orthoxml , tree, leaves , verbose = False):
+def get_species_tree_from_orthoxml(orthoxml ,tree, leaves, verbose=False):
     # configure this function using a partial and give it the tree and the set of all leaf names
     # only adjust the tree when there is stuff in the orthoxml that isnt in the tree
     species = get_species_from_orthoxml(orthoxml)
@@ -98,7 +103,7 @@ def getParents(orphans, orthoxml , verbose):
     # find stuff that is not in the species tree in the orthoxml and assign it to a taxonomic node
     parentDict = {}
     genes={}
-    root = ET.fromstring(hog)
+    root = ET.fromstring(orthoxml)
     for elem in root:
         if 'species' in elem.tag:
             if elem.attrib['NCBITaxId'] in orphans:
@@ -126,18 +131,13 @@ def getParents(orphans, orthoxml , verbose):
 
     return parentDict
 
-def addOrphans(parentDict, t , verbose = False):
-    added =[]
-    newdict = parentDict
-    leaves = set([leaf.name for leaf in t.get_leaves()])
-
-    if verbose == True:
 
 def addOrphans(parentDict, t, verbose=False):
     # add orphans to tree
     added =[]
     newdict = parentDict
     leftovers = set()
+    leaves = set([leaf.name for leaf in t.get_leaves()])
     if verbose:
         print(newdict)
     for n in t.traverse():
@@ -213,16 +213,16 @@ def get_ham_treemap_from_fam(fam, tree, db_obj):
     orthoxml = get_orthoxml(fam, db_obj)
     orthoxml = switch_name_ncbiid(orthoxml)
     #row = (fam, orthoxml)
-	try:
-		ham_obj = pyham.Ham(tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=False,
-	                        orthoXML_as_string=True)
-	    hog = ham_obj.get_hog_by_id(fam)
-	    tp = ham_obj.create_tree_profile(hog=hog)
-	    return tp.treemap
-	except TypeError as err:
-		print('Pyham error:', err)
-		#pyham err...
-		return None
+    try:
+        ham_obj = pyham.Ham(tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=False,
+                            orthoXML_as_string=True)
+        hog = ham_obj.get_hog_by_id(fam)
+        tp = ham_obj.create_tree_profile(hog=hog)
+        return tp.treemap
+    except TypeError as err:
+        print('Pyham error:', err)
+        #pyham err...
+        return None
 
 def get_ham_treemap_from_row(row, tree , leaves):
     fam, orthoxml = row
