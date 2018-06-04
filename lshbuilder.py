@@ -25,7 +25,6 @@ class LSHBuilder:
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
 
         self.tree = files_utils.get_tree(self.h5OMA)
-        self.tree_leaves = files_utils.get_leaves(self.tree)
 
         self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.h5OMA)
 
@@ -34,7 +33,7 @@ class LSHBuilder:
         self.date_string = "{:%B_%d_%Y_%H_%M}".format(datetime.now())
 
         # define functions
-        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree, leaves=self.tree_leaves)
+        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree)
         self.HASH_PIPELINE = functools.partial(hashutils.tree2hashes_from_row,
                                                events=['duplication', 'gain', 'loss', 'presence'], combination=True)
         self.ROW_PIPELINE = functools.partial(hashutils.tree2mat, taxaIndex=self.taxaIndex)
@@ -55,15 +54,15 @@ class LSHBuilder:
 
         families = {}
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
-
-            fam = row[0]
-            if self.allowed_families is None or fam in self.allowed_families:
-                families[fam] = {'ortho': self.READ_ORTHO(fam)}
-                if len(families) > size:
-                    pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
-                    pd_dataframe['Fam'] = pd_dataframe.index
-                    families = {}
-                    yield pd_dataframe
+            if i > 60000:
+                fam = row[0]
+                if self.allowed_families is None or fam in self.allowed_families:
+                    families[fam] = {'ortho': self.READ_ORTHO(fam)}
+                    if len(families) > size:
+                        pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
+                        pd_dataframe['Fam'] = pd_dataframe.index
+                        families = {}
+                        yield pd_dataframe
 
     def worker(self, i, q, retq, matq, l):
 
