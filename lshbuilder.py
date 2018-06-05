@@ -161,7 +161,7 @@ class LSHBuilder:
                                 # pickle.dump(forest, forestout, -1)
                         print('DONE UPDATER' + str(i))
                         break
-#
+
     def run_pipeline(self):
         self.mp_with_timeout(number_workers=int(mp.cpu_count() / 2), number_updaters=1,
                              data_generator=self.generates_dataframes(100), worker_function=self.worker,
