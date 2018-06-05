@@ -36,6 +36,13 @@ def get_tree(oma=None):
             parent.add_child(name =n.name)
             child.delete()
 
+    for n in tree.traverse():
+        if n.name == '':
+            print('the asshole')
+            print(n)
+            print(n.up)
+            print(n.children)
+
 
     # to remove
     orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
@@ -43,6 +50,8 @@ def get_tree(oma=None):
 
 
     tree = tree.write(format=1)
+
+
 
     return tree
 
