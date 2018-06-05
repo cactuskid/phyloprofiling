@@ -54,15 +54,14 @@ class LSHBuilder:
 
         families = {}
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
-            if i > 60000:
-                fam = row[0]
-                if self.allowed_families is None or fam in self.allowed_families:
-                    families[fam] = {'ortho': self.READ_ORTHO(fam)}
-                    if len(families) > size:
-                        pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
-                        pd_dataframe['Fam'] = pd_dataframe.index
-                        families = {}
-                        yield pd_dataframe
+            fam = row[0]
+            if self.allowed_families is None or fam in self.allowed_families:
+                families[fam] = {'ortho': self.READ_ORTHO(fam)}
+                if len(families) > size:
+                    pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
+                    pd_dataframe['Fam'] = pd_dataframe.index
+                    families = {}
+                    yield pd_dataframe
 
     def worker(self, i, q, retq, matq, l):
 
@@ -162,7 +161,7 @@ class LSHBuilder:
                                 # pickle.dump(forest, forestout, -1)
                         print('DONE UPDATER' + str(i))
                         break
-
+#
     def run_pipeline(self):
         self.mp_with_timeout(number_workers=int(mp.cpu_count() / 2), number_updaters=1,
                              data_generator=self.generates_dataframes(100), worker_function=self.worker,

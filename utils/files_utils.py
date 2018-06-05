@@ -3,7 +3,7 @@ import pandas as pd
 from Bio import Entrez
 
 
-def get_tree(oma):
+def get_tree(oma=None):
     ncbi = ete3.NCBITaxa()
     genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
     tree = ncbi.get_topology(genome_ids_list)
@@ -23,31 +23,24 @@ def get_tree(oma):
 
     tree = addOrphans(orphans_info, tree, genome_ids_list)
 
-    nodes = set([])
+    #nodes = set([])
 
-
-    corrected = True
+    #corrected = True
 
     for n in tree.traverse():
         if len( [ x for x in n.get_descendants()] ) == 1:
-            print(n.name)
-            #remove node with one Child
+            # remove node with one Child
             parent = n.get_ancestors()[0]
-            print(parent)
             child = n.get_leaves()[0]
-            parent.add_child(name = child.name)
-            parent.add_child(name = n.name)
+            parent.add_child(name=child.name)
+            parent.add_child(name =n.name)
             child.delete()
-            print(parent)
-    count ={}
-    for n in tree.get_leaves():
-        if n.name not in count and n.name != '':
-            count[n.name] = n
 
-    tree.prune(list(count.values())+[tree])
-    orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.traverse()]))
 
+    # to remove
+    orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
     print(orphans)
+
 
     tree = tree.write(format=1)
 
@@ -120,39 +113,30 @@ def addOrphans(orphan_info, tree, genome_ids_list, verbose=False):
     newdict = {}
 
     leaves = set([leaf.name for leaf in tree.get_leaves()])
-
-    for orphan in orphan_info:
-        newdict[str(orphan_info[orphan][-1])] = str(orphan)
-
-    for n in tree.traverse():
-        try:
-            if n.name in newdict and newdict[n.name] not in leaves:
-                n.add_child(name=newdict[n.name])
-                leaves.add(newdict[n.name])
-        except AttributeError:
-            pass
-    orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
     oldkeys = set(newdict.keys())
-    keys = ()
+    orphans = set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()])
+    print(orphans)
+    keys = set()
 
     while len(orphans) > 0 and keys != oldkeys:
         oldkeys = keys
         for orphan in orphans:
-            if len(orphan_info[orphan])>1:
-                orphan_info[orphan].pop()
-
             newdict[str(orphan_info[orphan][-1])] = str(orphan)
         keys = set(newdict.keys())
 
         for n in tree.traverse():
-            try:
-                if n.name in newdict and newdict[n.name] not in leaves:
-                    n.add_child(name=newdict[n.name])
-                    leaves.add(newdict[n.name])
-            except AttributeError:
-                pass
+            if n.name in newdict and (newdict[n.name] not in leaves) and (n.name not in leaves):
+                n.add_child(name=newdict[n.name])
+                leaves.update(newdict[n.name])
+                del newdict[n.name]
 
-        orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
+        orphans = set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()])
+        print(orphans)
+        for orphan in orphans:
+            if len(orphan_info[orphan]) > 1:
+                orphan_info[orphan].pop()
+        newdict = {}
+
     return tree
 
 
