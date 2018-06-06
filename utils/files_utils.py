@@ -21,11 +21,7 @@ def get_tree(oma=None):
         record = next(Entrez.parse(search_handle))
         orphans_info[x] = [x['TaxId'] for x in record['LineageEx']]
 
-    tree = addOrphans(orphans_info, tree, genome_ids_list)
-
-    #nodes = set([])
-
-    #corrected = True
+    tree = add_orphans(orphans_info, tree, genome_ids_list)
 
     for n in tree.traverse():
         if len( [ x for x in n.get_descendants()] ) == 1:
@@ -43,15 +39,10 @@ def get_tree(oma=None):
             print(n.up)
             print(n.children)
 
-
-    # to remove
     orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
     print(orphans)
 
-
     tree = tree.write(format=1)
-
-
 
     return tree
 
@@ -83,41 +74,7 @@ def get_allowed_families(db_object, hog_level):
     return allowed_families_list
 
 
-# def getParents(orphans, orthoxml,verbose):
-#     # find stuff that is not in the species tree in the orthoxml and assign it to a taxonomic node
-#
-#     parentDict = {}
-#     genes={}
-#     root = ET.fromstring(orthoxml)
-#     for elem in root:
-#         if 'species' in elem.tag:
-#             if elem.attrib['NCBITaxId'] in orphans:
-#                 if elem.attrib['NCBITaxId'] not in genes:
-#                     genes[elem.attrib['NCBITaxId']] =[]
-#                 for gene in elem.iter():
-#                     if 'gene' in gene.tag:
-#                         try:
-#                             genes[gene.attrib['id']] = elem.attrib['NCBITaxId']
-#                         except KeyError:
-#                             pass
-#         if 'groups' in elem.tag:
-#             parent_map = dict((c, p) for p in elem.getiterator() for c in p)
-#             for groups in elem.iter():
-#                 if 'geneRef' in groups.tag:
-#                     if groups.attrib['id'] in genes:
-#                         species = genes[groups.attrib['id']]
-#                         if species not in parentDict:
-#                             orthogroup = parent_map[groups]
-#                             for prop in orthogroup:
-#                                 if 'property' in prop.tag:
-#                                     sciname = prop.get('value')
-#                                     parentDict[sciname] = species
-#                                     break
-#
-#     return parentDict
-
-
-def addOrphans(orphan_info, tree, genome_ids_list, verbose=False):
+def add_orphans(orphan_info, tree, genome_ids_list, verbose=False):
 
     newdict = {}
 
@@ -147,75 +104,3 @@ def addOrphans(orphan_info, tree, genome_ids_list, verbose=False):
         newdict = {}
 
     return tree
-
-
-    # leftovers = set()
-    #
-    # if verbose:
-    #     print(newdict)
-    # for n in t.traverse():
-    #     try:
-    #         if n.sci_name in newdict and newdict[n.sci_name] not in leaves:
-    #             n.add_child(name = newdict[n.sci_name])
-    #             added.append(n.sci_name)
-    #             leaves.add(newdict[n.sci_name])
-    #     except AttributeError:
-    #         pass
-    #     # second attempt shortening the names...
-    #     leftovers = set(newdict.keys()) - set(added)
-    # if len(leftovers)>0:
-    #     if verbose == True:
-    #
-    #         print('iterative start with leftovers:')
-    #         print(leftovers)
-    #
-    #
-    #     values = [ newdict[leftover] for leftover in leftovers]
-    #     reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftovers ]
-    #     newdict = dict(zip(reduced,values))
-    #
-    #     reducedSet = set(reduced)
-    #     reducedOld = set([])
-    #
-    #     while reducedSet != reducedOld :
-    #         leaves = set([leaf.name for leaf in t.get_leaves()])
-    #     if verbose:
-    #         print('iterative start with leftovers:')
-    #         print(leftovers)
-    #     values = [newdict[leftover] for leftover in leftovers]
-    #     reduced = [''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftovers ]
-    #     newdict = dict(zip(reduced, values))
-    #     reducedSet = set(reduced)
-    #     reducedOld = set([])
-    #     while reducedSet != reducedOld:
-    #         for n in t.traverse():
-    #             try:
-    #                 if n.sci_name in newdict and newdict[n.sci_name] not in leaves:
-    #                     n.add_child(name = newdict[n.sci_name])
-    #                     leaves.add(newdict[n.sci_name])
-    #                     added.append(n.sci_name)
-    #                     if verbose:
-    #                         print(n.sci_name)
-    #             except AttributeError:
-    #                 pass
-    #
-    #         leftoversNew = set(newdict.keys()) - set(added)
-    #         if verbose:
-    #             print(leftoversNew)
-    #         if len(leftoversNew) ==0:
-    #             if verbose:
-    #                 print('DONE!')
-    #             break
-    #         values = [ newdict[leftover] for leftover in leftoversNew]
-    #         reduced = [ ''.join([word+' ' for word in leftover.split()[0:max(1,len(leftover.split())-1)]]).strip() for leftover in leftoversNew]
-    #         reducedOld = reducedSet
-    #         reducedSet = set(reduced)
-    #         newdict = dict(zip(reduced,values))
-    #         if verbose:
-    #             print('newdict')
-    #             print(newdict)
-    #
-    #             print('newleftovers')
-    #             print(leftoversNew)
-    #
-    # return t

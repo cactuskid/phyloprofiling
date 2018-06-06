@@ -4,6 +4,7 @@ from utils import goatools_utils
 
 from time import time
 
+
 class SemanticSimilarityAnalysis(object):
 
     def __init__(self, go, oma, term_counts, go_terms_hdf5):
