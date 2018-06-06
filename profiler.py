@@ -155,15 +155,15 @@ class Profiler:
         return jaccard_dist
 
     def get_hogs_with_annotations(self):
-
+        print('getting hogs')
         hogs_with_annotations = []
         for fam, goterms in enumerate(self.hogs2goterms):
-            if goterms.encode():
-                if json.loads(goterms.decode()):
+            if goterms:
+                if json.loads(goterms):
                     hogs_with_annotations.append(fam)
-
+        print(len(hogs_with_annotations))
+        print(hogs_with_annotations)
         return hogs_with_annotations
-
 
     def validate_pipeline(self, path_to_save):
 
