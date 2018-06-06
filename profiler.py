@@ -2,6 +2,7 @@ import _pickle as pickle
 import pandas as pd
 import h5py
 import itertools
+import ujson as json
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -17,18 +18,24 @@ class Profiler:
 
     def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path):
 
+        self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
+        self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
+
         self.go = obo_parser.GODag(obo_file_path)
         self.associations = read_gaf(gaf_file_path)
 
         self.term_counts = TermCounts(self.go, self.associations)
-        self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go, self.term_counts,
-                                                                        h5py.File(h5_go_terms_parents_path, mode='r'))
+        self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
+                                                                                            self.term_counts,
+                                                                                            self.go_terms_hdf5)
 
         lsh_file = open(lsh_path, 'rb')
         lsh_unpickled = pickle.Unpickler(lsh_file)
         self.lsh = lsh_unpickled.load()
 
         self.hashes = h5py.File(hashes_path, mode='r')
+
+
 
     def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
 
@@ -81,6 +88,23 @@ class Profiler:
 
         return dataframe_list
 
+    def filter_results(self, results):
+
+        filtered = {}
+
+        for query, results_list in results.items():
+
+            filtered_list_results = set()
+            for result in results_list:
+
+                result_fam = hashutils.result2fam(result)
+                if result_fam not in filtered_list_results and self.hogs2goterms[result_fam] \
+                        and json.loads(self.hogs2goterms[result_fam]):
+                    filtered_list_results.update(result)
+            filtered[query] = filtered_list_results
+
+        return filtered
+
     def results_all_vs_all(self, query, results_list):
 
         results_dict = {}
@@ -130,7 +154,42 @@ class Profiler:
 
         return jaccard_dist
 
-    def save_results(self, hog_id=None, fam_id=None, events=['gain', 'loss', 'presence'],
+    def get_hogs_with_annotations(self):
+
+        hogs_with_annotations = []
+        for fam, goterms in enumerate(self.hogs2goterms):
+            if goterms.encode():
+                if json.loads(goterms.decode()):
+                    hogs_with_annotations.append(fam)
+
+        return hogs_with_annotations
+
+
+    def validate_pipeline(self, path_to_save):
+
+        hogs_with_annotations = self.get_hogs_with_annotations()
+        # for each hog with annotations, query results
+
+        dataframe_list = []
+
+        for hog in hogs_with_annotations:
+            raw_results = self.hog_query(fam_id=hog)
+            filtered_results = self.filter_results(raw_results)
+
+            for query, results_list in filtered_results.items():
+                results_query_dict = self.results_all_vs_all(query, results_query_dict)
+                results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
+                results_query_df['event'] = query
+
+                dataframe_list.append(results_query_df)
+
+                print('{} done'.format(query))
+
+        concat_result = pd.concat(list(dataframe_list))
+        concat_result.to_csv(path_to_save, sep='\t')
+        print('DONE')
+
+    def query_pipeline(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
                      combination=True, path_to_save=None, all_vs_all=False):
 
         print('getting results')
