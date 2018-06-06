@@ -2,8 +2,6 @@ import numpy as np
 
 from utils import goatools_utils
 
-from time import time
-
 
 class SemanticSimilarityAnalysis(object):
 
@@ -57,7 +55,6 @@ class SemanticSimilarityAnalysis(object):
         :return: semantic similarity score
         """
         # for each couple, compute resnik
-        start_time = time()
 
         dist_mat = self._compute_genes_distance(query_go_terms, result_go_terms)
 
