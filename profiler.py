@@ -92,15 +92,16 @@ class Profiler:
 
         filtered = {}
 
+        # print(results)
         for query, results_list in results.items():
 
-            filtered_list_results = set()
+            filtered_list_results = []
             for result in results_list:
 
                 result_fam = hashutils.result2fam(result)
                 if result_fam not in filtered_list_results and self.hogs2goterms[result_fam] \
                         and json.loads(self.hogs2goterms[result_fam]):
-                    filtered_list_results.update(result)
+                    filtered_list_results.append(result)
             filtered[query] = filtered_list_results
 
         return filtered
@@ -111,30 +112,29 @@ class Profiler:
         results_list = [query] + results_list
 
         for hog_event_1 in results_list:
+            start_time = time()
             for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-
+            print('{} {}'.format(hog_event_1, time()-start_time))
         return results_dict
 
     def results_query(self, query, results_list):
         time_start = time()
         results_dict = {}
         hog_event_1 = query
-
+        results_list = [query] + results_list
         for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
 
-        print('query results {}'.format(time()-time_start))
+        #print('query results {}'.format(time()-time_start))
         return results_dict
 
     def get_scores(self, hog_event_1, hog_event_2, results_dict):
-
         hog1 = hashutils.result2hogid(hog_event_1)
         hog2 = hashutils.result2hogid(hog_event_2)
 
         semantic_dist = self.compute_semantic_distance(hog1, hog2)
         results_dict[(hog1, hog2)] = {'Semantic': semantic_dist}
-
         jaccard_dist = self.compute_jaccard_distance(hog_event_1, hog_event_2)
         results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
 
@@ -161,8 +161,8 @@ class Profiler:
             if goterms:
                 if json.loads(goterms):
                     hogs_with_annotations.append(fam)
+
         print(len(hogs_with_annotations))
-        print(hogs_with_annotations)
         return hogs_with_annotations
 
     def validate_pipeline(self, path_to_save):
@@ -175,15 +175,16 @@ class Profiler:
         for hog in hogs_with_annotations:
             raw_results = self.hog_query(fam_id=hog)
             filtered_results = self.filter_results(raw_results)
-
+            see_results(filtered_results)
             for query, results_list in filtered_results.items():
-                results_query_dict = self.results_all_vs_all(query, results_query_dict)
+                start_time = time()
+                results_query_dict = self.results_query(query, results_list)
                 results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
                 results_query_df['event'] = query
 
                 dataframe_list.append(results_query_df)
 
-                print('{} done'.format(query))
+                print('{} done in {}'.format(query, time() - start_time))
 
         concat_result = pd.concat(list(dataframe_list))
         concat_result.to_csv(path_to_save, sep='\t')
