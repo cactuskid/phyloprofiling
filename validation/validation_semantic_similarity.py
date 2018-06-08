@@ -22,8 +22,10 @@ class Validation_semantic_similarity(object):
         go_terms_1 = goatools_utils.get_go_terms_hdf5(hog_id_1, self.hog2goterms)
         go_terms_2 = goatools_utils.get_go_terms_hdf5(hog_id_2, self.hog2goterms)
 
+        # if go_terms_1 and go_terms_2:
         score = self._compute_score(go_terms_1, go_terms_2)
-
+        # else:
+        #     score = -1
         return score
 
     def _compute_score(self, query_go_terms, result_go_terms):
@@ -50,21 +52,26 @@ class Validation_semantic_similarity(object):
         :param go_terms_genes_2: dictionary of genes
         :return: matrix of distance between genes of hogs
         """
-        keys_1 = go_terms_genes_1.keys()
-        keys_2 = go_terms_genes_2.keys()
+        # try:
+        if type(go_terms_genes_1) is dict and type(go_terms_genes_2) is dict:
+            keys_1 = go_terms_genes_1.keys()
+            keys_2 = go_terms_genes_2.keys()
 
-        gene_dist = np.zeros((len(keys_1), len(keys_2)))
+            gene_dist = np.zeros((len(keys_1), len(keys_2)))
 
-        for k in range(len(keys_1)):
-            for l in range(len(keys_2)):
+            for k in range(len(keys_1)):
+                for l in range(len(keys_2)):
 
-                go_terms_1 = list(go_terms_genes_1[list(keys_1)[k]])
-                go_terms_2 = list(go_terms_genes_2[list(keys_2)[l]])
+                    go_terms_1 = list(go_terms_genes_1[list(keys_1)[k]])
+                    go_terms_2 = list(go_terms_genes_2[list(keys_2)[l]])
 
-                if go_terms_1 and go_terms_2:
-                    gene_dist[k, l] = self._compute_go_terms_score_per_gene(go_terms_1, go_terms_2)
-
-        return gene_dist
+                    if go_terms_1 and go_terms_2:
+                        gene_dist[k, l] = self._compute_go_terms_score_per_gene(go_terms_1, go_terms_2)
+            # except:
+            #     gene_dist = -1
+            return gene_dist
+        else:
+            return -1
 
     def _compute_go_terms_score_per_gene(self, go_terms_gene_1, go_terms_gene_2):
         """
@@ -91,8 +98,13 @@ class Validation_semantic_similarity(object):
         :param matrix: matrix
         :return: score: BMA of the matrix; returns -1 if matrix has 0 or 1 dimension
         """
+        #
+        # try:
         matrix_size = np.prod(matrix.shape)
         if not matrix_size:
             return -1
+        score = sum(matrix.max(0))+sum(matrix.max(1)) / matrix_size
+        # except:
+        #     score = -1
 
-        return sum(matrix.max(0))+sum(matrix.max(1)) / matrix_size
+        return score
