@@ -8,8 +8,12 @@ def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
     '''
         Computes Resnik's similarity measure.
     '''
-    msca_goid = deepest_common_ancestor_hdf5([goterm2id(go_id1), goterm2id(go_id2)], godag, hdf5)
-    return semantic.get_info_content(msca_goid, termcounts)
+    try:
+        msca_goid = deepest_common_ancestor_hdf5([goterm2id(go_id1), goterm2id(go_id2)], godag, hdf5)
+        score = semantic.get_info_content(msca_goid, termcounts)
+    except:
+        score = -1
+    return score
 
 
 def deepest_common_ancestor_hdf5(go_ids, godag, hdf5):
@@ -41,7 +45,11 @@ def common_parent_go_ids_hdf5(go_ids, hdf5_set):
 
 def get_go_terms_hdf5(hog_id, hdf5_set):
     fam = hashutils.hogid2fam(hog_id)
-    go_terms = json.loads(hdf5_set[fam])
+
+    try:
+        go_terms = json.loads(hdf5_set[fam])
+    except:
+        go_terms = None
 
     return go_terms
 

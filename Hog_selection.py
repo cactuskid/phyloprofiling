@@ -26,21 +26,38 @@ goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(g
 def get_hogs_with_annotations(hogs):
     print('getting hogs')
     hogs_with_annotations = []
+    hogs_without_annotations = []
     for fam, goterms in enumerate(hogs):
-        if goterms:
-            if json.loads(goterms):
-                hogs_with_annotations.append(hashutils.fam2hogid(fam))
 
-    print(len(hogs_with_annotations))
+        try:
+            obj = json.loads(goterms)
+            if obj and type(obj) is dict and len(obj) > 0:
+                hogs_with_annotations.append(fam)
+            else:
+                # print(obj)
+                hogs_without_annotations.append(fam)
+        except ValueError:
+            hogs_without_annotations.append(fam)
+
+        # if goterms:
+        #     if json.loads(goterms):
+        #         hogs_with_annotations.append(hashutils.fam2hogid(fam))
+
+    print('hogs without annotations {}'.format(len(hogs_without_annotations)))
+    print('hogs with annotations {}'.format(len(hogs_with_annotations)))
     return hogs_with_annotations
 start_time = time()
 hogs_w_annotations = get_hogs_with_annotations(hogs2goterms)
 print('time to get hogs: {}'.format(time()-start_time))
 
 
-def make_dict(hog):
-    return {hog:goTermAnalysis.semantic_similarity_score(hog, hog)}
-
+def make_dict(fam):
+    try:
+        returnDict = {fam: goTermAnalysis.semantic_similarity_score(hashutils.fam2hogid(fam), hashutils.fam2hogid(fam))}
+    except:
+        print(fam)
+        returnDict = {fam: -1}
+    return returnDict
 
 start_time = time()
 if __name__ == '__main__':
