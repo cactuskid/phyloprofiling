@@ -2,6 +2,7 @@ import numpy as np
 
 from utils import goatools_utils
 
+
 class Validation_semantic_similarity(object):
 
     def __init__(self, go_file, term_counts, go_terms_hdf5):
