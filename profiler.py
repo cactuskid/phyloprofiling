@@ -3,6 +3,8 @@ import pandas as pd
 import h5py
 import itertools
 import ujson as json
+import random
+
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -112,10 +114,10 @@ class Profiler:
         results_list = [query] + results_list
 
         for hog_event_1 in results_list:
-            start_time = time()
+            # start_time = time()
             for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-            print('{} {}'.format(hog_event_1, time()-start_time))
+            # print('{} {}'.format(hog_event_1, time()-start_time))
         return results_dict
 
     def results_query(self, query, results_list):
@@ -180,18 +182,19 @@ class Profiler:
             # allvsquery Jaccard
             results_jaccard = {}
             start_time = time()
-            for query, list_results in filtered_results.items():
-                results_jaccard[query] = [(r, self.compute_jaccard_distance(query, r)) for r in list_results]
-            print('Full jaccard score in {} for {}'.format(time()-start_time, hog))
+            # for query, list_results in filtered_results.items():
+            #     results_jaccard[query] = [(r, self.compute_jaccard_distance(query, r)) for r in list_results]
+            # print('Full jaccard score in {} for {}'.format(time()-start_time, hog))
             # take 10\20 best + query
-            for query, tuple_hog_score in results_jaccard.items():
+            for query, list_results in filtered_results.items():
                 start_time = time()
-                sorted_results = sorted(tuple_hog_score, key=lambda x: -x[1])
-                sorted_results_sorted = [r[0] for r in sorted_results]
-                results_jaccard_filtered = sorted_results_sorted[:10]
+                # sorted_results = sorted(tuple_hog_score, key=lambda x: -x[1])
+                number_samples = 10 if len(list_results) >= 10 else len(list_results)
+                random_results = random.sample(list_results, number_samples)
+                # results_jaccard_filtered = sorted_results_sorted[:10]
 
                 # compute allvsall jaccard and semantic --> return this
-                results_query_dict = self.results_all_vs_all(query, results_jaccard_filtered)
+                results_query_dict = self.results_all_vs_all(query, random_results)
 
                 results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
                 results_query_df['event'] = query
