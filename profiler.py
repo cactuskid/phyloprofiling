@@ -165,20 +165,34 @@ class Profiler:
         print(len(hogs_with_annotations))
         return hogs_with_annotations
 
-    def validate_pipeline(self, path_to_save):
+    def validate_pipeline(self, path_to_hog_id_file, path_to_save):
 
-        hogs_with_annotations = self.get_hogs_with_annotations()
-        # for each hog with annotations, query results
+        # get list of queries
+        hog_ids = list(pd.read_csv(path_to_hog_id_file, sep='\t')['hog id'])
 
         dataframe_list = []
 
-        for hog in hogs_with_annotations:
+        # query the LSH, get dict query:list of result
+        for hog in hog_ids:
             raw_results = self.hog_query(fam_id=hog)
             filtered_results = self.filter_results(raw_results)
             see_results(filtered_results)
-            for query, results_list in filtered_results.items():
+            # allvsquery Jaccard
+            results_jaccard = {}
+            start_time = time()
+            for query, list_results in filtered_results.items():
+                results_jaccard[query] = [(r, self.compute_jaccard_distance(query, r)) for r in list_results]
+            print('Full jaccard score in {} for {}'.format(time()-start_time, hog))
+            # take 10\20 best + query
+            for query, tuple_hog_score in results_jaccard.items():
                 start_time = time()
-                results_query_dict = self.results_query(query, results_list)
+                sorted_results = sorted(tuple_hog_score, key=lambda x: -x[1])
+                sorted_results_sorted = [r[0] for r in sorted_results]
+                results_jaccard_filtered = sorted_results_sorted[:10]
+
+                # compute allvsall jaccard and semantic --> return this
+                results_query_dict = self.results_all_vs_all(query, results_jaccard_filtered)
+
                 results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
                 results_query_df['event'] = query
 
