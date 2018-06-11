@@ -2,6 +2,7 @@ import ujson as json
 import h5py
 import multiprocessing as mp
 import pandas as pd
+import random
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -39,6 +40,8 @@ def get_hogs_with_annotations(hogs):
         except ValueError:
             hogs_without_annotations.append(fam)
 
+        if len(hogs_without_annotations) > 100000:
+            break
         # if goterms:
         #     if json.loads(goterms):
         #         hogs_with_annotations.append(hashutils.fam2hogid(fam))
@@ -46,16 +49,23 @@ def get_hogs_with_annotations(hogs):
     print('hogs without annotations {}'.format(len(hogs_without_annotations)))
     print('hogs with annotations {}'.format(len(hogs_with_annotations)))
     return hogs_with_annotations
+
+
 start_time = time()
 hogs_w_annotations = get_hogs_with_annotations(hogs2goterms)
 print('time to get hogs: {}'.format(time()-start_time))
 
+number_hogs_with_annotations = len(hogs_w_annotations)
+small_hogs_with_annotations = random.sample(hogs_w_annotations, 1000)
+print(small_hogs_with_annotations)
+
 
 def make_dict(fam):
     try:
+        print(fam)
         returnDict = {fam: goTermAnalysis.semantic_similarity_score(hashutils.fam2hogid(fam), hashutils.fam2hogid(fam))}
     except:
-        print(fam)
+        print(" *** {} ***".format(fam))
         returnDict = {fam: -1}
     return returnDict
 
@@ -63,7 +73,7 @@ start_time = time()
 if __name__ == '__main__':
 
     pool = mp.Pool()
-    results = pool.map_async(make_dict, hogs_w_annotations, 10*mp.cpu_count())
+    results = pool.map_async(make_dict, small_hogs_with_annotations, 10*mp.cpu_count())
 
     results = results.get()
 
