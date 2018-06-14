@@ -37,10 +37,15 @@ class Profiler:
 
         self.hashes = h5py.File(hashes_path, mode='r')
 
-
-
     def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
-
+        """
+        Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+        :param hog_id: query hog id
+        :param fam_id: query fam id
+        :param events: list of events one wants to query
+        :param combination: Boolean, combination of events or not
+        :return: dictionary containing the results of the LSH for the given query
+        """
         if hog_id is None and fam_id is None:
             return
 
@@ -67,7 +72,15 @@ class Profiler:
         return query_dict
 
     def results(self, hog_id, fam_id, events, combination, all_vs_all):
-
+        """
+        Get jaccard score and semantic value between given hog/id and its results in the LSH
+        :param hog_id: hog id
+        :param fam_id: fam id
+        :param events: evolutionary events
+        :param combination: Boolean
+        :param all_vs_all: Boolean, True: all vs all, False: query vs results+query
+        :return: list of dataframes containing hog ids, semantic value, and jaccard score
+        """
         results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
         see_results(results)
 
@@ -91,6 +104,11 @@ class Profiler:
         return dataframe_list
 
     def filter_results(self, results):
+        """
+        filters results, remove hogs without GO terms, used for validation
+        :param results: dictionary of results
+        :return: filtered dictionary of results
+        """
 
         filtered = {}
 
@@ -114,21 +132,17 @@ class Profiler:
         results_list = [query] + results_list
 
         for hog_event_1 in results_list:
-            # start_time = time()
             for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-            # print('{} {}'.format(hog_event_1, time()-start_time))
         return results_dict
 
     def results_query(self, query, results_list):
-        time_start = time()
         results_dict = {}
         hog_event_1 = query
         results_list = [query] + results_list
+
         for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-
-        #print('query results {}'.format(time()-time_start))
         return results_dict
 
     def get_scores(self, hog_event_1, hog_event_2, results_dict):
