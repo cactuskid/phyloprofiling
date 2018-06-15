@@ -3,6 +3,9 @@ import numpy as np
 from utils import goatools_utils
 
 
+
+
+
 class SemanticSimilarityAnalysis(object):
 
     def __init__(self, go, oma, term_counts, go_terms_hdf5):

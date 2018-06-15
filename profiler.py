@@ -3,8 +3,6 @@ import pandas as pd
 import h5py
 import itertools
 import ujson as json
-import random
-
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -34,7 +32,6 @@ class Profiler:
         lsh_file = open(lsh_path, 'rb')
         lsh_unpickled = pickle.Unpickler(lsh_file)
         self.lsh = lsh_unpickled.load()
-
         self.hashes = h5py.File(hashes_path, mode='r')
 
 
@@ -91,9 +88,7 @@ class Profiler:
         return dataframe_list
 
     def filter_results(self, results):
-
         filtered = {}
-
         # print(results)
         for query, results_list in results.items():
 
@@ -101,23 +96,20 @@ class Profiler:
             for result in results_list:
 
                 result_fam = hashutils.result2fam(result)
-                if result_fam not in filtered_list_results and self.hogs2goterms[result_fam] \
+                if result_fam not in filtered_list_results and self.hogs2goterms[result_fam]
                         and json.loads(self.hogs2goterms[result_fam]):
                     filtered_list_results.append(result)
             filtered[query] = filtered_list_results
-
         return filtered
 
     def results_all_vs_all(self, query, results_list):
-
         results_dict = {}
         results_list = [query] + results_list
-
         for hog_event_1 in results_list:
-            # start_time = time()
+            start_time = time()
             for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-            # print('{} {}'.format(hog_event_1, time()-start_time))
+            print('{} {}'.format(hog_event_1, time()-start_time))
         return results_dict
 
     def results_query(self, query, results_list):
@@ -127,7 +119,6 @@ class Profiler:
         results_list = [query] + results_list
         for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-
         #print('query results {}'.format(time()-time_start))
         return results_dict
 
@@ -141,6 +132,16 @@ class Profiler:
         results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
 
         return results_dict
+
+
+## TODO: add get string functions hashes_error_files
+
+	def coupute_string_score():
+		pass
+	def hog2string():
+		pass
+	def string2interactions():
+		pass
 
     def compute_semantic_distance(self, hog_1, hog_2):
 
@@ -167,35 +168,20 @@ class Profiler:
         print(len(hogs_with_annotations))
         return hogs_with_annotations
 
-    def validate_pipeline(self, path_to_hog_id_file, path_to_save):
+    def validate_pipeline(self, path_to_save):
 
-        # get list of queries
-        hog_ids = list(pd.read_csv(path_to_hog_id_file, sep='\t')['hog id'])
+        hogs_with_annotations = self.get_hogs_with_annotations()
+        # for each hog with annotations, query results
 
         dataframe_list = []
 
-        # query the LSH, get dict query:list of result
-        for hog in hog_ids:
+        for hog in hogs_with_annotations:
             raw_results = self.hog_query(fam_id=hog)
             filtered_results = self.filter_results(raw_results)
             see_results(filtered_results)
-            # allvsquery Jaccard
-            results_jaccard = {}
-            start_time = time()
-            # for query, list_results in filtered_results.items():
-            #     results_jaccard[query] = [(r, self.compute_jaccard_distance(query, r)) for r in list_results]
-            # print('Full jaccard score in {} for {}'.format(time()-start_time, hog))
-            # take 10\20 best + query
-            for query, list_results in filtered_results.items():
+            for query, results_list in filtered_results.items():
                 start_time = time()
-                # sorted_results = sorted(tuple_hog_score, key=lambda x: -x[1])
-                number_samples = 10 if len(list_results) >= 10 else len(list_results)
-                random_results = random.sample(list_results, number_samples)
-                # results_jaccard_filtered = sorted_results_sorted[:10]
-
-                # compute allvsall jaccard and semantic --> return this
-                results_query_dict = self.results_all_vs_all(query, random_results)
-
+                results_query_dict = self.results_query(query, results_list)
                 results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
                 results_query_df['event'] = query
 
