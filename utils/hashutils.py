@@ -78,7 +78,7 @@ def tree2eventdict(treemap):
     return eventdict
 
 
-def eventdict2minhashes(eventdict):
+def eventdict2minhashes(eventdict, nperm = 128):
     """
     Get minhashes from events dictionary
     :param eventdict: dictionary of evolutionary events
@@ -89,7 +89,7 @@ def eventdict2minhashes(eventdict):
     for event in eventdict:
 
         eventdict[event] = set(eventdict[event])
-        minHash = datasketch.MinHash(num_perm=128)
+        minHash = datasketch.MinHash(num_perm=nperm)
 
         for element in eventdict[event]:
             minHash.update(element.encode())
@@ -99,7 +99,7 @@ def eventdict2minhashes(eventdict):
     return hashes_dictionary
 
 
-def minhashes2leanminhashes(fam, minhashes, combination=True):
+def minhashes2leanminhashes(fam, minhashes, combination=True ,  nperm = 128):
     """
     Get leanMinHashes from MinHashes
     :param fam: fam
@@ -118,7 +118,7 @@ def minhashes2leanminhashes(fam, minhashes, combination=True):
         for j in range(1, len(minhashes.keys())):
             for i in itertools.combinations(minhashes.keys(), j + 1):
                 comb_name = str(fam)
-                minHash = datasketch.MinHash(num_perm=128)
+                minHash = datasketch.MinHash(num_perm=nperm)
                 for array in i:
                     comb_name += '-' + array
                     minHash.merge(minhashes[array])
@@ -129,7 +129,7 @@ def minhashes2leanminhashes(fam, minhashes, combination=True):
     return lean_minhashes_dictionary
 
 
-def tree2hashes(fam, treemap, events, combination):
+def tree2hashes(fam, treemap, events, combination, nperm = 128):
     """
     Get hashes from tree
     :param fam: fam
@@ -141,16 +141,14 @@ def tree2hashes(fam, treemap, events, combination):
     if treemap is not None:
         event_dictionary = tree2eventdict(treemap)
         event_dictionary = {e: event_dictionary[e] for e in events}
-        minhashes = eventdict2minhashes(event_dictionary)
-        leanminhashes = minhashes2leanminhashes(fam, minhashes, combination)
-
+        minhashes = eventdict2minhashes(event_dictionary,nperm)
+        leanminhashes = minhashes2leanminhashes(fam, minhashes, combination, nperm)
         return {'hashes': minhashes, 'dict': leanminhashes}
     else:
-        print('I am none')
         return None
 
 
-def tree2hashes_from_row(row, events, combination):
+def tree2hashes_from_row(row, events, combination,  nperm = 128):
     """
     Get hashes from tree
     :param row: tumple containing fam and treemap (pyham object)
@@ -160,7 +158,7 @@ def tree2hashes_from_row(row, events, combination):
     """
     fam, treemap = row.tolist()
 
-    return tree2hashes(fam, treemap, events, combination)
+    return tree2hashes(fam, treemap, events, combination , nperm)
 
 
 def tree2mat(treemap, taxa_index, verbose=False):
