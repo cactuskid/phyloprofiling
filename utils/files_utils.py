@@ -1,25 +1,22 @@
 import ete3
 import pandas as pd
 from Bio import Entrez
+import config_utils
 
-
-def get_tree(oma=None):
-    ncbi = ete3.NCBITaxa()
-    genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
-    tree = ncbi.get_topology(genome_ids_list)
-
-    print(len(genome_ids_list))
-
-    orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
-    print(len(orphans))
-    Entrez.email = "clement.train@gmail.com"
-
-    orphans_info = {}
-
-    for x in orphans:
-        search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
-        record = next(Entrez.parse(search_handle))
-        orphans_info[x] = [x['TaxId'] for x in record['LineageEx']]
+def get_tree(oma=None , overwrite = True ):
+	if overwrite == True:
+		ncbi = ete3.NCBITaxa()
+		genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
+		tree = ncbi.get_topology(genome_ids_list)
+		print(len(genome_ids_list))
+	    orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
+	    print(len(orphans))
+	    Entrez.email = "clement.train@gmail.com"
+	    orphans_info = {}
+	    for x in orphans:
+	        search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
+	        record = next(Entrez.parse(search_handle))
+	        orphans_info[x] = [x['TaxId'] for x in record['LineageEx']]
 
     tree = add_orphans(orphans_info, tree, genome_ids_list)
 

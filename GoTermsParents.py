@@ -152,8 +152,9 @@ if __name__ == '__main__':
         h5_go_terms.flush()
         print('Done with the parents in {} seconds'.format(time()-start_time))
 
-        dt_2 = h5py.special_dtype(vlen=bytes)
+    with h5py.File(config_utils.datadirLaurent + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
 
+        dt_2 = h5py.special_dtype(vlen=bytes)
         h5_go_terms.create_dataset('hog2goterms', (1000000,), dtype=dt_2)
         dataset_hog2genes = h5_go_terms['hog2goterms']
 
@@ -162,11 +163,8 @@ if __name__ == '__main__':
         print('started!')
         for i, row in enumerate(omah5.root.OrthoXML.Index):
             fam = row[0]
-
             hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
-
             dataset_hog2genes[fam] = json.dumps(hog_dict).encode()
-
             if i % 1000 == 0:
                 print('saving {} {}'.format(time()-start_time, fam))
                 h5_go_terms.flush()
