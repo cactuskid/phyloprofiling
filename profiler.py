@@ -101,15 +101,11 @@ class Profiler:
         return dataframe_list
 
     def filter_results(self, results):
-<<<<<<< HEAD
-=======
         """
         filters results, remove hogs without GO terms, used for validation
         :param results: dictionary of results
         :return: filtered dictionary of results
         """
-
->>>>>>> master
         filtered = {}
         # print(results)
         for query, results_list in results.items():
@@ -118,8 +114,8 @@ class Profiler:
             for result in results_list:
 
                 result_fam = hashutils.result2fam(result)
-                if result_fam not in filtered_list_results and self.hogs2goterms[result_fam]
-                        and json.loads(self.hogs2goterms[result_fam]):
+                if result_fam not in filtered_list_results and self.hogs2goterms[result_fam] \
+                    and json.loads(self.hogs2goterms[result_fam]):
                     filtered_list_results.append(result)
             filtered[query] = filtered_list_results
         return filtered
@@ -128,15 +124,9 @@ class Profiler:
         results_dict = {}
         results_list = [query] + results_list
         for hog_event_1 in results_list:
-<<<<<<< HEAD
-            start_time = time()
+
             for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-            print('{} {}'.format(hog_event_1, time()-start_time))
-=======
-            for hog_event_2 in results_list:
-                results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
->>>>>>> master
         return results_dict
 
     def results_query(self, query, results_list):
@@ -146,10 +136,7 @@ class Profiler:
 
         for hog_event_2 in results_list:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-<<<<<<< HEAD
-        #print('query results {}'.format(time()-time_start))
-=======
->>>>>>> master
+
         return results_dict
 
     def get_scores(self, hog_event_1, hog_event_2, results_dict):
@@ -164,14 +151,16 @@ class Profiler:
         return results_dict
 
 
-## TODO: add get string functions hashes_error_files
+    # TODO: add get string functions hashes_error_files
 
-	def coupute_string_score():
-		pass
-	def hog2string():
-		pass
-	def string2interactions():
-		pass
+    def coupute_string_score(self):
+        pass
+
+    def hog2string(self):
+        pass
+
+    def string2interactions(self):
+        pass
 
     def compute_semantic_distance(self, hog_1, hog_2):
 
