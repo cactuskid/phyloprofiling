@@ -12,8 +12,8 @@ def connect2Stringmap():
     return r2
 
 
-def fam2stringID(dbobj,fam, r):
-    members = dbobj.iter_members_of_hog_id(hashutils.fam2hogID(fam))
+def fam2stringID(dbobj, fam, r):
+    members = dbobj.iter_members_of_hog_id(hashutils.fam2hogid(fam))
     allstring = [r.get(m.canonicalid) for m in members]
     return allstring
 

@@ -243,37 +243,35 @@ class LSHBuilder:
 
 if __name__ == '__main__':
 
-    #hyper params
-    num_perm = 256
+    # hyper params
+    num_perm = config_utils.num_perm
 
-    #for use with weighted minhash functions
-    #overall weight of category
+    # for use with weighted minhash functions
+    # overall weight of category
     lossweight = [0,1]
     presencweight = [0,1]
     gainweight = [0,1]
     dupweight=[0,1]
 
-    #bleed to neighbors up and down
+    # bleed to neighbors up and down
     lossbleed = [0,1]
     presencebleed = [0,1]
     gainbleed = [0,1]
     dupbleed=[0,1]
 
-    #importance given to taxonomic levels
+    # importance given to taxonomic levels
     losslin = [0,1]
     presencelin = [0,1]
     gainlin = [0,1]
     duplin=[0,1]
 
-
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5OMA:
-    #loop with bayes opt over hyper params
+        # loop with bayes opt over hyper params
 
-        #build lsh
-        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path=config_utils.datadir ,numperm = config_utils.numperm)
+        # build lsh
+        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path=config_utils.datadir, numperm=num_perm)
         lsh_builder.run_pipeline()
 
-        #run validation
+        # run validation
 
-
-        #output score and params
+        # output score and params
