@@ -248,22 +248,22 @@ if __name__ == '__main__':
 
     # for use with weighted minhash functions
     # overall weight of category
-    lossweight = [0,1]
-    presencweight = [0,1]
-    gainweight = [0,1]
-    dupweight=[0,1]
+    lossweight = [0, 1]
+    presencweight = [0, 1]
+    gainweight = [0, 1]
+    dupweight=[0, 1]
 
     # bleed to neighbors up and down
-    lossbleed = [0,1]
-    presencebleed = [0,1]
-    gainbleed = [0,1]
-    dupbleed=[0,1]
+    lossbleed = [0, 1]
+    presencebleed = [0, 1]
+    gainbleed = [0, 1]
+    dupbleed=[0, 1]
 
     # importance given to taxonomic levels
-    losslin = [0,1]
-    presencelin = [0,1]
-    gainlin = [0,1]
-    duplin=[0,1]
+    losslin = [0, 1]
+    presencelin = [0, 1]
+    gainlin = [0, 1]
+    duplin=[0, 1]
 
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5OMA:
         # loop with bayes opt over hyper params
