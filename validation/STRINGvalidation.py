@@ -35,6 +35,6 @@ if STRINGMAP:
             if i > start_line:
                 words = line.split()
                 IDS = ''.join(sorted([words[0], words[1]]))
-                r1.set(IDS, i)
+                r1.set(IDS, stringAll.tell())
             if i % 1000000 == 0:
                 print(i)
