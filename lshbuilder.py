@@ -4,12 +4,12 @@ import gc
 import multiprocessing as mp
 import pandas as pd
 import time
-import h5sparse
 import pickle
 from datasketch import MinHashLSH , MinHashLSHForest
 from scipy import sparse
 from datetime import datetime
 import h5py
+from scipy.sparse import vstack
 
 from pyoma.browser import db
 
@@ -18,22 +18,22 @@ from utils import files_utils, config_utils, pyhamutils, hashutils
 
 class LSHBuilder:
 
-    def __init__(self, h5_oma, saving_path, hog_level=None , numperm = 128):
+    def __init__(self, h5_oma, saving_path, hog_level=None , numperm = 128, tax_filter=None):
         print("starting LSH BUILDER with hog level {}".format(hog_level))
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
-        self.tree = files_utils.get_tree(self.h5OMA)
-        self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.h5OMA)
+        self.tree_string, self.tree_ete3 = files_utils.get_tree(self.h5OMA)
+        self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.tree_ete3)
         self.numperm = numperm
         self.saving_path = saving_path
         self.datetime = datetime
         self.date_string = "{:%B_%d_%Y_%H_%M}".format(datetime.now())
 
         # define functions
-        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree)
+        self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree_string, tax_filter=tax_filter)
         self.HASH_PIPELINE = functools.partial(hashutils.tree2hashes_from_row, events=['duplication', 'gain', 'loss', 'presence'], combination=True , nperm =numperm )
-        self.ROW_PIPELINE = functools.partial(hashutils.tree2mat, taxaIndex=self.taxaIndex)
+        self.ROW_PIPELINE = functools.partial(hashutils.tree2mat, taxa_index=self.taxaIndex)
         self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
         if hog_level is not None:
             self.allowed_families = files_utils.get_allowed_families(self.db_obj, hog_level)
@@ -46,13 +46,19 @@ class LSHBuilder:
             self.columns = len(self.taxaIndex)
             self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
-    def generates_dataframes(self, size=100):
+    def generates_dataframes(self, size=100, minhog_size=5, maxhog_size=None):
 
         families = {}
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
             fam = row[0]
             if self.allowed_families is None or fam in self.allowed_families:
-                families[fam] = {'ortho': self.READ_ORTHO(fam)}
+
+                ortho_fam = self.READ_ORTHO(fam)
+                hog_size = ortho_fam.count('<species name=')
+
+                if (maxhog_size is None or hog_size < maxhog_size) and (minhog_size is None or hog_size > minhog_size):
+                    families[fam] = {'ortho': ortho_fam}
+
                 if len(families) > size:
                     pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
                     pd_dataframe['Fam'] = pd_dataframe.index
@@ -69,12 +75,11 @@ class LSHBuilder:
                 df['tree'] = df[['Fam', 'ortho']].apply(self.HAM_PIPELINE, axis=1)
                 df['hash'] = df[['Fam', 'tree']].apply(self.HASH_PIPELINE, axis=1)
 
-                # TODO uncomment for rows
-                # df['rows'] = df['tree'].apply(self.ROW_PIPELINE)
+                df['rows'] = df['tree'].apply(self.ROW_PIPELINE)
                 retq.put(df[['Fam', 'hash']])
-                # TODO uncomment for rows
-                # matq.put(df['rows'])
+                matq.put(df[['Fam', 'rows']])
             else:
+
                 print('Worker done' + str(i))
                 break
 
@@ -156,33 +161,56 @@ class LSHBuilder:
                         break
 
     def run_pipeline(self):
-        self.mp_with_timeout(number_workers=int(mp.cpu_count() / 1.5), number_updaters=1,
-                             data_generator=self.generates_dataframes(100), worker_function=self.worker,
-                             update_function=self.saver)
+        # self.mp_with_timeout(number_workers=int(mp.cpu_count() / 1.5), number_updaters=1,
+        #                      data_generator=self.generates_dataframes(100), worker_function=self.worker,
+        #                      update_function=self.saver)
 
-    def matrix_updater(self, i, q, retq, matq, l, rows, columns):
-        hog_mat = sparse.csr_matrix((rows, columns))
+        functype_dict = {'worker': (self.worker, mp.cpu_count()/1.5, True), 'updater': (self.saver, 1, False),
+                         'matrix_updater': (self.matrix_updater, 1, False)}
+
+        self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
+
+    def matrix_updater(self, i, q, retq, matq, l):
+        hog_mat = None
+
         save_start = time.clock()
 
         while True:
             rows = matq.get()
             if rows is not None:
-                for fam, sparse_row in rows.itesm():
+                for index,row in rows.iterrows():
+
+                    sparse_row = row['rows']
+                    fam = int(row['Fam'])
+
+                    try:
+                        if not hog_mat:
+                            hog_mat = sparse.lil_matrix((fam+10000, sparse_row.shape[1]))
+                    except ValueError:
+                        pass
+                    if hog_mat.shape[0] < fam:
+                        num_rows_to_add = fam - hog_mat.shape[0] + 10000
+                        new_hog_mat = sparse.lil_matrix((num_rows_to_add, sparse_row.shape[1]))
+                        hog_mat = vstack([hog_mat, new_hog_mat])
+
                     hog_mat[fam, :] = sparse_row
                 if time.clock() - save_start > 2000:
-                    with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                        h5matrix.create_dataset('hogmat', data=hog_mat)
-
+                    # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
+                        # h5matrix.create_dataset('hogmat', data=hog_mat)
+                    with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
+                        pickle.dump(hog_mat, handle, -1)
             else:
+                # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
+                #     h5matrix.create_dataset('hogmat', data=hog_mat)
+                with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
+                    pickle.dump(hog_mat, handle, -1)
 
-                with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                    h5matrix.create_dataset('hogmat', data=hog_mat)
                 print('DONE MAT UPDATER' + str(i))
 
                 break
 
     @staticmethod
-    def mp_with_timeout(number_workers, number_updaters, data_generator, worker_function, update_function ):
+    def mp_with_timeout(functypes, data_generator):
         work_processes = {}
         update_processes = {}
         lock = mp.Lock()
@@ -191,20 +219,18 @@ class LSHBuilder:
         retq = mp.Queue(maxsize=cores * 10)
         matq = mp.Queue(maxsize=cores * 10)
 
+        work_processes = {}
         print('start workers')
-        for i in range(number_workers):
-            t = mp.Process(target=worker_function, args=(i, q, retq, matq, lock))
-            t.daemon = True
-            t.start()
-            work_processes[i] = t
-
-        print('start savers')
-
-        for i in range(number_updaters):
-            t = mp.Process(target=update_function, args=(i, q, retq, matq, lock))
-            t.daemon = True
-            t.start()
-            update_processes[i] = t
+        for key in functypes:
+            worker_function, number_workers, joinval = functypes[key]
+            work_processes[key] = []
+            for i in range(int(number_workers)):
+                t = mp.Process(target=worker_function, args=(i, q, retq, matq, lock))
+                t.daemon = True
+                work_processes[key].append(t)
+        for key in work_processes:
+            for process in work_processes[key]:
+                process.start()
 
         count = 0
 
@@ -217,20 +243,24 @@ class LSHBuilder:
 
             except StopIteration:
                 print('stop iteration')
-
-                for p in range(2*number_workers):
-                    q.put(None)
-
-                # for p in work_processes:
-                #     work_processes[p].join()
-
+                for key in work_processes:
+                    for _ in work_processes[key]:
+                        q.put(None)
                 break
 
-        for p in range(2*number_updaters):
-            retq.put(None)
+        for key in work_processes:
+            worker_function, number_workers , joinval = functypes[key]
+            if joinval:
+                for process in work_processes[key]:
+                    process.join()
 
-        for p in update_processes:
-            update_processes[p].join()
+        for key in work_processes:
+            worker_function, number_workers, joinval = functypes[key]
+            if not joinval:
+                for _ in work_processes[key]:
+                    retq.put(None)
+                    matq.put(None)
+
 
         # for p in work_processes:
         #     work_processes[p].terminate()
@@ -269,7 +299,7 @@ if __name__ == '__main__':
         # loop with bayes opt over hyper params
 
         # build lsh
-        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path=config_utils.datadir, numperm=num_perm)
+        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path=config_utils.datadirLaurent, numperm=256, tax_filter=2759)
         lsh_builder.run_pipeline()
 
         # run validation

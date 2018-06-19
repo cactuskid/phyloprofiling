@@ -1,6 +1,6 @@
 import datasketch
 import itertools
-from scipy.sparse import csr_matrix
+from scipy.sparse import lil_matrix
 
 
 def hogid2fam(hog_id):
@@ -171,7 +171,7 @@ def tree2mat(treemap, taxa_index, verbose=False):
     when the given biological event is present in the given species
     """
     if treemap is not None:
-        hog_matrix = csr_matrix((1, 4 * len(taxa_index)))
+        hog_matrix = lil_matrix((1, 4 * len(taxa_index)))
         column_dict = {'presence': 0, 'gain': 1, 'loss': 2, 'duplication': 3}
 
         for node in treemap.traverse():
