@@ -188,32 +188,7 @@ class Profiler:
         print(len(hogs_with_annotations))
         return hogs_with_annotations
 
-    def validate_pipeline_go_terms(self, path_to_save):
-
-        hogs_with_annotations = self.get_hogs_with_annotations()
-        # for each hog with annotations, query results
-
-        dataframe_list = []
-
-        for hog in hogs_with_annotations:
-            raw_results = self.hog_query(fam_id=hog)
-            filtered_results = self.filter_results(raw_results)
-            see_results(filtered_results)
-            for query, results_list in filtered_results.items():
-                start_time = time()
-                results_query_dict = self.results_query(query, results_list)
-                results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
-                results_query_df['event'] = query
-
-                dataframe_list.append(results_query_df)
-
-                print('{} done in {}'.format(query, time() - start_time))
-
-        concat_result = pd.concat(list(dataframe_list))
-        concat_result.to_csv(path_to_save, sep='\t')
-        print('DONE')
-
-    def validate_pipeline(self, path_to_hog_id_file, path_to_save):
+    def validate_pipeline_go_terms(self, path_to_hog_id_file, path_to_save):
 
         # get list of queries
         hog_ids = list(pd.read_csv(path_to_hog_id_file, sep='\t')['hog id'])
@@ -246,6 +221,8 @@ class Profiler:
         print('DONE')
 
     def validate_pipeline_string(self, path_to_save):
+
+        
 
 
 
