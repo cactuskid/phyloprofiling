@@ -135,7 +135,6 @@ class SemanticSimilarityAnalysis(object):
 
     @staticmethod
     def _format_go_term(e):
-        #return e['TermNr']
         return 'GO:{:07d}'.format(e['TermNr'])
 
     def _filter_result(self, go_dict):
