@@ -8,16 +8,18 @@ import random
 from goatools import obo_parser
 from goatools.associations import read_gaf
 from goatools.semantic import TermCounts
+from pyoma.browser import db
 
 from validation import validation_semantic_similarity
 from utils import hashutils
+import string_stringdataMap
 
 from time import time
 
 
 class Profiler:
 
-    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path):
+    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path):
 
         self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
         self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
@@ -30,10 +32,18 @@ class Profiler:
                                                                                             self.term_counts,
                                                                                             self.go_terms_hdf5)
 
+        self.h5OMA = oma_path
+        self.db_obj = db.Database(self.h5OMA)
+
         lsh_file = open(lsh_path, 'rb')
         lsh_unpickled = pickle.Unpickler(lsh_file)
         self.lsh = lsh_unpickled.load()
         self.hashes = h5py.File(hashes_path, mode='r')
+
+        self.r1 = string_stringdataMap.connect2IDmap()
+        self.r2 = string_stringdataMap.connect2Stringmap()
+        self.string_data_path = string_data_path
+
 
     def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
         """
@@ -151,11 +161,39 @@ class Profiler:
 
         return results_dict
 
+    def results_string(self, query, results_list):
+        results_dict = {}
+        results_list = [query] + results_list
+        for hog_event_1 in results_list:
+
+            for hog_event_2 in results_list:
+                results_dict.update(self.get_scores_string(hog_event_1, hog_event_2, results_dict))
+        return results_dict
+
+    def get_scores_string(self, hog_event_1, hog_event_2, results_dict):
+        hog1 = hashutils.result2hogid(hog_event_1)
+        hog2 = hashutils.result2hogid(hog_event_2)
+
+        jaccard_dist = self.compute_jaccard_distance(hog_event_1, hog_event_2)
+        results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
+
+        # TODO get string results list
+        string_results_list = self.get_string_scores(hog1, hog2)
+        results_dict[(hog1, hog2)]['String'] = string_results_list
+
+        return results_dict
 
     # TODO: add get string functions hashes_error_files
 
-    def compute_string_score(self):
-        pass
+    def get_string_scores(self, hog1, hog2):
+
+        allstring1 = string_stringdataMap.fam2stringID(self.db_obj, hog1, self.r1)
+        allstring2 = string_stringdataMap.fam2stringID(self.db_obj, hog2, self.r1)
+
+        string_results = string_stringdataMap.HOGvsHOG(allstring1, allstring2, self.r2, self.string_data_path)
+
+        return string_results
+
 
     def hog2string(self):
         pass
@@ -187,6 +225,7 @@ class Profiler:
 
         print(len(hogs_with_annotations))
         return hogs_with_annotations
+
 
     def validate_pipeline_go_terms(self, path_to_hog_id_file, path_to_save):
 
@@ -222,9 +261,34 @@ class Profiler:
 
     def validate_pipeline_string(self, path_to_save):
 
-        
+        # get randomly n hogs
+        hog_ids = get_random_hogs(10)
 
+        dataframe_list = []
 
+        for hog in hog_ids:
+            results = self.hog_query(fam_id=hog)
+            see_results(results)
+
+            for query, list_results in results.items():
+                start_time = time()
+
+                # do not take all results, otherwise too long
+                number_samples = 10 if len(list_results) >= 10 else len(list_results)
+                random_results = random.sample(list_results, number_samples)
+
+                results_query_dict = self.results_string(query, random_results)
+
+                results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
+                results_query_df['event'] = query
+
+                dataframe_list.append(results_query_df)
+
+                print('{} done in {}'.format(query, time() - start_time))
+
+        concat_result = pd.concat(list(dataframe_list))
+        concat_result.to_csv(path_to_save, sep='\t')
+        print('DONE')
 
     def query_pipeline(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
                      combination=True, path_to_save=None, all_vs_all=False):
@@ -243,3 +307,11 @@ class Profiler:
 def see_results(results):
     for k, v in results.items():
         print('{} queries found for {}'.format(len(v), k))
+
+
+def get_random_hogs(number_hogs):
+    # TODO put correct number of hogs in OMA
+    hogs_in_OMA = 500000
+    fam_ids = [random.randint(1, hogs_in_OMA) for _ in range(number_hogs)]
+
+    return fam_ids
