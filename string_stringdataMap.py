@@ -1,5 +1,4 @@
 import itertools
-import linecache
 
 import redis
 
@@ -34,8 +33,8 @@ def HOGvsHOG(allstring1, allstring2, r2, datapath):
                 line = r2.get(''.join(sorted([id1, id2])))
                 stringdata.seek(int(line), 0)
                 words = stringdata.readline()
-                #words = linecache.getline(datapath, int(line)).split()
-                #words = stringdata.readline(int(line)).split()
+                # words = linecache.getline(datapath, int(line)).split()
+                # words = stringdata.readline(int(line)).split()
                 print(words)
                 row_dict = {refs[i]: int(entry) for i, entry in enumerate(words[2:])}
                 final[''.join(sorted([id1, id2]))] = row_dict

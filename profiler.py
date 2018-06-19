@@ -3,6 +3,7 @@ import pandas as pd
 import h5py
 import itertools
 import ujson as json
+import random
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -153,7 +154,7 @@ class Profiler:
 
     # TODO: add get string functions hashes_error_files
 
-    def coupute_string_score(self):
+    def compute_string_score(self):
         pass
 
     def hog2string(self):
@@ -187,7 +188,7 @@ class Profiler:
         print(len(hogs_with_annotations))
         return hogs_with_annotations
 
-    def validate_pipeline(self, path_to_save):
+    def validate_pipeline_go_terms(self, path_to_save):
 
         hogs_with_annotations = self.get_hogs_with_annotations()
         # for each hog with annotations, query results
@@ -211,6 +212,42 @@ class Profiler:
         concat_result = pd.concat(list(dataframe_list))
         concat_result.to_csv(path_to_save, sep='\t')
         print('DONE')
+
+    def validate_pipeline(self, path_to_hog_id_file, path_to_save):
+
+        # get list of queries
+        hog_ids = list(pd.read_csv(path_to_hog_id_file, sep='\t')['hog id'])
+
+        dataframe_list = []
+
+        # query the LSH, get dict query:list of result
+        for hog in hog_ids:
+            raw_results = self.hog_query(fam_id=hog)
+            filtered_results = self.filter_results(raw_results)
+            see_results(filtered_results)
+
+            for query, list_results in filtered_results.items():
+                start_time = time()
+
+                number_samples = 10 if len(list_results) >= 10 else len(list_results)
+                random_results = random.sample(list_results, number_samples)
+
+                results_query_dict = self.results_all_vs_all(query, random_results)
+
+                results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
+                results_query_df['event'] = query
+
+                dataframe_list.append(results_query_df)
+
+                print('{} done in {}'.format(query, time() - start_time))
+
+        concat_result = pd.concat(list(dataframe_list))
+        concat_result.to_csv(path_to_save, sep='\t')
+        print('DONE')
+
+    def validate_pipeline_string(self, path_to_save):
+
+
 
     def query_pipeline(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
                      combination=True, path_to_save=None, all_vs_all=False):
