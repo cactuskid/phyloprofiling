@@ -165,23 +165,30 @@ class Profiler:
         results_dict = {}
         results_list = [query] + results_list
         for hog_event_1 in results_list:
-
             for hog_event_2 in results_list:
-                results_dict.update(self.get_scores_string(hog_event_1, hog_event_2, results_dict))
+
+                if len(results_dict) < 10:
+                    results = self.get_scores_string(hog_event_1, hog_event_2, results_dict)
+
+                    if results:
+                        print('get some results')
+                        results_dict.update(results)
         return results_dict
 
     def get_scores_string(self, hog_event_1, hog_event_2, results_dict):
         hog1 = hashutils.result2hogid(hog_event_1)
         hog2 = hashutils.result2hogid(hog_event_2)
 
-        jaccard_dist = self.compute_jaccard_distance(hog_event_1, hog_event_2)
-        results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
-
         # TODO get string results list
         string_results_list = self.get_string_scores(hog1, hog2)
-        results_dict[(hog1, hog2)]['String'] = string_results_list
+        if string_results_list:
+            results_dict[(hog1, hog2)] = {'String': string_results_list}
 
-        return results_dict
+            jaccard_dist = self.compute_jaccard_distance(hog_event_1, hog_event_2)
+            results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
+            return results_dict
+        else:
+            return None
 
     # TODO: add get string functions hashes_error_files
 
@@ -190,9 +197,13 @@ class Profiler:
         allstring1 = string_stringdataMap.fam2stringID(self.db_obj, hog1, self.r1)
         allstring2 = string_stringdataMap.fam2stringID(self.db_obj, hog2, self.r1)
 
-        string_results = string_stringdataMap.HOGvsHOG(allstring1, allstring2, self.r2, self.string_data_path)
+        if len(allstring1)>0 and len(allstring2)>0:
+            string_results = string_stringdataMap.HOGvsHOG(allstring1, allstring2, self.r2, self.string_data_path)
 
-        return string_results
+            return string_results
+
+        else:
+            return None
 
 
     def hog2string(self):
@@ -262,7 +273,7 @@ class Profiler:
     def validate_pipeline_string(self, path_to_save):
 
         # get randomly n hogs
-        hog_ids = get_random_hogs(10)
+        hog_ids = self.get_random_hogs_with_string_id(10)
 
         dataframe_list = []
 
@@ -274,10 +285,10 @@ class Profiler:
                 start_time = time()
 
                 # do not take all results, otherwise too long
-                number_samples = 10 if len(list_results) >= 10 else len(list_results)
-                random_results = random.sample(list_results, number_samples)
+                # number_samples = 10 if len(list_results) >= 10 else len(list_results)
+                # random_results = random.sample(list_results, number_samples)
 
-                results_query_dict = self.results_string(query, random_results)
+                results_query_dict = self.results_string(query, list_results)
 
                 results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
                 results_query_df['event'] = query
@@ -303,15 +314,25 @@ class Profiler:
             print(df_results)
         print('done')
 
+    def get_random_hogs_with_string_id(self, number_hogs):
+        # TODO put correct number of hogs in OMA
+        hogs_in_OMA = 500000
+
+        fam_ids = []
+        while len(fam_ids) < number_hogs:
+            rand_hog = random.randint(1, hogs_in_OMA)
+            if rand_hog not in fam_ids:
+                string = string_stringdataMap.fam2stringID(self.db_obj, hashutils.fam2hogid(rand_hog), self.r1)
+                if string:
+                    fam_ids.append(rand_hog)
+                    print(rand_hog)
+
+        return fam_ids
+
 
 def see_results(results):
     for k, v in results.items():
         print('{} queries found for {}'.format(len(v), k))
 
 
-def get_random_hogs(number_hogs):
-    # TODO put correct number of hogs in OMA
-    hogs_in_OMA = 500000
-    fam_ids = [random.randint(1, hogs_in_OMA) for _ in range(number_hogs)]
 
-    return fam_ids
