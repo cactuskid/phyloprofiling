@@ -5,11 +5,10 @@ import multiprocessing as mp
 import pandas as pd
 import time
 import pickle
-from datasketch import MinHashLSH , MinHashLSHForest
+from datasketch import MinHashLSH, MinHashLSHForest
 from scipy import sparse
 from datetime import datetime
 import h5py
-from scipy.sparse import vstack
 
 from pyoma.browser import db
 
@@ -177,12 +176,12 @@ class LSHBuilder:
 
         while True:
             rows = matq.get()
-            if rows is not None:
-                for index,row in rows.iterrows():
-
+            
+            for index, row in rows.iterrows():
+                if row is not None:
                     sparse_row = row['rows']
                     fam = int(row['Fam'])
-
+    
                     try:
                         if not hog_mat:
                             hog_mat = sparse.lil_matrix((fam+10000, sparse_row.shape[1]))
@@ -191,23 +190,23 @@ class LSHBuilder:
                     if hog_mat.shape[0] < fam:
                         num_rows_to_add = fam - hog_mat.shape[0] + 10000
                         new_hog_mat = sparse.lil_matrix((num_rows_to_add, sparse_row.shape[1]))
-                        hog_mat = vstack([hog_mat, new_hog_mat])
-
+                        hog_mat = sparse.vstack([hog_mat, new_hog_mat])
+    
                     hog_mat[fam, :] = sparse_row
                 if time.clock() - save_start > 2000:
                     # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
                         # h5matrix.create_dataset('hogmat', data=hog_mat)
                     with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
                         pickle.dump(hog_mat, handle, -1)
-            else:
-                # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                #     h5matrix.create_dataset('hogmat', data=hog_mat)
-                with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
-                    pickle.dump(hog_mat, handle, -1)
-
-                print('DONE MAT UPDATER' + str(i))
-
-                break
+                else:
+                    # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
+                    #     h5matrix.create_dataset('hogmat', data=hog_mat)
+                    with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
+                        pickle.dump(hog_mat, handle, -1)
+    
+                    print('DONE MAT UPDATER' + str(i))
+    
+                    break
 
     @staticmethod
     def mp_with_timeout(functypes, data_generator):

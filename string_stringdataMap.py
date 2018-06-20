@@ -3,6 +3,8 @@ import redis
 
 from utils import hashutils
 
+from pyoma.browser import db
+
 
 def connect2IDmap():
     r1 = redis.StrictRedis(host='10.0.63.33', port=6379, db=0)
@@ -14,10 +16,19 @@ def connect2Stringmap():
     return r2
 
 
-def fam2stringID(dbobj, fam, r):
-    members = dbobj.iter_members_of_hog_id(hashutils.fam2hogid(fam))
-    allstring = [r.get(m.canonicalid) for m in members]
-    return allstring
+def fam2stringID(dbobj, hog_id, r):
+
+    members = dbobj.iter_members_of_hog_id(hog_id)
+    oma_id_mapper = db.OmaIdMapper(dbobj)
+    XrefIdMapper = db.XrefIdMapper(dbobj)
+    xrefs = XrefIdMapper.map_many_entry_nrs([oma_id_mapper.omaid_to_entry_nr(m.omaid) for m in members])
+
+    allstring = [r.get(x[2].decode()) for x in xrefs]
+
+    ret_string = []
+    ret_string += [x.decode() for x in allstring if x is not None]
+
+    return ret_string
 
 
 def HOGvsHOG(allstring1, allstring2, r2, datapath):
