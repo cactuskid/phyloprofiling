@@ -4,6 +4,7 @@ import h5py
 import itertools
 import ujson as json
 import random
+from scipy.sparse import csr_matrix
 
 from goatools import obo_parser
 from goatools.associations import read_gaf
@@ -19,7 +20,7 @@ from time import time
 
 class Profiler:
 
-    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path):
+    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path, profile_matrix_path):
 
         self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
         self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
@@ -43,6 +44,11 @@ class Profiler:
         self.r1 = string_stringdataMap.connect2IDmap()
         self.r2 = string_stringdataMap.connect2Stringmap()
         self.string_data_path = string_data_path
+
+        profile_matrix_file = open(profile_matrix_path, 'rb')
+        profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
+        self.profile_matrix = profile_matrix_unpickled.load()
+
 
 
     def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
@@ -169,7 +175,7 @@ class Profiler:
 
                 if len(results_dict) < 10:
                     results = self.get_scores_string(hog_event_1, hog_event_2, results_dict)
-
+                    print('get string score')
                     if results:
                         print('get some results')
                         results_dict.update(results)
@@ -314,6 +320,32 @@ class Profiler:
             print(df_results)
         print('done')
 
+    def query_analysis_pipeline(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
+                                combination=True, path_to_save=None, all_vs_all=False):
+
+        print('getting results')
+        results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
+        see_results(results)
+
+        results = get_hog_ids_from_results(results)
+
+        # get X (matrix)
+        results_matrix = self.profile_matrix
+
+    def get_submatrix_form_results(self, results):
+
+        res_mat_list = []
+
+        for query, result in results.items():
+            res_mat = csr_matrix((len(result), self.profile_matrix.shape[1]))
+            for i, r in enumerate(result):
+                res_mat[i, :] = self.profile_matrix[r, :]
+
+            res_mat_list.append(res_mat)
+
+        return res_mat_list
+
+
     def get_random_hogs_with_string_id(self, number_hogs):
         # TODO put correct number of hogs in OMA
         hogs_in_OMA = 500000
@@ -335,4 +367,12 @@ def see_results(results):
         print('{} queries found for {}'.format(len(v), k))
 
 
+def get_hog_ids_from_results(results):
+
+    query_event_hog_ids = {}
+
+    for query, result in results.items():
+        query_event_hog_ids[query] = [hashutils.result2fam(query)] + [hashutils.result2fam(r) for r in result]
+
+    return  query_event_hog_ids
 
