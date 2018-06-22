@@ -20,7 +20,7 @@ from time import time
 
 class Profiler:
 
-    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path, profile_matrix_path):
+    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path):#, profile_matrix_path):
 
         self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
         self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
@@ -45,9 +45,9 @@ class Profiler:
         self.r2 = string_stringdataMap.connect2Stringmap()
         self.string_data_path = string_data_path
 
-        profile_matrix_file = open(profile_matrix_path, 'rb')
-        profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
-        self.profile_matrix = profile_matrix_unpickled.load()
+        # profile_matrix_file = open(profile_matrix_path, 'rb')
+        # profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
+        # self.profile_matrix = profile_matrix_unpickled.load()
 
 
 
@@ -174,27 +174,28 @@ class Profiler:
             for hog_event_2 in results_list:
 
                 if len(results_dict) < 10:
-                    results = self.get_scores_string(hog_event_1, hog_event_2, results_dict)
-                    print('get string score')
+                    results = self.get_scores_string(hog_event_1, hog_event_2)
                     if results:
                         print('get some results')
                         results_dict.update(results)
         return results_dict
 
-    def get_scores_string(self, hog_event_1, hog_event_2, results_dict):
+    def get_scores_string(self, hog_event_1, hog_event_2):
         hog1 = hashutils.result2hogid(hog_event_1)
         hog2 = hashutils.result2hogid(hog_event_2)
 
         # TODO get string results list
         string_results_list = self.get_string_scores(hog1, hog2)
+
+        results_dict = {}
+
         if string_results_list:
             results_dict[(hog1, hog2)] = {'String': string_results_list}
 
             jaccard_dist = self.compute_jaccard_distance(hog_event_1, hog_event_2)
             results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
-            return results_dict
-        else:
-            return None
+
+        return results_dict
 
     # TODO: add get string functions hashes_error_files
 
@@ -205,7 +206,7 @@ class Profiler:
 
         if len(allstring1)>0 and len(allstring2)>0:
             string_results = string_stringdataMap.HOGvsHOG(allstring1, allstring2, self.r2, self.string_data_path)
-
+            print(string_results)
             return string_results
 
         else:
@@ -279,7 +280,7 @@ class Profiler:
     def validate_pipeline_string(self, path_to_save):
 
         # get randomly n hogs
-        hog_ids = self.get_random_hogs_with_string_id(10)
+        hog_ids = self.get_random_hogs_with_string_id(2)
 
         dataframe_list = []
 
@@ -374,5 +375,5 @@ def get_hog_ids_from_results(results):
     for query, result in results.items():
         query_event_hog_ids[query] = [hashutils.result2fam(query)] + [hashutils.result2fam(r) for r in result]
 
-    return  query_event_hog_ids
+    return query_event_hog_ids
 

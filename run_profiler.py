@@ -1,3 +1,6 @@
+
+%load_ext autoreload
+%autoreload 2
 import profiler
 from utils import config_utils
 from datetime import datetime
@@ -14,21 +17,3 @@ profilerObj.validate_pipeline_string(path_to_save=config_utils.datadirLaurent + 
 
 path_to_hog_id_file=config_utils.datadirLaurent + 'project/results/hog_list.csv'
 
-
-
-%load_ext autoreload
-%autoreload 2
-
-import profiler
-from utils import config_utils
-from datetime import datetime
-
-profilerObj = profiler.Profiler(lsh_path='/home/laurent/Documents/LSF/' + 'June_05_2018_14_31_0.7_newlsh.pkl',
-                                hashes_path='/home/laurent/Documents/LSF/' + 'June_05_2018_14_31hashes.h5',
-                                obo_file_path='/home/laurent/Documents/LSF/' + 'project/data/go.obo',
-                                gaf_file_path='/home/laurent/Documents/LSF/' + 'project/data/gene_association.tair',
-                                h5_go_terms_parents_path='/home/laurent/Documents/LSF/' + 'project/data/parents.h5',
-                                oma_path='/home/laurent/Documents/mountlsf/OmaServer.h5',
-                                string_data_path='/home/laurent/Documents/server' + '/protein.links.detailed.v10.5.txt')
-date_string = "{:%B_%d_%Y_%H_%M}".format(datetime.now())
-profilerObj.validate_pipeline_string(path_to_save='/home/laurent/Documents/project/' + 'validation' + date_string + '.txt')
