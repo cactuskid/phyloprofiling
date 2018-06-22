@@ -17,8 +17,7 @@ from utils import files_utils, config_utils, pyhamutils, hashutils
 
 class LSHBuilder:
 
-    def __init__(self, h5_oma, saving_path, hog_level=None , numperm = 128, tax_filter=None):
-        print("starting LSH BUILDER with hog level {}".format(hog_level))
+    def __init__(self, h5_oma, saving_path, numperm = 128, tax_filter=None):
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
@@ -34,35 +33,27 @@ class LSHBuilder:
         self.HASH_PIPELINE = functools.partial(hashutils.tree2hashes_from_row, events=['duplication', 'gain', 'loss', 'presence'], combination=True , nperm =numperm )
         self.ROW_PIPELINE = functools.partial(hashutils.tree2mat, taxa_index=self.taxaIndex)
         self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
-        if hog_level is not None:
-            self.allowed_families = files_utils.get_allowed_families(self.db_obj, hog_level)
-            print(self.allowed_families)
-            print(len(self.allowed_families))
-            self.columns = len(self.allowed_families)
-            self.rows = len(self.allowed_families)
-        else:
-            self.allowed_families = None
-            self.columns = len(self.taxaIndex)
-            self.rows = len(self.h5OMA.root.OrthoXML.Index)
+
+        self.columns = len(self.taxaIndex)
+        self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
     def generates_dataframes(self, size=100, minhog_size=5, maxhog_size=None):
 
         families = {}
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
             fam = row[0]
-            if self.allowed_families is None or fam in self.allowed_families:
 
-                ortho_fam = self.READ_ORTHO(fam)
-                hog_size = ortho_fam.count('<species name=')
+            ortho_fam = self.READ_ORTHO(fam)
+            hog_size = ortho_fam.count('<species name=')
 
-                if (maxhog_size is None or hog_size < maxhog_size) and (minhog_size is None or hog_size > minhog_size):
-                    families[fam] = {'ortho': ortho_fam}
+            if (maxhog_size is None or hog_size < maxhog_size) and (minhog_size is None or hog_size > minhog_size):
+                families[fam] = {'ortho': ortho_fam}
 
-                if len(families) > size:
-                    pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
-                    pd_dataframe['Fam'] = pd_dataframe.index
-                    families = {}
-                    yield pd_dataframe
+            if len(families) > size:
+                pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
+                pd_dataframe['Fam'] = pd_dataframe.index
+                families = {}
+                yield pd_dataframe
 
     def worker(self, i, q, retq, matq, l):
 
@@ -94,7 +85,10 @@ class LSHBuilder:
         dataset_names = ['duplication', 'gain', 'loss', 'presence']
         threshold = 0.7
 
-        lsh = MinHashLSH(threshold=threshold, num_perm=self.numperm)
+        lsh = MinHashLSH(
+            threshold=threshold,
+            num_perm=self.numperm,
+            storage_config={'type': 'redis', 'redis': {'host': '10.0.63.33', 'port': 6379, 'db': 2}})
         forest = MinHashLSHForest(num_perm=self.numperm)
 
         with open(self.saving_path + self.date_string + 'errors.txt', 'a') as hashes_error_files:
@@ -115,7 +109,6 @@ class LSHBuilder:
                     print(count)
 
                     if this_dataframe is not None:
-
                         hashes = this_dataframe['hash'].to_dict()
 
                         for fam in hashes:
@@ -143,17 +136,17 @@ class LSHBuilder:
                         if time.clock() - save_start > 2000:
                             print(this_dataframe['Fam'].max())
                             print('saving')
-                            with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl', 'wb') as lsh_out:
-                                pickle.dump(lsh, lsh_out, -1)
+                        #     with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl', 'wb') as lsh_out:
+                        #         pickle.dump(lsh, lsh_out, -1)
                             with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
                                 pickle.dump(forest, forestout, -1)
                             save_start = time.clock()
                             print(time.clock() - global_time)
                         count += len(this_dataframe)
                     else:
-                        with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl',
-                                  'wb') as lsh_out:
-                            pickle.dump(lsh, lsh_out, -1)
+                        # with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl',
+                        #           'wb') as lsh_out:
+                        #     pickle.dump(lsh, lsh_out, -1)
                         with open(self.saving_path + self.date_string + 'newlshforest.pkl', 'wb') as forestout:
                             pickle.dump(forest, forestout, -1)
                         print('DONE UPDATER' + str(i))
