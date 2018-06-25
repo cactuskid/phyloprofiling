@@ -12,7 +12,7 @@ from goatools.semantic import TermCounts
 from pyoma.browser import db
 
 from validation import validation_semantic_similarity
-from utils import hashutils
+from utils import hashutils, string_utils
 import string_stringdataMap
 
 from time import time
@@ -204,11 +204,13 @@ class Profiler:
         allstring1 = string_stringdataMap.fam2stringID(self.db_obj, hog1, self.r1)
         allstring2 = string_stringdataMap.fam2stringID(self.db_obj, hog2, self.r1)
 
-        if len(allstring1)>0 and len(allstring2)>0:
-            string_results = string_stringdataMap.HOGvsHOG(allstring1, allstring2, self.r2, self.string_data_path)
+        if len(allstring1) > 0 and len(allstring2) > 0:
+
+            # string_results = string_stringdataMap.HOGvsHOG(allstring1, allstring2, self.r2, self.string_data_path)
+            # here, change function ...
+            string_results = string_utils.get_interactions(allstring1, allstring2)
             print(string_results)
             return string_results
-
         else:
             return None
 
@@ -345,7 +347,6 @@ class Profiler:
             res_mat_list.append(res_mat)
 
         return res_mat_list
-
 
     def get_random_hogs_with_string_id(self, number_hogs):
         # TODO put correct number of hogs in OMA
