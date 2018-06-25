@@ -18,17 +18,22 @@ def connect2Stringmap():
     return r2
 
 
+def search(name, source_list):
+    for x in source_list:
+        if x['source'] == name:
+            return x
+
+
 def fam2stringID(dbobj, hog_id, r):
     members = dbobj.iter_members_of_hog_id(hog_id)
 
     oma_id_mapper = db.OmaIdMapper(dbobj)
     XrefIdMapper = db.XrefIdMapper(dbobj)
-    xrefs = XrefIdMapper.map_many_entry_nrs([oma_id_mapper.omaid_to_entry_nr(m.omaid) for m in members])
 
-    allstring = [r.get(x[2].decode()) for x in xrefs]
-    ret_string = []
-    ret_string += [x.decode() for x in allstring if x is not None]
-    print(ret_string)
+    xrefs = {oma_id_mapper.omaid_to_entry_nr(m.omaid):XrefIdMapper.map_entry_nr(oma_id_mapper.omaid_to_entry_nr(m.omaid)) for m in members}
+    xrefs_source = {genome: search('SourceID', ids)['xref'] for genome, ids in xrefs.items()}
+    print(xrefs_source)
+    ret_string = {genome: string for genome, string in xrefs_source.items() if string is not None}
     return ret_string
 
 
@@ -53,7 +58,6 @@ def HOGvsHOG(allstring1, allstring2, r2, datapath):
             else:
                 print('nothing in db')
         return final
-
 
 # map HOGS to OMA ID
 
