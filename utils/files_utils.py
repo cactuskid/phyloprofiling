@@ -1,30 +1,28 @@
 import ete3
 import pandas as pd
 from Bio import Entrez
-#import config_utils
 
 
-def get_tree(oma=None , overwrite = True ):
-    if overwrite == True:
-        ncbi = ete3.NCBITaxa()
-        genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
-        tree = ncbi.get_topology(genome_ids_list)
-        print(len(genome_ids_list))
-        orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
-        print(len(orphans))
-        Entrez.email = "clement.train@gmail.com"
+def get_tree(oma=None):
+    ncbi = ete3.NCBITaxa()
+    genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
+    tree = ncbi.get_topology(genome_ids_list)
+    print(len(genome_ids_list))
+    orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
+    print(len(orphans))
+    Entrez.email = "clement.train@gmail.com"
 
-        orphans_info = {}
+    orphans_info = {}
 
-        for x in orphans:
-            search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
-            record = next(Entrez.parse(search_handle))
-            orphans_info[x] = [x['TaxId'] for x in record['LineageEx']]
+    for x in orphans:
+        search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
+        record = next(Entrez.parse(search_handle))
+        orphans_info[x] = [x['TaxId'] for x in record['LineageEx']]
 
     tree = add_orphans(orphans_info, tree, genome_ids_list)
 
     for n in tree.traverse():
-        if len( [ x for x in n.get_descendants()] ) == 1:
+        if len([x for x in n.get_descendants()]) == 1:
             # remove node with one Child
             parent = n.get_ancestors()[0]
             child = n.get_leaves()[0]
@@ -53,17 +51,6 @@ def generate_taxa_index(tree):
         taxa_index[n.name] = i
 
     return taxa_index, taxa_index_reverse
-
-
-# def get_allowed_families(db_object, hog_level):
-#
-#     allowed_families_list = []
-#     level = '''Level == b"{}"'''.format(hog_level)
-#
-#     for fam in db_object.get_hdf5_handle().get_node('/HogLevel').where(level):
-#         allowed_families_list.append(fam[0])
-#
-#     return allowed_families_list
 
 
 def add_orphans(orphan_info, tree, genome_ids_list, verbose=False):

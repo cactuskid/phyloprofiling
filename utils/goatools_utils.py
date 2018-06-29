@@ -18,7 +18,7 @@ def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
 
 def deepest_common_ancestor_hdf5(go_ids, godag, hdf5):
     '''
-        This function gets the nearest common ancestor
+        Gets the nearest common ancestor
         using the above function.
         Only returns single most specific - assumes unique exists.
     '''
@@ -28,7 +28,7 @@ def deepest_common_ancestor_hdf5(go_ids, godag, hdf5):
 
 def common_parent_go_ids_hdf5(go_ids, hdf5_set):
     '''
-        This function finds the common ancestors in the GO
+        Fins the common ancestors in the GO
         tree of the list of goids in the input.
     '''
 
