@@ -49,8 +49,6 @@ class Profiler:
         # profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
         # self.profile_matrix = profile_matrix_unpickled.load()
 
-
-
     def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
         """
         Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
@@ -124,7 +122,7 @@ class Profiler:
         :return: filtered dictionary of results
         """
         filtered = {}
-        # print(results)
+
         for query, results_list in results.items():
 
             filtered_list_results = []
@@ -167,20 +165,19 @@ class Profiler:
 
         return results_dict
 
-    def results_string(self, query, results_list):
+    def results_with_string_score(self, query, results_list):
         results_dict = {}
         results_list = [query] + results_list
         for hog_event_1 in results_list:
             for hog_event_2 in results_list:
 
                 if len(results_dict) < 10:
-                    results = self.get_scores_string(hog_event_1, hog_event_2)
+                    results = self.get_string_jaccard_scores(hog_event_1, hog_event_2)
                     if results:
-                        print('get some results')
                         results_dict.update(results)
         return results_dict
 
-    def get_scores_string(self, hog_event_1, hog_event_2):
+    def get_string_jaccard_scores(self, hog_event_1, hog_event_2):
         hog1 = hashutils.result2hogid(hog_event_1)
         hog2 = hashutils.result2hogid(hog_event_2)
 
@@ -214,13 +211,6 @@ class Profiler:
         else:
             return None
 
-
-    def hog2string(self):
-        pass
-
-    def string2interactions(self):
-        pass
-
     def compute_semantic_distance(self, hog_1, hog_2):
 
         semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog_1, hog_2)
@@ -245,7 +235,6 @@ class Profiler:
 
         print(len(hogs_with_annotations))
         return hogs_with_annotations
-
 
     def validate_pipeline_go_terms(self, path_to_hog_id_file, path_to_save):
 
@@ -297,7 +286,7 @@ class Profiler:
                 # number_samples = 10 if len(list_results) >= 10 else len(list_results)
                 # random_results = random.sample(list_results, number_samples)
 
-                results_query_dict = self.results_string(query, list_results)
+                results_query_dict = self.results_with_string_score(query, list_results)
 
                 results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
                 results_query_df['event'] = query
@@ -330,7 +319,7 @@ class Profiler:
         results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
         see_results(results)
 
-        results = get_hog_ids_from_results(results)
+        results_ids = get_hog_ids_from_results(results)
 
         # get X (matrix)
         results_matrix = self.profile_matrix
