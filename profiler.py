@@ -13,7 +13,7 @@ from pyoma.browser import db
 
 from validation import validation_semantic_similarity
 from utils import hashutils, string_utils
-import string_stringdataMap
+from preprocessing import string_stringdataMap
 
 from time import time
 
