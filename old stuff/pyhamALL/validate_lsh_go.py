@@ -34,7 +34,6 @@ associations = read_gaf('./data/gene_association.tair')
 termcounts = TermCounts(go, associations)
 goTermAnalysis = validationGoTerm.SemanticSimilarityAnalysis(go, h5OMA, termcounts)
 
-
 pool = mp.Pool()
 
 
