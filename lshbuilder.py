@@ -45,7 +45,7 @@ class LSHBuilder:
 
             ## TODO: add further quality check here for hog_size / hogspread
             ortho_fam = self.READ_ORTHO(fam)
-            hog_size = ortho_fam.count('<species name=')
+            hog_size = ortho_fam.count('<species name='lil_matrix)
 
             if (maxhog_size is None or hog_size < maxhog_size) and (minhog_size is None or hog_size > minhog_size):
                 families[fam] = {'ortho': ortho_fam}
@@ -64,9 +64,9 @@ class LSHBuilder:
             if df is not None:
                 df['tree'] = df[['Fam', 'ortho']].apply(self.HAM_PIPELINE, axis=1)
                 df['hash'] = df[['Fam', 'tree']].apply(self.HASH_PIPELINE, axis=1)
-                df['rows'] = df['tree'].apply(self.ROW_PIPELINE)
+                #df['rows'] = df['tree'].apply(self.ROW_PIPELINE)
                 retq.put(df[['Fam', 'hash']])
-                matq.put(df[['Fam', 'rows']])
+                #matq.put(df[['Fam', 'rows']])
             else:
                 print('Worker done' + str(i))
                 break
@@ -173,18 +173,18 @@ class LSHBuilder:
                     fam = int(row['Fam'])
                     try:
                         if not hog_mat:
-                            hog_mat = sparse.lil_matrix((fam+10000, sparse_row.shape[1]))
+                            hog_mat = sparse.csr_matrix((fam+10000, sparse_row.shape[1]))
                     except ValueError:
                         pass
                     if hog_mat.shape[0] < fam:
                         print('extend HOGMAT')
                         num_rows_to_add = fam - hog_mat.shape[0] + 10000
-                        new_hog_mat = sparse.lil_matrix((num_rows_to_add, sparse_row.shape[1]))
+                        new_hog_mat = sparse.csr_matrix((num_rows_to_add, sparse_row.shape[1]))
                         hog_mat = sparse.vstack([hog_mat, new_hog_mat])
                     hog_mat[fam, :] = sparse_row
                 else:
                     break
-                
+
                 if time.clock() - save_start > 2000:
                     # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
                         # h5matrix.create_dataset('hogmat', data=hog_mat)
