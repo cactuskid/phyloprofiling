@@ -105,10 +105,10 @@ def eventdict2WeightedMinhashes(eventdict, nperm = 128, treeweights =None ):
     :param eventdict: dictionary of evolutionary events
     :return: minHashes
     """
-	if wmg == None:
-		wmg = WeightedMinHashGenerator()
-	
-	hashes_dictionary = {}
+    if wmg == None:
+    	wmg = WeightedMinHashGenerator()
+
+    hashes_dictionary = {}
 
     for event in eventdict:
         eventdict[event] = set(eventdict[event])
