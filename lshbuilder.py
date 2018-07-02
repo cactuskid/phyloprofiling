@@ -43,6 +43,7 @@ class LSHBuilder:
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
             fam = row[0]
 
+            ## TODO: add further quality check here for hog_size / hogspread
             ortho_fam = self.READ_ORTHO(fam)
             hog_size = ortho_fam.count('<species name=')
 
@@ -61,15 +62,12 @@ class LSHBuilder:
         while True:
             df = q.get()
             if df is not None:
-
                 df['tree'] = df[['Fam', 'ortho']].apply(self.HAM_PIPELINE, axis=1)
                 df['hash'] = df[['Fam', 'tree']].apply(self.HASH_PIPELINE, axis=1)
-
                 df['rows'] = df['tree'].apply(self.ROW_PIPELINE)
                 retq.put(df[['Fam', 'hash']])
                 matq.put(df[['Fam', 'rows']])
             else:
-
                 print('Worker done' + str(i))
                 break
 
@@ -88,7 +86,6 @@ class LSHBuilder:
             num_perm=self.numperm,
             storage_config={'type': 'redis', 'redis': {'host': '10.0.63.33', 'port': 6379, 'db': 2}})
         forest = MinHashLSHForest(num_perm=self.numperm)
-
         with open(self.saving_path + self.date_string + 'errors.txt', 'w') as hashes_error_files:
             with h5py.File(self.saving_path + self.date_string + 'hashes.h5', 'w', libver='latest') as h5hashes:
                 datasets = {}
