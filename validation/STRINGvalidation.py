@@ -1,4 +1,5 @@
 import redis
+import gc
 
 UNIMAP = True
 STRINGMAP = True
@@ -38,3 +39,5 @@ if STRINGMAP:
                 r1.set(IDS, stringAll.tell())
             if i % 1000000 == 0:
                 print(i)
+				if i % 10000000 == 0:
+					gc.collect()

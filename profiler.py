@@ -366,4 +366,3 @@ def get_hog_ids_from_results(results):
         query_event_hog_ids[query] = [hashutils.result2fam(query)] + [hashutils.result2fam(r) for r in result]
 
     return query_event_hog_ids
-
