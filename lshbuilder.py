@@ -189,16 +189,13 @@ class LSHBuilder:
                     with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
                         pickle.dump(hog_mat, handle, -1)
                     save_start = time.clock()
-
-                else:
-                    # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                    #     h5matrix.create_dataset('hogmat', data=hog_mat)
-                    with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
-                        pickle.dump(hog_mat, handle, -1)
-
-                    print('DONE MAT UPDATER' + str(i))
-
-                    break
+            else:
+                # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
+                #     h5matrix.create_dataset('hogmat', data=hog_mat)
+                with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
+                    pickle.dump(hog_mat, handle, -1)
+                print('DONE MAT UPDATER' + str(i))
+                break
 
     @staticmethod
     def mp_with_timeout(functypes, data_generator):
