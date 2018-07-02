@@ -123,6 +123,8 @@ class LSHBuilder:
                                 print('error')
                                 print(fam)
                                 hashes_error_files.write(str(fam) + '\n')
+
+
                         if time.clock() - print_start > 60:
                             print(this_dataframe['Fam'].max())
                             print(time.clock() - global_time)
@@ -186,6 +188,8 @@ class LSHBuilder:
                         # h5matrix.create_dataset('hogmat', data=hog_mat)
                     with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
                         pickle.dump(hog_mat, handle, -1)
+                    save_start = time.clock()
+
                 else:
                     # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
                     #     h5matrix.create_dataset('hogmat', data=hog_mat)
