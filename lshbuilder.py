@@ -163,15 +163,14 @@ class LSHBuilder:
         hog_mat = None
 
         save_start = time.clock()
+        print('hogmat saver init ' + str(i))
 
         while True:
             rows = matq.get()
-
             for index, row in rows.iterrows():
                 if row is not None:
                     sparse_row = row['rows']
                     fam = int(row['Fam'])
-
                     try:
                         if not hog_mat:
                             hog_mat = sparse.lil_matrix((fam+10000, sparse_row.shape[1]))
@@ -190,11 +189,10 @@ class LSHBuilder:
                     with open(self.saving_path + self.date_string +'_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
                         pickle.dump(hog_mat, handle, -1)
                     save_start = time.clock()
-
-            with open(self.saving_path + self.date_string + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
-                pickle.dump(hog_mat, handle, -1)
-            print('DONE MAT UPDATER' + str(i))
-            break
+        with open(self.saving_path + self.date_string + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
+            pickle.dump(hog_mat, handle, -1)
+        print('DONE MAT UPDATER' + str(i))
+        break
 
     @staticmethod
     def mp_with_timeout(functypes, data_generator):
