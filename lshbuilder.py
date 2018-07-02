@@ -154,8 +154,8 @@ class LSHBuilder:
         #                      data_generator=self.generates_dataframes(100), worker_function=self.worker,
         #                      update_function=self.saver)
 
-        functype_dict = {'worker': (self.worker, mp.cpu_count()/1.5, True), 'updater': (self.saver, 1, False),
-                         'matrix_updater': (self.matrix_updater, 1, False)}
+        functype_dict = {'worker': (self.worker, int(mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
+                         'matrix_updater': (self.matrix_updater, 10, False)}
 
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
 
@@ -178,21 +178,22 @@ class LSHBuilder:
                     except ValueError:
                         pass
                     if hog_mat.shape[0] < fam:
+                        print('extend HOGMAT')
                         num_rows_to_add = fam - hog_mat.shape[0] + 10000
                         new_hog_mat = sparse.lil_matrix((num_rows_to_add, sparse_row.shape[1]))
                         hog_mat = sparse.vstack([hog_mat, new_hog_mat])
-
                     hog_mat[fam, :] = sparse_row
                 if time.clock() - save_start > 2000:
                     # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
                         # h5matrix.create_dataset('hogmat', data=hog_mat)
-                    with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
+                    print('saving HOGMAT')
+                    with open(self.saving_path + self.date_string +_'matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
                         pickle.dump(hog_mat, handle, -1)
                     save_start = time.clock()
             else:
                 # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
                 #     h5matrix.create_dataset('hogmat', data=hog_mat)
-                with open(self.saving_path + self.date_string + "matrix.pkl", 'wb') as handle:
+                with open(self.saving_path + self.date_string + _'matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
                     pickle.dump(hog_mat, handle, -1)
                 print('DONE MAT UPDATER' + str(i))
                 break
