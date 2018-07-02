@@ -74,11 +74,9 @@ class LSHBuilder:
                 break
 
     def saver(self, i, q, retq, matq, l):
-
         print_start = time.clock()
         save_start = time.clock()
         global_time = time.clock()
-
         chunk_size = 100
         count = 0
 
@@ -291,7 +289,7 @@ if __name__ == '__main__':
         # loop with bayes opt over hyper params
 
         # build lsh
-        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path=config_utils.datadirLaurent, numperm=256, tax_filter=2759)
+        lsh_builder = LSHBuilder(h5_oma=h5OMA, saving_path=config_utils.datadir, numperm=256, tax_filter=2759)
         lsh_builder.run_pipeline()
 
         # run validation

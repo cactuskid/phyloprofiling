@@ -99,6 +99,30 @@ def eventdict2minhashes(eventdict, nperm = 128):
     return hashes_dictionary
 
 
+def eventdict2WeightedMinhashes(eventdict, nperm = 128, treeweights =None ):
+    """
+    Get minhashes from events dictionary
+    :param eventdict: dictionary of evolutionary events
+    :return: minHashes
+    """
+	if wmg == None:
+		wmg = WeightedMinHashGenerator()
+	
+	hashes_dictionary = {}
+
+    for event in eventdict:
+        eventdict[event] = set(eventdict[event])
+        minHash = datasketch.MinHash(num_perm=nperm)
+
+        for element in eventdict[event]:
+            minHash.update(element.encode())
+
+        hashes_dictionary[event] = minHash
+
+    return hashes_dictionary
+
+
+
 def minhashes2leanminhashes(fam, minhashes, combination=True ,  nperm = 128):
     """
     Get leanMinHashes from MinHashes
