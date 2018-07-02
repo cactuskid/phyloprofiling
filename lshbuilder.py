@@ -89,7 +89,7 @@ class LSHBuilder:
             storage_config={'type': 'redis', 'redis': {'host': '10.0.63.33', 'port': 6379, 'db': 2}})
         forest = MinHashLSHForest(num_perm=self.numperm)
 
-        with open(self.saving_path + self.date_string + 'errors.txt', 'a') as hashes_error_files:
+        with open(self.saving_path + self.date_string + 'errors.txt', 'w') as hashes_error_files:
             with h5py.File(self.saving_path + self.date_string + 'hashes.h5', 'w', libver='latest') as h5hashes:
                 datasets = {}
                 for dataset_name in dataset_names:
