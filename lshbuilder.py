@@ -182,6 +182,9 @@ class LSHBuilder:
                         new_hog_mat = sparse.lil_matrix((num_rows_to_add, sparse_row.shape[1]))
                         hog_mat = sparse.vstack([hog_mat, new_hog_mat])
                     hog_mat[fam, :] = sparse_row
+                else:
+                    break
+                
                 if time.clock() - save_start > 2000:
                     # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
                         # h5matrix.create_dataset('hogmat', data=hog_mat)
@@ -192,7 +195,7 @@ class LSHBuilder:
         with open(self.saving_path + self.date_string + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
             pickle.dump(hog_mat, handle, -1)
         print('DONE MAT UPDATER' + str(i))
-        break
+
 
     @staticmethod
     def mp_with_timeout(functypes, data_generator):
