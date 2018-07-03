@@ -37,6 +37,7 @@ class LSHBuilder:
         self.columns = len(self.taxaIndex)
         self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
+
     def generates_dataframes(self, size=100, minhog_size=5, maxhog_size=None):
 
         families = {}
@@ -45,7 +46,7 @@ class LSHBuilder:
 
             ## TODO: add further quality check here for hog_size / hogspread
             ortho_fam = self.READ_ORTHO(fam)
-            hog_size = ortho_fam.count('<species name='lil_matrix)
+            hog_size = ortho_fam.count('<species name=')
 
             if (maxhog_size is None or hog_size < maxhog_size) and (minhog_size is None or hog_size > minhog_size):
                 families[fam] = {'ortho': ortho_fam}
