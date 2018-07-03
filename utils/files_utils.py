@@ -6,7 +6,7 @@ from Bio import Entrez
 def get_tree(oma=None):
     ncbi = ete3.NCBITaxa()
     genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
-    tree = ncbi.get_topology(genome_ids_list)
+    tree = ncbi.get_topology(genome_ids_list , collapse_subspecies=False)
     print(len(genome_ids_list))
     orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
     print(len(orphans))
@@ -27,8 +27,8 @@ def get_tree(oma=None):
             parent = n.get_ancestors()[0]
             child = n.get_leaves()[0]
             parent.add_child(name=child.name)
-            parent.add_child(name =n.name)
-            child.delete()
+            #parent.add_child(name =n.name)
+            #child.delete()
 
     orphans = list(set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()]))
     print(orphans)
@@ -56,7 +56,8 @@ def generate_taxa_index(tree):
 def add_orphans(orphan_info, tree, genome_ids_list, verbose=False):
 
     newdict = {}
-
+    print(orphan_info)
+    
     leaves = set([leaf.name for leaf in tree.get_leaves()])
     oldkeys = set(newdict.keys())
     orphans = set(genome_ids_list) - set([int(x.name) for x in tree.get_leaves()])

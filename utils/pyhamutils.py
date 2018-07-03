@@ -54,7 +54,7 @@ def get_ham_treemap_from_row(row, tree, tax_filter=None):
 
         if tax_filter:
             for n in tp.treemap.traverse():
-                if n.name == tax_filter:
+                if str(n.name) == str(tax_filter):
                     return n
 
         return tp.treemap
