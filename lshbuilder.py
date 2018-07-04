@@ -100,10 +100,8 @@ class LSHBuilder:
 
                 while True:
                     this_dataframe = retq.get()
-
                     print(time.clock() - global_time)
                     print(count)
-
                     if this_dataframe is not None:
                         hashes = this_dataframe['hash'].to_dict()
 
@@ -111,7 +109,7 @@ class LSHBuilder:
 
                             if hashes[fam] is not None:
                                 for famhashname in hashes[fam]['dict']:
-                                    lsh.insert(famhashname, hashes[fam]['dict'][famhashname])
+                                    #lsh.insert(famhashname, hashes[fam]['dict'][famhashname])
                                     forest.add(famhashname, hashes[fam]['dict'][famhashname])
                                 hashvals = hashes[fam]['hashes']
                                 for event in hashvals:
@@ -168,31 +166,35 @@ class LSHBuilder:
 
         while True:
             rows = matq.get()
-            for index, row in rows.iterrows():
-                if row is not None:
-                    sparse_row = row['rows']
-                    fam = int(row['Fam'])
-                    try:
-                        if not hog_mat:
-                            hog_mat = sparse.csr_matrix((fam+10000, sparse_row.shape[1]))
-                    except ValueError:
-                        pass
-                    if hog_mat.shape[0] < fam:
-                        print('extend HOGMAT')
-                        num_rows_to_add = fam - hog_mat.shape[0] + 10000
-                        new_hog_mat = sparse.csr_matrix((num_rows_to_add, sparse_row.shape[1]))
-                        hog_mat = sparse.vstack([hog_mat, new_hog_mat])
-                    hog_mat[fam, :] = sparse_row
-                else:
-                    break
+            if rows != None:
+                for index, row in rows.iterrows():
+                    if row is not None:
+                        sparse_row = row['rows']
+                        fam = int(row['Fam'])
+                        try:
+                            if not hog_mat:
+                                hog_mat = sparse.csr_matrix((fam+10000, sparse_row.shape[1]))
+                        except ValueError:
+                            pass
+                        if hog_mat.shape[0] < fam:
+                            print('extend HOGMAT')
+                            num_rows_to_add = fam - hog_mat.shape[0] + 10000
+                            new_hog_mat = sparse.csr_matrix((num_rows_to_add, sparse_row.shape[1]))
+                            hog_mat = sparse.vstack([hog_mat, new_hog_mat])
+                        hog_mat[fam, :] = sparse_row
+                    else:
+                        break
 
-                if time.clock() - save_start > 2000:
-                    # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                        # h5matrix.create_dataset('hogmat', data=hog_mat)
-                    print('saving HOGMAT')
-                    with open(self.saving_path + self.date_string +'_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
-                        pickle.dump(hog_mat, handle, -1)
-                    save_start = time.clock()
+                    if time.clock() - save_start > 2000:
+                        # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
+                            # h5matrix.create_dataset('hogmat', data=hog_mat)
+                        print('saving HOGMAT')
+                        with open(self.saving_path + self.date_string +'_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
+                            pickle.dump(hog_mat, handle, -1)
+                        save_start = time.clock()
+            else:
+                break
+
         with open(self.saving_path + self.date_string + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
             pickle.dump(hog_mat, handle, -1)
         print('DONE MAT UPDATER' + str(i))
