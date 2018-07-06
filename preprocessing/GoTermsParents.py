@@ -120,11 +120,11 @@ def _clean_dictionary(dictionary):
 
 if __name__ == '__main__':
 
-    obo_reader = obo_parser.GODag(obo_file=config_utils.datadirLaurent + 'project/data/go.obo')
+    obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'project/data/go.obo')
     dt = h5py.special_dtype(vlen=np.dtype('int32'))
     omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
 
-    with h5py.File(config_utils.datadirLaurent + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
+    with h5py.File(config_utils.datadir + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
 
         start_time = time()
 
@@ -152,7 +152,7 @@ if __name__ == '__main__':
         h5_go_terms.flush()
         print('Done with the parents in {} seconds'.format(time()-start_time))
 
-    with h5py.File(config_utils.datadirLaurent + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
+    with h5py.File(config_utils.datadir + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
 
         dt_2 = h5py.special_dtype(vlen=bytes)
         h5_go_terms.create_dataset('hog2goterms', (1000000,), dtype=dt_2)

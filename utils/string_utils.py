@@ -27,7 +27,7 @@ def get_interactions(all_string_1, all_string_2):
 
     return interactions
 
-
+"""
 def get_string_interactors(list_of_string_ids, genome):
     '''Gets the interactors based on stringids'''
     final_df = pd.DataFrame()
@@ -52,9 +52,9 @@ def get_string_interactors(list_of_string_ids, genome):
     if len(final_df) > 0:
         return final_df
     else:
-        return []
+        return []"""
 
-
+"""
 def construct_string_request(string_api_url, output_format, my_genes,
                              ncbitaxid, method, limit, echo_query, caller_identity):
     ## Construct the request
@@ -66,4 +66,4 @@ def construct_string_request(string_api_url, output_format, my_genes,
     request_url += "&" + "caller_identity=" + caller_identity
 
     return request_url
-
+"""

@@ -13,19 +13,13 @@ def get_tree(oma=None , saveTree=True):
     orphans = list(set(genome_ids_list) - set([x.name for x in tree.get_leaves()]))
     print('missing taxa:')
     print(len(orphans))
-
     Entrez.email = "clement.train@gmail.com"
-
     orphans_info = {}
-
     for x in orphans:
         search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
         record = next(Entrez.parse(search_handle))
         orphans_info[x] = [x['TaxId'] for x in record['LineageEx']]
-
-
     tree = add_orphans(orphans_info, tree, genome_ids_list)
-
     for n in tree.traverse():
         if len([x for x in n.get_descendants()]) == 1:
             # remove node with one Child
@@ -34,10 +28,8 @@ def get_tree(oma=None , saveTree=True):
             parent.add_child(name=child.name)
             parent.add_child(name =n.name)
             child.delete()
-
     orphans = set(genome_ids_list) - set([x.name for x in tree.get_leaves()])
     tree_string = tree.write(format=1)
-
     if saveTree == True:
         with open( './mastertree.nwk' , 'w') as nwkout:
             nwkout.write(tree_string)

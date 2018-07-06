@@ -37,9 +37,7 @@ class LSHBuilder:
         self.columns = len(self.taxaIndex)
         self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
-
     def generates_dataframes(self, size=100, minhog_size=5, maxhog_size=None):
-
         families = {}
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
             fam = row[0]
@@ -54,8 +52,8 @@ class LSHBuilder:
             if len(families) > size:
                 pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
                 pd_dataframe['Fam'] = pd_dataframe.index
-                families = {}
                 yield pd_dataframe
+                families = {}
 
     def worker(self, i, q, retq, matq, l):
 
@@ -100,8 +98,10 @@ class LSHBuilder:
 
                 while True:
                     this_dataframe = retq.get()
-                    print(time.clock() - global_time)
-                    print(count)
+                    print(str(time.clock() - global_time)+'seconds elapsed')
+                    print(str(this_dataframe.Fam.max())+ 'fam num')
+                    print(str(count) + 'hogs done')
+
                     if this_dataframe is not None:
                         hashes = this_dataframe['hash'].to_dict()
 
@@ -241,13 +241,13 @@ class LSHBuilder:
 
         for key in work_processes:
             worker_function, number_workers , joinval = functypes[key]
-            if joinval:
+            if joinval == True:
                 for process in work_processes[key]:
                     process.join()
 
         for key in work_processes:
             worker_function, number_workers, joinval = functypes[key]
-            if not joinval:
+            if joinval == False:
                 for _ in work_processes[key]:
                     retq.put(None)
                     matq.put(None)

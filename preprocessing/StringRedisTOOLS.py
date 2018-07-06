@@ -26,16 +26,13 @@ def search(name, source_list):
 
 def fam2stringID(dbobj, hog_id, r):
     members = dbobj.iter_members_of_hog_id(hog_id)
-
     oma_id_mapper = db.OmaIdMapper(dbobj)
     XrefIdMapper = db.XrefIdMapper(dbobj)
-
     xrefs = {oma_id_mapper.omaid_to_entry_nr(m.omaid):XrefIdMapper.map_entry_nr(oma_id_mapper.omaid_to_entry_nr(m.omaid)) for m in members}
     xrefs_source = {genome: search('SourceID', ids)['xref'] for genome, ids in xrefs.items()}
     print(xrefs_source)
     ret_string = {genome: string for genome, string in xrefs_source.items() if string is not None}
     return ret_string
-
 
 def HOGvsHOG(allstring1, allstring2, r2, datapath):
     # protein1 protein2 neighborhood fusion cooccurence coexpression experimental database textmining combined_score
