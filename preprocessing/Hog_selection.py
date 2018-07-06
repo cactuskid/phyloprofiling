@@ -13,12 +13,10 @@ from validation import validation_semantic_similarity
 from time import time
 
 # data prep
-go_terms_hdf5 = h5py.File(config_utils.datadirLaurent + 'project/data/parents.h5', 'r')
+go_terms_hdf5 = h5py.File(config_utils.datadir + 'project/data/parents.h5', 'r')
 hogs2goterms = go_terms_hdf5['hog2goterms']
-
-
-go = obo_parser.GODag(config_utils.datadirLaurent + 'project/data/go.obo')
-associations = read_gaf(config_utils.datadirLaurent + 'project/data/gene_association.tair')
+go = obo_parser.GODag(config_utils.datadir + 'project/data/go.obo')
+associations = read_gaf(config_utils.datadir + 'project/data/gene_association.tair')
 
 term_counts = TermCounts(go, associations)
 goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(go, term_counts, go_terms_hdf5)
