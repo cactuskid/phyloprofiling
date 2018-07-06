@@ -9,6 +9,25 @@ from time import time
 from utils import config_utils
 
 
+"""
+preprocessing all of OMA and the go term OBO to get two dataset:
+
+1. Each go term with a json dict
+
+
+"""
+
+def yield_hogs_with_annotations(annotation_dataset):
+    for fam, annotations in enumerate(hogs):
+        try:
+            obj = json.loads(annotations)
+            if obj and type(obj) is dict and len(obj) > 0:
+                yield {fam : obj}
+        except ValueError:
+            pass
+
+
+
 def goterm2id(go_term_to_modif):
     return_id = int(go_term_to_modif.split(':')[1])
     return return_id
@@ -117,34 +136,26 @@ def _filter_namespace(list_terms, go_file, name='biological_process'):
 def _clean_dictionary(dictionary):
     return {k: v for k, v in dictionary.items() if v}
 
-
 if __name__ == '__main__':
 
+
+    #Preprocess all of the GO terms' parents to avoid looking at the DAG
     obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'project/data/go.obo')
     dt = h5py.special_dtype(vlen=np.dtype('int32'))
     omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
-
-    with h5py.File(config_utils.datadir + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
-
+    with h5py.File(config_utils.datadir + 'project/data/GOparents.h5', 'w', libver='latest') as h5_go_terms:
         start_time = time()
-
         h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
         dataset_go_terms_parents = h5_go_terms['goterms2parents']
-
         count = 0
-
         for go_term in obo_reader:
-
             go_term_read = obo_reader[go_term]
-
             if go_term_read.namespace == 'biological_process':
 
                 go_term_parents = go_term_read.get_all_parents()
                 go_term_parents_int = [goterm2id(go_term_read.id)] + [goterm2id(parent) for parent in go_term_parents]
                 dataset_go_terms_parents[goterm2id(go_term_read.id)] = go_term_parents_int
-
                 count += 1
-
                 if count % 1000 == 0:
                     print('saving')
                     h5_go_terms.flush()
@@ -152,22 +163,82 @@ if __name__ == '__main__':
         h5_go_terms.flush()
         print('Done with the parents in {} seconds'.format(time()-start_time))
 
-    with h5py.File(config_utils.datadir + 'project/data/parents.h5', 'r+', libver='latest') as h5_go_terms:
 
-        dt_2 = h5py.special_dtype(vlen=bytes)
-        h5_go_terms.create_dataset('hog2goterms', (1000000,), dtype=dt_2)
-        dataset_hog2genes = h5_go_terms['hog2goterms']
+    #annotate the HOG hash values h5 file with IDs from the uniprot mapper
 
-        count = 1
-        start_time = time()
-        print('started!')
-        for i, row in enumerate(omah5.root.OrthoXML.Index):
-            fam = row[0]
-            hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
-            dataset_hog2genes[fam] = json.dumps(hog_dict).encode()
-            if i % 1000 == 0:
-                print('saving {} {}'.format(time()-start_time, fam))
-                h5_go_terms.flush()
+    """
+    to grab
+    KEGG	KEGG_ID
+    BioGrid	BIOGRID_ID
+    ComplexPortal	COMPLEXPORTAL_ID
+    DIP	DIP_ID
+    STRING	STRING_ID
+
+    """
+    datasets = [ 'BIOGRID' , 'COMPLEXPORTAL' , 'DIP' , 'KEGG', 'STRING', 'OMA']
+    #open uniprotmappings
+    with open( config_utils.uniprotmappings , 'r')as uniprotmappings:
+    #open hashes h5
+        with h5py.File(config_utils.datadir +  , 'r+', libver='latest') as h5hashDB:
+            for dataset in datasets:
+                #add a datasets for each ID mapping in uniprot
+                dt_2 = h5py.special_dtype(vlen=bytes)
+                h5h5hashDB.create_dataset(dataset, (h5h5hashDB['hashes'].shape[0],) , dtype=dt_2)
+            hog2goterms = h5_preprocess['hog2goterms']
+            count = 1
+            start_time = time()
+            print('started!')
+            oldID = ''
+            mapdict ={}
+            for i, row in enumerate(uniprotmappings):
+
+                words= row.split()
+                uniID = words[0]
+                mapto = words[1]
+                mapval = words[2]
+
+                if mapto in datasets:
+                    if mapto in mapdict:
+                        mapdict[mapto].append(mapval)
+                    else:
+                        mapdic[mapto] =[ mapval]
+
+                if uniID is not oldID:
+                    if 'OMA' in mapdict:
+                        entry = db_obj.entry_by_entry_nr(entry_nr)
+                        fam = entry['OmaHOG']
+                        for dataset in mapdict:
+                            #add to annotation dictionary with each omaID
+                            if len(h5h5hashDB[dataset][fam]) > 0:
+                                try:
+                                    mapping = json.loads(h5h5hashDB[dataset][fam])
+                                except ValueError:
+                                    mapping = {}
+                            else:
+                                mapping = {}
+                            mapping[mapdict['OMA']]=mapping[dataset]
+                            h5h5hashDB[dataset][fam] = json.dumps(mapping)
+                    mapdict = {}
+                    oldID = uniID
+
+    #Add go terms from OMA
+    with h5py.File(config_utils.datadir +  , 'r+', libver='latest') as h5hashDB:
+        for row in h5h5hashDB['hashes']:
+            #check if hash was compiled
+            if len(row) > 0:
+                hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
+                hog2goterms[fam] = json.dumps(hog_dict).encode()
+                if i % 1000 == 0:
+                    print('saving {} {}'.format(time()-start_time, fam))
+                    h5_go_terms.flush()
+
+
+        #parse uniprot annotation File
+        #each time you encounter an omaID get the hog
+
+        #ADD the string info to each HOG
+        #ADD the Kegg info to each HOG
+
 
         h5_go_terms.flush()
 
