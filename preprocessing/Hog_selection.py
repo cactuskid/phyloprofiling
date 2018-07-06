@@ -13,63 +13,6 @@ from validation import validation_semantic_similarity
 from time import time
 
 # data prep
-go_terms_hdf5 = h5py.File(config_utils.datadir + 'project/data/parents.h5', 'r')
-hogs2goterms = go_terms_hdf5['hog2goterms']
-go = obo_parser.GODag(config_utils.datadir + 'project/data/go.obo')
-associations = read_gaf(config_utils.datadir + 'project/data/gene_association.tair')
-
-term_counts = TermCounts(go, associations)
-goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(go, term_counts, go_terms_hdf5)
-
-def get_hogs_with_annotations(hogs):
-    print('getting hogs')
-    hogs_with_annotations = []
-    hogs_without_annotations = []
-    for fam, goterms in enumerate(hogs):
-
-        try:
-            obj = json.loads(goterms)
-            if obj and type(obj) is dict and len(obj) > 0:
-                hogs_with_annotations.append(fam)
-            else:
-                # print(obj)
-                hogs_without_annotations.append(fam)
-        except ValueError:
-            hogs_without_annotations.append(fam)
-
-        # if goterms:
-        #     if json.loads(goterms):
-        #         hogs_with_annotations.append(hashutils.fam2hogid(fam))
-
     print('hogs without annotations {}'.format(len(hogs_without_annotations)))
     print('hogs with annotations {}'.format(len(hogs_with_annotations)))
-    return hogs_with_annotations
-start_time = time()
-hogs_w_annotations = get_hogs_with_annotations(hogs2goterms)
-print('time to get hogs: {}'.format(time()-start_time))
-
-
-def make_dict(fam):
-    try:
-        returnDict = {fam: goTermAnalysis.semantic_similarity_score(hashutils.fam2hogid(fam), hashutils.fam2hogid(fam))}
-    except:
-        print(fam)
-        returnDict = {fam: -1}
-    return returnDict
-
-start_time = time()
-if __name__ == '__main__':
-
-    pool = mp.Pool()
-    results = pool.map_async(make_dict, hogs_w_annotations, 10*mp.cpu_count())
-
-    results = results.get()
-
-    global_dict = {}
-    for r in results:
-        global_dict.update(r)
-
-    dt = pd.DataFrame.from_dict(global_dict, orient='index')
-    dt.to_csv('hogvshog.csv', sep='\t')
-
-print(time()-start_time)
+    return hogs_with_annotations , hogs_without_annotations

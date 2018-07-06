@@ -23,7 +23,6 @@ def search(name, source_list):
         if x['source'] == name:
             return x
 
-
 def fam2stringID(dbobj, hog_id, r):
     members = dbobj.iter_members_of_hog_id(hog_id)
     oma_id_mapper = db.OmaIdMapper(dbobj)
