@@ -3,7 +3,7 @@ import pandas as pd
 from Bio import Entrez
 
 
-def get_tree(oma=None , saveTree=True):
+def get_tree(oma=None, saveTree=True):
     ncbi = ete3.NCBITaxa()
     genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
     genome_ids_list = [str(x) for x in genome_ids_list]
@@ -29,12 +29,13 @@ def get_tree(oma=None , saveTree=True):
             parent.add_child(name =n.name)
             child.delete()
     orphans = set(genome_ids_list) - set([x.name for x in tree.get_leaves()])
+
+    print(orphans)
     tree_string = tree.write(format=1)
+
     if saveTree == True:
         with open( './mastertree.nwk' , 'w') as nwkout:
             nwkout.write(tree_string)
-
-    print(orphans)
 
     return tree_string, tree
 
