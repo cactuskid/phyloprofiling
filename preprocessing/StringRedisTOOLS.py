@@ -2,9 +2,7 @@ import itertools
 import redis
 
 from utils import hashutils
-
 from pyoma.browser import db
-
 from time import time
 
 
@@ -12,10 +10,14 @@ def connect2IDmap():
     r1 = redis.StrictRedis(host='10.0.63.33', port=6379, db=0)
     return r1
 
-
 def connect2Stringmap():
     r2 = redis.StrictRedis(host='10.0.63.33', port=6379, db=1)
     return r2
+
+def clearDB(dbnum):
+    r = redis.StrictRedis(host='10.0.63.33', port=6379, db=dbnum)
+    r.flushdb()
+    return r
 
 
 def search(name, source_list):

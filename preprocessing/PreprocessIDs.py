@@ -4,20 +4,13 @@ import numpy as np
 import tables
 import ujson as json
 from pyoma.browser import db
-
-
+import redis
+import gc
 from time import time
 
 from utils import config_utils
-
-
-"""
-preprocessing all of OMA and the go term OBO to get two dataset:
-
-1. Each go term with a json dict
-
-
-"""
+from utils import preprocess_config
+import StringRedisTOOLS
 
 def yield_hogs_with_annotations(annotation_dataset):
     for fam, annotations in enumerate(hogs):
@@ -50,6 +43,13 @@ def _get_hog_members(hog_id, oma):
     return population
 
 
+    import redis
+    import gc
+    from utils import config_utils
+
+
+
+
 def _hog_lex_range(hog):
     """
     Decodes hog format
@@ -57,7 +57,11 @@ def _hog_lex_range(hog):
     :return: hog_str: encoded hog id
     """
     hog_str = hog.decode() if isinstance(hog, bytes) else hog
-    return hog_str.encode('ascii'), (hog_str[0:-1] + chr(1 + ord(hog_str[-1]))).encode('ascii')
+    return hog_str.enco
+def clearDB(dbnum):
+    r = redis.StrictRedis(host='10.0.63.33', port=6379, db=dbnum)
+    r.flushdb()
+    return rde('ascii'), (hog_str[0:-1] + chr(1 + ord(hog_str[-1]))).encode('ascii')
 
 
 def _iter_hog_member(hog_id, oma):
@@ -141,29 +145,56 @@ def _clean_dictionary(dictionary):
 if __name__ == '__main__':
 
 
-    #Preprocess all of the GO terms' parents to avoid looking at the DAG
-    obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'project/data/go.obo')
-    dt = h5py.special_dtype(vlen=np.dtype('int32'))
-    omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
-    with h5py.File(config_utils.datadir + 'project/data/GOparents.h5', 'w', libver='latest') as h5_go_terms:
-        start_time = time()
-        h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
-        dataset_go_terms_parents = h5_go_terms['goterms2parents']
-        count = 0
-        for go_term in obo_reader:
-            go_term_read = obo_reader[go_term]
-            if go_term_read.namespace == 'biological_process':
+    if preprocess_config.preprocessGO ==True:
+        #Preprocess all of the GO terms' parents to avoid looking at the DAG
+        obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'project/data/go.obo')
+        dt = h5py.special_dtype(vlen=np.dtype('int32'))
+        omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
+        with h5py.File(config_utils.datadir + 'project/data/GOparents.h5', 'w', libver='latest') as h5_go_terms:
+            start_time = time()
+            h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
+            dataset_go_terms_parents = h5_go_terms['goterms2parents']
+            count = 0
+            for go_term in obo_reader:
+                go_term_read = obo_reader[go_term]
+                if go_term_read.namespace == 'biological_process':
 
-                go_term_parents = go_term_read.get_all_parents()
-                go_term_parents_int = [goterm2id(go_term_read.id)] + [goterm2id(parent) for parent in go_term_parents]
-                dataset_go_terms_parents[goterm2id(go_term_read.id)] = go_term_parents_int
-                count += 1
-                if count % 1000 == 0:
-                    print('saving')
-                    h5_go_terms.flush()
+                    go_term_parents = go_term_read.get_all_parents()
+                    go_term_parents_int = [goterm2id(go_term_read.id)] + [goterm2id(parent) for parent in go_term_parents]
+                    dataset_go_terms_parents[goterm2id(go_term_read.id)] = go_term_parents_int
+                    count += 1
+                    if count % 1000 == 0:
+                        print('saving')
+                        h5_go_terms.flush()
+            h5_go_terms.flush()
+            print('Done with the parents in {} seconds'.format(time()-start_time))
 
-        h5_go_terms.flush()
-        print('Done with the parents in {} seconds'.format(time()-start_time))
+    if preprocess_config.preprocessSTRINGDB:
+        if preprocess_config.clearRedis == True:
+            #clear the stringDB mapping
+            StringRedisTOOLS.clearDB(1)
+
+        r1 = redis.StrictRedis(host='localhost', port=6379, db=1)
+        # sort the IDs alphanumerically.
+        # protein1 protein2 neighborhood fusion cooccurence coexpression
+        # experimental database textmining combined_score
+        # 394.NGR_c00010 394.NGR_c33930 0 0 165 0 0 0 145 255
+        # 37200000
+        # save file line...
+        refs = ['neighborhood', 'fusion', 'cooccurence', 'coexpression', 'experimental', 'database', 'textmining', 'combined_score']
+        start_line = 0
+        with open(preprocess_config.string_interactors +'/stringdata/protein.links.detailed.v10.5.txt', 'r') as stringAll:
+            for i, line in enumerate(stringAll):
+                if i > start_line:
+                    words = line.split()
+                    IDS = ''.join(sorted([words[0], words[1]]))
+                    r1.set(IDS, stringAll.tell())
+                if i % 1000000 == 0:
+                    print(i)
+    				if i % 10000000 == 0:
+    					gc.collect()
+
+
 
 
     #annotate the HOG hash values h5 file with IDs from the uniprot mapper
