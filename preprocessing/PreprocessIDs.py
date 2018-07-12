@@ -3,6 +3,8 @@ import h5py
 import numpy as np
 import tables
 import ujson as json
+from pyoma.browser import db
+
 
 from time import time
 
@@ -209,6 +211,8 @@ if __name__ == '__main__':
                         fam = entry['OmaHOG']
                         for dataset in mapdict:
                             #add to annotation dictionary with each omaID
+                            #to the correct family row in the hdf5 containing the hashes
+
                             if len(h5h5hashDB[dataset][fam]) > 0:
                                 try:
                                     mapping = json.loads(h5h5hashDB[dataset][fam])
@@ -219,7 +223,7 @@ if __name__ == '__main__':
                             mapping[mapdict['OMA']]=mapping[dataset]
                             h5h5hashDB[dataset][fam] = json.dumps(mapping)
                     mapdict = {}
-                    oldID = uniID
+                oldID = uniID
 
     #Add go terms from OMA
     with h5py.File(config_utils.datadir +  , 'r+', libver='latest') as h5hashDB:
