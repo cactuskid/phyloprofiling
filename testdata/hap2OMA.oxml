@@ -1,0 +1,489 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<orthoXML xmlns="http://orthoXML.org/2011/" origin="OMA" originVersion="Nov 2017" version="0.3">
+  <species name="Arabis alpina" NCBITaxId="50452">
+    <database name="Arabis alpina from ENA" version="ENA; A_alpina_V4; GCA_000733195.1">
+      <genes>
+        <gene id="11174437" protId="ARAAL13164"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Gossypium hirsutum" NCBITaxId="3635">
+    <database name="Gossypium hirsutum from " version="">
+      <genes>
+        <gene id="11492088" protId="GOSHI20752"/>
+        <gene id="11523105" protId="GOSHI51769"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Setaria italica" NCBITaxId="4555">
+    <database name="Setaria italica from ENSEMBL plants v21" version="Ensembl Plants 21; JGIv2.0; 3-DEC-2013">
+      <genes>
+        <gene id="10743217" protId="SETIT04466"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza nivara" NCBITaxId="4536">
+    <database name="Oryza nivara from ENSEMBL plants v23" version="Ensembl Plants 23; AWHD00000000; 19-JUL-2014">
+      <genes>
+        <gene id="10211567" protId="ORYNI37447"/>
+        <gene id="10198877" protId="ORYNI24757"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Eragrostis tef" NCBITaxId="110835">
+    <database name="Eragrostis tef from tef-research" version="">
+      <genes>
+        <gene id="10641553" protId="ERATE23368"/>
+        <gene id="10632245" protId="ERATE14060"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Leptomonas seymouri" NCBITaxId="5684">
+    <database name="Leptomonas seymouri from Ensembl Protists 36" version="Ensembl Protists 36; ASM129953v1">
+      <genes>
+        <gene id="5988892" protId="LEPSE07083"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Solanum lycopersicum" NCBITaxId="4081">
+    <database name="Solanum lycopersicum from ENSEMBL plants v27" version="Ensembl Plants 27; GCA_000188115.2; 27-MAY-2015">
+      <genes>
+        <gene id="10878163" protId="SOLLC30910"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Arabidopsis lyrata" NCBITaxId="59689">
+    <database name="Arabidopsis lyrata subsp. lyrata from Ensembl 37" version="Ensembl 37; v.1.0">
+      <genes>
+        <gene id="11404726" protId="ARALY23192"/>
+        <gene id="11404710" protId="ARALY23176"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Glycine max" NCBITaxId="3847">
+    <database name="Glycine max from ENSEMBL plants v19" version="Ensembl Plants 19; V1.0; 24-JUN-2013">
+      <genes>
+        <gene id="10964856" protId="SOYBN02660"/>
+        <gene id="10984142" protId="SOYBN21946"/>
+        <gene id="11005087" protId="SOYBN42891"/>
+        <gene id="10984145" protId="SOYBN21949"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza rufipogon" NCBITaxId="4529">
+    <database name="Oryza rufipogon from ENSEMBL plants v23" version="Ensembl Plants 23; PRJEB4137; 19-JUL-2014">
+      <genes>
+        <gene id="10282230" protId="ORYRU38002"/>
+        <gene id="10269532" protId="ORYRU25304"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Zea mays" NCBITaxId="4577">
+    <database name="Zea mays from ENSEMBL plants v27" version="Ensembl Plants 27; AGPv3; 27-MAY-2015">
+      <genes>
+        <gene id="10709320" protId="MAIZE14195"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Amphimedon queenslandica" NCBITaxId="400682">
+    <database name="Amphimedon queenslandica from ENSEMBL Metazoa v12" version="Ensembl Metazoa 12; Aqu1; 18-DEC-2011">
+      <genes>
+        <gene id="9696421" protId="AMPQE17816"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Paramecium tetraurelia" NCBITaxId="5888">
+    <database name="Paramecium tetraurelia from ENSEMBL protists v31" version="Ensembl Protists 31; GCA_000165425.1; 18-FEB-2016">
+      <genes>
+        <gene id="5801204" protId="PARTE05201"/>
+        <gene id="5802264" protId="PARTE06261"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Brassica oleracea" NCBITaxId="109376">
+    <database name="Brassica oleracea from ENSEMBL plants v23" version="Ensembl Plants 23; v2.1; 8-OCT-2014">
+      <genes>
+        <gene id="11374493" protId="BRAOL50779"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Cyanidioschyzon merolae" NCBITaxId="45157">
+    <database name="Cyanidioschyzon merolae from ENSEMBL plants v22" version="Ensembl Plants 22; ASM9120v1; 20-MAR-2014">
+      <genes>
+        <gene id="9785889" protId="CYAME00604"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Ichthyophthirius multifiliis" NCBITaxId="5932">
+    <database name="Ichthyophthirius multifiliis from ENSEMBL protists v31" version="Ensembl Protists 31; JCVI-IMG1-V_1; 18-FEB-2016">
+      <genes>
+        <gene id="5764038" protId="ICHMU00745"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Vitis vinifera" NCBITaxId="29760">
+    <database name="Vitis vinifera from ENSEMBL Plants v8" version="Ensembl Plants v9; IGGP_12x; 14-APR-2011">
+      <genes>
+        <gene id="11561793" protId="VITVI23490"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Brassica rapa subsp. pekinensis" NCBITaxId="51351">
+    <database name="Brassica rapa subsp. pekinensis from Ensembl Plants 36" version="Ensembl Plants 36; IVFCAASv1">
+      <genes>
+        <gene id="11225300" protId="BRARP40741"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Dictyostelium purpureum" NCBITaxId="5786">
+    <database name="Dictyostelium purpureum from JGI" version="Dicpu1; 12-Feb-2007">
+      <genes>
+        <gene id="5900858" protId="DICPU08696"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Theobroma cacao" NCBITaxId="3641">
+    <database name="Theobroma cacao from ENSEMBL plants v23" version="Ensembl Plants 23; GCA_000403535.1; 19-JUL-2014">
+      <genes>
+        <gene id="11454108" protId="THECC12418"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Arabidopsis thaliana" NCBITaxId="3702">
+    <database name="Arabidopsis thaliana from ENSEMBL plants v20" version="Ensembl Plants 20; TAIR10; 2-SEP-2013">
+      <genes>
+        <gene id="11415369" protId="ARATH01168"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza sativa subsp. indica" NCBITaxId="39946">
+    <database name="Oryza Indica from ENSEMBL plants v21" version="Ensembl Plants 21; ASM465v1; 4-DEC-2013">
+      <genes>
+        <gene id="10307489" protId="ORYSI24865"/>
+        <gene id="10319789" protId="ORYSI37165"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Aegilops tauschii" NCBITaxId="37682">
+    <database name="Aegilops tauschii from ENSEMBL plants v21" version="Ensembl Plants 21; GCA_000347335.1; 6-DEC-2013">
+      <genes>
+        <gene id="10429899" protId="AEGTA16793"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Tetrahymena thermophila (strain SB210)" NCBITaxId="312017">
+    <database name="Tetrahymena thermophila from ENSEMBL protists v31" version="Ensembl Protists 31; JCVI-TTA1-2; 18-FEB-2016">
+      <genes>
+        <gene id="5774024" protId="TETTS02693"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Prunus persica" NCBITaxId="3760">
+    <database name="Prunus persica from ENSEMBL plants v23" version="Ensembl Plants 23; GCA_000346465.1; 19-JUL-2014">
+      <genes>
+        <gene id="11135350" protId="PRUPE01558"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Medicago truncatula" NCBITaxId="3880">
+    <database name="Medicago truncatula from ENSEMBL plants v18" version="Ensembl Plants 18; GCA_000219495.1; 8-APR-2013">
+      <genes>
+        <gene id="11041177" protId="MEDTR24375"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Selaginella moellendorffii" NCBITaxId="88036">
+    <database name="Selaginella moellendorffii from ENSEMBL plants v21" version="Ensembl Plants 21; v1.0; 4-DEC-2013">
+      <genes>
+        <gene id="11613297" protId="SELML21516"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza glaberrima" NCBITaxId="4538">
+    <database name="Oryza glaberrima from ENSEMBL plants v21" version="Ensembl Plants 21; AGI1.1; 6-DEC-2013">
+      <genes>
+        <gene id="10131939" protId="ORYGL19355"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza sativa subsp. japonica" NCBITaxId="39947">
+    <database name="Oryza sativa from ENSEMBL plants v27" version="Ensembl Plants 27; IRGSP-1; 26-MAY-2015">
+      <genes>
+        <gene id="10345666" protId="ORYSJ22678"/>
+        <gene id="10356859" protId="ORYSJ33871"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Naegleria gruberi" NCBITaxId="744533">
+    <database name="Naegleria gruberi (strain NEG-M) from JGI" version="Naegr1; 2-Mar-2010">
+      <genes>
+        <gene id="6048364" protId="NAEGR09551"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza brachyantha" NCBITaxId="4533">
+    <database name="Oryza brachyantha from ENSEMBL plants v21" version="Ensembl Plants 21; Oryza_brachyantha.v1.4b; 5-DEC-2013">
+      <genes>
+        <gene id="10111562" protId="ORYBR30285"/>
+        <gene id="10101630" protId="ORYBR20353"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza longistaminata" NCBITaxId="4528">
+    <database name="Oryza longistaminata from ENSEMBL plants v31" version="Ensembl Plants 31; O_longistaminata_v1.0; 1-APR-2016">
+      <genes>
+        <gene id="10151375" protId="ORYLO07186"/>
+        <gene id="10158548" protId="ORYLO14359"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Dictyostelium discoideum" NCBITaxId="44689">
+    <database name="Dictyostelium discoideum strain AX4 from dictyBase" version="release-2-12; 08-30-2009 01:33">
+      <genes>
+        <gene id="5883201" protId="DICDI03960"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Manihot esculenta" NCBITaxId="3983">
+    <database name="Manihot esculenta from Phytozome v7" version="v4.1">
+      <genes>
+        <gene id="11067814" protId="MANES08056"/>
+        <gene id="11076356" protId="MANES16598"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Triticum aestivum" NCBITaxId="4565">
+    <database name="Triticum aestivum from Ensembl Plants 33" version="Ensembl Plants 33; TGACv1">
+      <genes>
+        <gene id="10449704" protId="WHEAT02803"/>
+        <gene id="10521884" protId="WHEAT74983"/>
+        <gene id="10552200" protId="WHEAT105299"/>
+        <gene id="10535877" protId="WHEAT88976"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Vitrella brassicaformis (strain CCMP3155)" NCBITaxId="1169540">
+    <database name="Vitrella brassicaformis CCMP3155 from ENSEMBL protists v32" version="Ensembl Protists 32; Vbrassicaformis; 3-AUG-2016">
+      <genes>
+        <gene id="5742603" protId="VITBC02306"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Polysphondylium pallidum (strain ATCC 26659 / Pp 5 / PN500)" NCBITaxId="670386">
+    <database name="Polysphondylium pallidum PN500 from Ensembl Protists 36" version="Ensembl Protists 36; PolPal_Dec2009">
+      <genes>
+        <gene id="5906661" protId="POLPP02182"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Hordeum vulgare var. distichon" NCBITaxId="1288821">
+    <database name="Hordeum vulgare from ENSEMBL plants v16" version="Ensembl Plants 16; 220312v1; 24-OCT-2012">
+      <genes>
+        <gene id="10403002" protId="HORVD19110"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Sorghum bicolor" NCBITaxId="4558">
+    <database name="Sorghum bicolor (L.) Moench complete genome from JGI" version="Sbi1_4, Filtered Models">
+      <genes>
+        <gene id="10665200" protId="SORBI05522"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Populus trichocarpa" NCBITaxId="3694">
+    <database name="Populus trichocarpa from ENSEMBL plants v15" version="Ensembl Plants 15; JGI2.0; 27-JUL-2012">
+      <genes>
+        <gene id="11129947" protId="POPTR37452"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Brassica napus" NCBITaxId="3708">
+    <database name="Brassica napus from Genoscope" version="Darmor-bzh; v5">
+      <genes>
+        <gene id="11318648" protId="BRANA93064"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Oryza punctata" NCBITaxId="4537">
+    <database name="Oryza punctata from ENSEMBL plants v23" version="Ensembl Plants 23; AVCL00000000; 19-JUL-2014">
+      <genes>
+        <gene id="10243880" protId="ORYPU32013"/>
+        <gene id="10233210" protId="ORYPU21343"/>
+      </genes>
+    </database>
+  </species>
+  <species name="Brachypodium distachyon" NCBITaxId="15368">
+    <database name="Brachypodium distachyon from ENSEMBL plants v21" version="Ensembl Plants 21; v1.0; 6-DEC-2013">
+      <genes>
+        <gene id="10380274" protId="BRADI23061"/>
+      </genes>
+    </database>
+  </species>
+  <groups>
+    <orthologGroup id="395297">
+      <property name="TaxRange" value="Eukaryota"/>
+      <paralogGroup>
+        <orthologGroup>
+          <property name="TaxRange" value="Oligohymenophorea"/>
+          <paralogGroup>
+            <geneRef id="5801204"/>
+            <geneRef id="5802264"/>
+          </paralogGroup>
+          <orthologGroup>
+            <property name="TaxRange" value="Hymenostomatida"/>
+            <geneRef id="5764038"/>
+            <geneRef id="5774024"/>
+          </orthologGroup>
+        </orthologGroup>
+        <geneRef id="5742603"/>
+      </paralogGroup>
+      <geneRef id="6048364"/>
+      <geneRef id="9785889"/>
+      <orthologGroup>
+        <property name="TaxRange" value="Dictyosteliida"/>
+        <geneRef id="5906661"/>
+        <orthologGroup>
+          <property name="TaxRange" value="Dictyostelium"/>
+          <geneRef id="5883201"/>
+          <geneRef id="5900858"/>
+        </orthologGroup>
+      </orthologGroup>
+      <geneRef id="5988892"/>
+      <orthologGroup>
+        <property name="TaxRange" value="Tracheophyta"/>
+        <geneRef id="11613297"/>
+        <orthologGroup>
+          <property name="TaxRange" value="Mesangiospermae"/>
+          <orthologGroup>
+            <property name="TaxRange" value="Pentapetalae"/>
+            <geneRef id="10878163"/>
+            <orthologGroup>
+              <property name="TaxRange" value="rosids"/>
+              <geneRef id="11561793"/>
+              <orthologGroup>
+                <property name="TaxRange" value="fabids"/>
+                <geneRef id="11135350"/>
+                <orthologGroup>
+                  <property name="TaxRange" value="Malpighiales"/>
+                  <paralogGroup>
+                    <geneRef id="11076356"/>
+                    <geneRef id="11067814"/>
+                  </paralogGroup>
+                  <geneRef id="11129947"/>
+                </orthologGroup>
+                <orthologGroup>
+                  <property name="TaxRange" value="Papilionoideae"/>
+                  <paralogGroup>
+                    <geneRef id="10964856"/>
+                    <geneRef id="10984145"/>
+                    <geneRef id="11005087"/>
+                    <geneRef id="10984142"/>
+                  </paralogGroup>
+                  <geneRef id="11041177"/>
+                </orthologGroup>
+              </orthologGroup>
+              <orthologGroup>
+                <property name="TaxRange" value="malvids"/>
+                <orthologGroup>
+                  <property name="TaxRange" value="Malvaceae"/>
+                  <paralogGroup>
+                    <geneRef id="11523105"/>
+                    <geneRef id="11492088"/>
+                  </paralogGroup>
+                  <geneRef id="11454108"/>
+                </orthologGroup>
+                <orthologGroup>
+                  <property name="TaxRange" value="Brassicaceae"/>
+                  <paralogGroup>
+                    <geneRef id="11404710"/>
+                    <orthologGroup>
+                      <property name="TaxRange" value="Arabidopsis"/>
+                      <geneRef id="11404726"/>
+                      <geneRef id="11415369"/>
+                    </orthologGroup>
+                  </paralogGroup>
+                  <geneRef id="11174437"/>
+                  <orthologGroup>
+                    <property name="TaxRange" value="Brassica"/>
+                    <geneRef id="11225300"/>
+                    <geneRef id="11318648"/>
+                    <geneRef id="11374493"/>
+                  </orthologGroup>
+                </orthologGroup>
+              </orthologGroup>
+            </orthologGroup>
+          </orthologGroup>
+          <orthologGroup>
+            <property name="TaxRange" value="Poaceae"/>
+            <orthologGroup>
+              <property name="TaxRange" value="PACMAD clade"/>
+              <paralogGroup>
+                <geneRef id="10632245"/>
+                <geneRef id="10641553"/>
+              </paralogGroup>
+              <orthologGroup>
+                <property name="TaxRange" value="Panicoideae"/>
+                <geneRef id="10743217"/>
+                <orthologGroup>
+                  <property name="TaxRange" value="Andropogoneae"/>
+                  <geneRef id="10665200"/>
+                  <geneRef id="10709320"/>
+                </orthologGroup>
+              </orthologGroup>
+            </orthologGroup>
+            <orthologGroup>
+              <property name="TaxRange" value="BOP clade"/>
+              <paralogGroup>
+                <orthologGroup>
+                  <property name="TaxRange" value="Oryza"/>
+                  <geneRef id="10101630"/>
+                  <geneRef id="10131939"/>
+                  <geneRef id="10158548"/>
+                  <geneRef id="10198877"/>
+                  <geneRef id="10233210"/>
+                  <geneRef id="10269532"/>
+                  <orthologGroup>
+                    <property name="TaxRange" value="Oryza sativa"/>
+                    <geneRef id="10307489"/>
+                    <geneRef id="10345666"/>
+                  </orthologGroup>
+                </orthologGroup>
+                <orthologGroup>
+                  <property name="TaxRange" value="Oryza"/>
+                  <paralogGroup>
+                    <geneRef id="10356859"/>
+                    <geneRef id="10319789"/>
+                  </paralogGroup>
+                  <geneRef id="10111562"/>
+                  <geneRef id="10151375"/>
+                  <geneRef id="10211567"/>
+                  <geneRef id="10243880"/>
+                  <geneRef id="10282230"/>
+                </orthologGroup>
+              </paralogGroup>
+              <orthologGroup>
+                <property name="TaxRange" value="Pooideae"/>
+                <geneRef id="10380274"/>
+                <orthologGroup>
+                  <property name="TaxRange" value="Triticeae"/>
+                  <paralogGroup>
+                    <geneRef id="10449704"/>
+                    <orthologGroup>
+                      <property name="TaxRange" value="Triticinae"/>
+                      <geneRef id="10429899"/>
+                      <geneRef id="10552200"/>
+                    </orthologGroup>
+                    <geneRef id="10521884"/>
+                    <geneRef id="10535877"/>
+                  </paralogGroup>
+                  <geneRef id="10403002"/>
+                </orthologGroup>
+              </orthologGroup>
+            </orthologGroup>
+          </orthologGroup>
+        </orthologGroup>
+      </orthologGroup>
+      <geneRef id="9696421"/>
+    </orthologGroup>
+  </groups>
+</orthoXML>
