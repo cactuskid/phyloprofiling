@@ -9,6 +9,7 @@ from datasketch import MinHashLSH, MinHashLSHForest
 from scipy import sparse
 from datetime import datetime
 import h5py
+import redis
 
 from pyoma.browser import db
 
