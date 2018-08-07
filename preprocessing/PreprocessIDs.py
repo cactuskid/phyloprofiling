@@ -43,10 +43,6 @@ def _get_hog_members(hog_id, oma):
     return population
 
 
-    import redis
-    import gc
-    from utils import config_utils
-
 
 
 
@@ -58,6 +54,8 @@ def _hog_lex_range(hog):
     """
     hog_str = hog.decode() if isinstance(hog, bytes) else hog
     return hog_str.enco
+
+
 def clearDB(dbnum):
     r = redis.StrictRedis(host='10.0.63.33', port=6379, db=dbnum)
     r.flushdb()
@@ -143,8 +141,6 @@ def _clean_dictionary(dictionary):
     return {k: v for k, v in dictionary.items() if v}
 
 if __name__ == '__main__':
-
-
     if preprocess_config.preprocessGO ==True:
         #Preprocess all of the GO terms' parents to avoid looking at the DAG
         obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'project/data/go.obo')
@@ -155,6 +151,7 @@ if __name__ == '__main__':
             h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
             dataset_go_terms_parents = h5_go_terms['goterms2parents']
             count = 0
+
             for go_term in obo_reader:
                 go_term_read = obo_reader[go_term]
                 if go_term_read.namespace == 'biological_process':
@@ -173,7 +170,6 @@ if __name__ == '__main__':
         if preprocess_config.clearRedis == True:
             #clear the stringDB mapping
             StringRedisTOOLS.clearDB(1)
-
         r1 = redis.StrictRedis(host='localhost', port=6379, db=1)
         # sort the IDs alphanumerically.
         # protein1 protein2 neighborhood fusion cooccurence coexpression
@@ -191,8 +187,6 @@ if __name__ == '__main__':
                     r1.set(IDS, stringAll.tell())
                 if i % 1000000 == 0:
                     print(i)
-    				if i % 10000000 == 0:
-    					gc.collect()
 
 
 
