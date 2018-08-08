@@ -1,16 +1,7 @@
-# Scientific libraries
 import time
-
 import pandas as pd
-# API libraries
 import requests
 from pandas.io.json import json_normalize
-
-# Pyoma libraries
-
-# Graphic libraries
-
-# Extra options
 pd.set_option('max_colwidth', 200)
 
 
