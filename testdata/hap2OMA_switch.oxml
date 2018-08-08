@@ -1,0 +1,488 @@
+<ns0:orthoXML xmlns:ns0="http://orthoXML.org/2011/" origin="OMA" originVersion="Nov 2017" version="0.3">
+  <ns0:species NCBITaxId="50452" name="50452">
+    <ns0:database name="Arabis alpina from ENA" version="ENA; A_alpina_V4; GCA_000733195.1">
+      <ns0:genes>
+        <ns0:gene id="11174437" protId="ARAAL13164" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3635" name="3635">
+    <ns0:database name="Gossypium hirsutum from " version="">
+      <ns0:genes>
+        <ns0:gene id="11492088" protId="GOSHI20752" />
+        <ns0:gene id="11523105" protId="GOSHI51769" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4555" name="4555">
+    <ns0:database name="Setaria italica from ENSEMBL plants v21" version="Ensembl Plants 21; JGIv2.0; 3-DEC-2013">
+      <ns0:genes>
+        <ns0:gene id="10743217" protId="SETIT04466" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4536" name="4536">
+    <ns0:database name="Oryza nivara from ENSEMBL plants v23" version="Ensembl Plants 23; AWHD00000000; 19-JUL-2014">
+      <ns0:genes>
+        <ns0:gene id="10211567" protId="ORYNI37447" />
+        <ns0:gene id="10198877" protId="ORYNI24757" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="110835" name="110835">
+    <ns0:database name="Eragrostis tef from tef-research" version="">
+      <ns0:genes>
+        <ns0:gene id="10641553" protId="ERATE23368" />
+        <ns0:gene id="10632245" protId="ERATE14060" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="5684" name="5684">
+    <ns0:database name="Leptomonas seymouri from Ensembl Protists 36" version="Ensembl Protists 36; ASM129953v1">
+      <ns0:genes>
+        <ns0:gene id="5988892" protId="LEPSE07083" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4081" name="4081">
+    <ns0:database name="Solanum lycopersicum from ENSEMBL plants v27" version="Ensembl Plants 27; GCA_000188115.2; 27-MAY-2015">
+      <ns0:genes>
+        <ns0:gene id="10878163" protId="SOLLC30910" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="59689" name="59689">
+    <ns0:database name="Arabidopsis lyrata subsp. lyrata from Ensembl 37" version="Ensembl 37; v.1.0">
+      <ns0:genes>
+        <ns0:gene id="11404726" protId="ARALY23192" />
+        <ns0:gene id="11404710" protId="ARALY23176" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3847" name="3847">
+    <ns0:database name="Glycine max from ENSEMBL plants v19" version="Ensembl Plants 19; V1.0; 24-JUN-2013">
+      <ns0:genes>
+        <ns0:gene id="10964856" protId="SOYBN02660" />
+        <ns0:gene id="10984142" protId="SOYBN21946" />
+        <ns0:gene id="11005087" protId="SOYBN42891" />
+        <ns0:gene id="10984145" protId="SOYBN21949" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4529" name="4529">
+    <ns0:database name="Oryza rufipogon from ENSEMBL plants v23" version="Ensembl Plants 23; PRJEB4137; 19-JUL-2014">
+      <ns0:genes>
+        <ns0:gene id="10282230" protId="ORYRU38002" />
+        <ns0:gene id="10269532" protId="ORYRU25304" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4577" name="4577">
+    <ns0:database name="Zea mays from ENSEMBL plants v27" version="Ensembl Plants 27; AGPv3; 27-MAY-2015">
+      <ns0:genes>
+        <ns0:gene id="10709320" protId="MAIZE14195" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="400682" name="400682">
+    <ns0:database name="Amphimedon queenslandica from ENSEMBL Metazoa v12" version="Ensembl Metazoa 12; Aqu1; 18-DEC-2011">
+      <ns0:genes>
+        <ns0:gene id="9696421" protId="AMPQE17816" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="5888" name="5888">
+    <ns0:database name="Paramecium tetraurelia from ENSEMBL protists v31" version="Ensembl Protists 31; GCA_000165425.1; 18-FEB-2016">
+      <ns0:genes>
+        <ns0:gene id="5801204" protId="PARTE05201" />
+        <ns0:gene id="5802264" protId="PARTE06261" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="109376" name="109376">
+    <ns0:database name="Brassica oleracea from ENSEMBL plants v23" version="Ensembl Plants 23; v2.1; 8-OCT-2014">
+      <ns0:genes>
+        <ns0:gene id="11374493" protId="BRAOL50779" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="45157" name="45157">
+    <ns0:database name="Cyanidioschyzon merolae from ENSEMBL plants v22" version="Ensembl Plants 22; ASM9120v1; 20-MAR-2014">
+      <ns0:genes>
+        <ns0:gene id="9785889" protId="CYAME00604" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="5932" name="5932">
+    <ns0:database name="Ichthyophthirius multifiliis from ENSEMBL protists v31" version="Ensembl Protists 31; JCVI-IMG1-V_1; 18-FEB-2016">
+      <ns0:genes>
+        <ns0:gene id="5764038" protId="ICHMU00745" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="29760" name="29760">
+    <ns0:database name="Vitis vinifera from ENSEMBL Plants v8" version="Ensembl Plants v9; IGGP_12x; 14-APR-2011">
+      <ns0:genes>
+        <ns0:gene id="11561793" protId="VITVI23490" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="51351" name="51351">
+    <ns0:database name="Brassica rapa subsp. pekinensis from Ensembl Plants 36" version="Ensembl Plants 36; IVFCAASv1">
+      <ns0:genes>
+        <ns0:gene id="11225300" protId="BRARP40741" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="5786" name="5786">
+    <ns0:database name="Dictyostelium purpureum from JGI" version="Dicpu1; 12-Feb-2007">
+      <ns0:genes>
+        <ns0:gene id="5900858" protId="DICPU08696" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3641" name="3641">
+    <ns0:database name="Theobroma cacao from ENSEMBL plants v23" version="Ensembl Plants 23; GCA_000403535.1; 19-JUL-2014">
+      <ns0:genes>
+        <ns0:gene id="11454108" protId="THECC12418" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3702" name="3702">
+    <ns0:database name="Arabidopsis thaliana from ENSEMBL plants v20" version="Ensembl Plants 20; TAIR10; 2-SEP-2013">
+      <ns0:genes>
+        <ns0:gene id="11415369" protId="ARATH01168" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="39946" name="39946">
+    <ns0:database name="Oryza Indica from ENSEMBL plants v21" version="Ensembl Plants 21; ASM465v1; 4-DEC-2013">
+      <ns0:genes>
+        <ns0:gene id="10307489" protId="ORYSI24865" />
+        <ns0:gene id="10319789" protId="ORYSI37165" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="37682" name="37682">
+    <ns0:database name="Aegilops tauschii from ENSEMBL plants v21" version="Ensembl Plants 21; GCA_000347335.1; 6-DEC-2013">
+      <ns0:genes>
+        <ns0:gene id="10429899" protId="AEGTA16793" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="312017" name="312017">
+    <ns0:database name="Tetrahymena thermophila from ENSEMBL protists v31" version="Ensembl Protists 31; JCVI-TTA1-2; 18-FEB-2016">
+      <ns0:genes>
+        <ns0:gene id="5774024" protId="TETTS02693" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3760" name="3760">
+    <ns0:database name="Prunus persica from ENSEMBL plants v23" version="Ensembl Plants 23; GCA_000346465.1; 19-JUL-2014">
+      <ns0:genes>
+        <ns0:gene id="11135350" protId="PRUPE01558" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3880" name="3880">
+    <ns0:database name="Medicago truncatula from ENSEMBL plants v18" version="Ensembl Plants 18; GCA_000219495.1; 8-APR-2013">
+      <ns0:genes>
+        <ns0:gene id="11041177" protId="MEDTR24375" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="88036" name="88036">
+    <ns0:database name="Selaginella moellendorffii from ENSEMBL plants v21" version="Ensembl Plants 21; v1.0; 4-DEC-2013">
+      <ns0:genes>
+        <ns0:gene id="11613297" protId="SELML21516" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4538" name="4538">
+    <ns0:database name="Oryza glaberrima from ENSEMBL plants v21" version="Ensembl Plants 21; AGI1.1; 6-DEC-2013">
+      <ns0:genes>
+        <ns0:gene id="10131939" protId="ORYGL19355" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="39947" name="39947">
+    <ns0:database name="Oryza sativa from ENSEMBL plants v27" version="Ensembl Plants 27; IRGSP-1; 26-MAY-2015">
+      <ns0:genes>
+        <ns0:gene id="10345666" protId="ORYSJ22678" />
+        <ns0:gene id="10356859" protId="ORYSJ33871" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="744533" name="744533">
+    <ns0:database name="Naegleria gruberi (strain NEG-M) from JGI" version="Naegr1; 2-Mar-2010">
+      <ns0:genes>
+        <ns0:gene id="6048364" protId="NAEGR09551" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4533" name="4533">
+    <ns0:database name="Oryza brachyantha from ENSEMBL plants v21" version="Ensembl Plants 21; Oryza_brachyantha.v1.4b; 5-DEC-2013">
+      <ns0:genes>
+        <ns0:gene id="10111562" protId="ORYBR30285" />
+        <ns0:gene id="10101630" protId="ORYBR20353" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4528" name="4528">
+    <ns0:database name="Oryza longistaminata from ENSEMBL plants v31" version="Ensembl Plants 31; O_longistaminata_v1.0; 1-APR-2016">
+      <ns0:genes>
+        <ns0:gene id="10151375" protId="ORYLO07186" />
+        <ns0:gene id="10158548" protId="ORYLO14359" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="44689" name="44689">
+    <ns0:database name="Dictyostelium discoideum strain AX4 from dictyBase" version="release-2-12; 08-30-2009 01:33">
+      <ns0:genes>
+        <ns0:gene id="5883201" protId="DICDI03960" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3983" name="3983">
+    <ns0:database name="Manihot esculenta from Phytozome v7" version="v4.1">
+      <ns0:genes>
+        <ns0:gene id="11067814" protId="MANES08056" />
+        <ns0:gene id="11076356" protId="MANES16598" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4565" name="4565">
+    <ns0:database name="Triticum aestivum from Ensembl Plants 33" version="Ensembl Plants 33; TGACv1">
+      <ns0:genes>
+        <ns0:gene id="10449704" protId="WHEAT02803" />
+        <ns0:gene id="10521884" protId="WHEAT74983" />
+        <ns0:gene id="10552200" protId="WHEAT105299" />
+        <ns0:gene id="10535877" protId="WHEAT88976" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="1169540" name="1169540">
+    <ns0:database name="Vitrella brassicaformis CCMP3155 from ENSEMBL protists v32" version="Ensembl Protists 32; Vbrassicaformis; 3-AUG-2016">
+      <ns0:genes>
+        <ns0:gene id="5742603" protId="VITBC02306" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="670386" name="670386">
+    <ns0:database name="Polysphondylium pallidum PN500 from Ensembl Protists 36" version="Ensembl Protists 36; PolPal_Dec2009">
+      <ns0:genes>
+        <ns0:gene id="5906661" protId="POLPP02182" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="1288821" name="1288821">
+    <ns0:database name="Hordeum vulgare from ENSEMBL plants v16" version="Ensembl Plants 16; 220312v1; 24-OCT-2012">
+      <ns0:genes>
+        <ns0:gene id="10403002" protId="HORVD19110" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4558" name="4558">
+    <ns0:database name="Sorghum bicolor (L.) Moench complete genome from JGI" version="Sbi1_4, Filtered Models">
+      <ns0:genes>
+        <ns0:gene id="10665200" protId="SORBI05522" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3694" name="3694">
+    <ns0:database name="Populus trichocarpa from ENSEMBL plants v15" version="Ensembl Plants 15; JGI2.0; 27-JUL-2012">
+      <ns0:genes>
+        <ns0:gene id="11129947" protId="POPTR37452" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="3708" name="3708">
+    <ns0:database name="Brassica napus from Genoscope" version="Darmor-bzh; v5">
+      <ns0:genes>
+        <ns0:gene id="11318648" protId="BRANA93064" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="4537" name="4537">
+    <ns0:database name="Oryza punctata from ENSEMBL plants v23" version="Ensembl Plants 23; AVCL00000000; 19-JUL-2014">
+      <ns0:genes>
+        <ns0:gene id="10243880" protId="ORYPU32013" />
+        <ns0:gene id="10233210" protId="ORYPU21343" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:species NCBITaxId="15368" name="15368">
+    <ns0:database name="Brachypodium distachyon from ENSEMBL plants v21" version="Ensembl Plants 21; v1.0; 6-DEC-2013">
+      <ns0:genes>
+        <ns0:gene id="10380274" protId="BRADI23061" />
+      </ns0:genes>
+    </ns0:database>
+  </ns0:species>
+  <ns0:groups>
+    <ns0:orthologGroup id="395297">
+      <ns0:property name="TaxRange" value="Eukaryota" />
+      <ns0:paralogGroup>
+        <ns0:orthologGroup>
+          <ns0:property name="TaxRange" value="Oligohymenophorea" />
+          <ns0:paralogGroup>
+            <ns0:geneRef id="5801204" />
+            <ns0:geneRef id="5802264" />
+          </ns0:paralogGroup>
+          <ns0:orthologGroup>
+            <ns0:property name="TaxRange" value="Hymenostomatida" />
+            <ns0:geneRef id="5764038" />
+            <ns0:geneRef id="5774024" />
+          </ns0:orthologGroup>
+        </ns0:orthologGroup>
+        <ns0:geneRef id="5742603" />
+      </ns0:paralogGroup>
+      <ns0:geneRef id="6048364" />
+      <ns0:geneRef id="9785889" />
+      <ns0:orthologGroup>
+        <ns0:property name="TaxRange" value="Dictyosteliida" />
+        <ns0:geneRef id="5906661" />
+        <ns0:orthologGroup>
+          <ns0:property name="TaxRange" value="Dictyostelium" />
+          <ns0:geneRef id="5883201" />
+          <ns0:geneRef id="5900858" />
+        </ns0:orthologGroup>
+      </ns0:orthologGroup>
+      <ns0:geneRef id="5988892" />
+      <ns0:orthologGroup>
+        <ns0:property name="TaxRange" value="Tracheophyta" />
+        <ns0:geneRef id="11613297" />
+        <ns0:orthologGroup>
+          <ns0:property name="TaxRange" value="Mesangiospermae" />
+          <ns0:orthologGroup>
+            <ns0:property name="TaxRange" value="Pentapetalae" />
+            <ns0:geneRef id="10878163" />
+            <ns0:orthologGroup>
+              <ns0:property name="TaxRange" value="rosids" />
+              <ns0:geneRef id="11561793" />
+              <ns0:orthologGroup>
+                <ns0:property name="TaxRange" value="fabids" />
+                <ns0:geneRef id="11135350" />
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Malpighiales" />
+                  <ns0:paralogGroup>
+                    <ns0:geneRef id="11076356" />
+                    <ns0:geneRef id="11067814" />
+                  </ns0:paralogGroup>
+                  <ns0:geneRef id="11129947" />
+                </ns0:orthologGroup>
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Papilionoideae" />
+                  <ns0:paralogGroup>
+                    <ns0:geneRef id="10964856" />
+                    <ns0:geneRef id="10984145" />
+                    <ns0:geneRef id="11005087" />
+                    <ns0:geneRef id="10984142" />
+                  </ns0:paralogGroup>
+                  <ns0:geneRef id="11041177" />
+                </ns0:orthologGroup>
+              </ns0:orthologGroup>
+              <ns0:orthologGroup>
+                <ns0:property name="TaxRange" value="malvids" />
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Malvaceae" />
+                  <ns0:paralogGroup>
+                    <ns0:geneRef id="11523105" />
+                    <ns0:geneRef id="11492088" />
+                  </ns0:paralogGroup>
+                  <ns0:geneRef id="11454108" />
+                </ns0:orthologGroup>
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Brassicaceae" />
+                  <ns0:paralogGroup>
+                    <ns0:geneRef id="11404710" />
+                    <ns0:orthologGroup>
+                      <ns0:property name="TaxRange" value="Arabidopsis" />
+                      <ns0:geneRef id="11404726" />
+                      <ns0:geneRef id="11415369" />
+                    </ns0:orthologGroup>
+                  </ns0:paralogGroup>
+                  <ns0:geneRef id="11174437" />
+                  <ns0:orthologGroup>
+                    <ns0:property name="TaxRange" value="Brassica" />
+                    <ns0:geneRef id="11225300" />
+                    <ns0:geneRef id="11318648" />
+                    <ns0:geneRef id="11374493" />
+                  </ns0:orthologGroup>
+                </ns0:orthologGroup>
+              </ns0:orthologGroup>
+            </ns0:orthologGroup>
+          </ns0:orthologGroup>
+          <ns0:orthologGroup>
+            <ns0:property name="TaxRange" value="Poaceae" />
+            <ns0:orthologGroup>
+              <ns0:property name="TaxRange" value="PACMAD clade" />
+              <ns0:paralogGroup>
+                <ns0:geneRef id="10632245" />
+                <ns0:geneRef id="10641553" />
+              </ns0:paralogGroup>
+              <ns0:orthologGroup>
+                <ns0:property name="TaxRange" value="Panicoideae" />
+                <ns0:geneRef id="10743217" />
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Andropogoneae" />
+                  <ns0:geneRef id="10665200" />
+                  <ns0:geneRef id="10709320" />
+                </ns0:orthologGroup>
+              </ns0:orthologGroup>
+            </ns0:orthologGroup>
+            <ns0:orthologGroup>
+              <ns0:property name="TaxRange" value="BOP clade" />
+              <ns0:paralogGroup>
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Oryza" />
+                  <ns0:geneRef id="10101630" />
+                  <ns0:geneRef id="10131939" />
+                  <ns0:geneRef id="10158548" />
+                  <ns0:geneRef id="10198877" />
+                  <ns0:geneRef id="10233210" />
+                  <ns0:geneRef id="10269532" />
+                  <ns0:orthologGroup>
+                    <ns0:property name="TaxRange" value="Oryza sativa" />
+                    <ns0:geneRef id="10307489" />
+                    <ns0:geneRef id="10345666" />
+                  </ns0:orthologGroup>
+                </ns0:orthologGroup>
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Oryza" />
+                  <ns0:paralogGroup>
+                    <ns0:geneRef id="10356859" />
+                    <ns0:geneRef id="10319789" />
+                  </ns0:paralogGroup>
+                  <ns0:geneRef id="10111562" />
+                  <ns0:geneRef id="10151375" />
+                  <ns0:geneRef id="10211567" />
+                  <ns0:geneRef id="10243880" />
+                  <ns0:geneRef id="10282230" />
+                </ns0:orthologGroup>
+              </ns0:paralogGroup>
+              <ns0:orthologGroup>
+                <ns0:property name="TaxRange" value="Pooideae" />
+                <ns0:geneRef id="10380274" />
+                <ns0:orthologGroup>
+                  <ns0:property name="TaxRange" value="Triticeae" />
+                  <ns0:paralogGroup>
+                    <ns0:geneRef id="10449704" />
+                    <ns0:orthologGroup>
+                      <ns0:property name="TaxRange" value="Triticinae" />
+                      <ns0:geneRef id="10429899" />
+                      <ns0:geneRef id="10552200" />
+                    </ns0:orthologGroup>
+                    <ns0:geneRef id="10521884" />
+                    <ns0:geneRef id="10535877" />
+                  </ns0:paralogGroup>
+                  <ns0:geneRef id="10403002" />
+                </ns0:orthologGroup>
+              </ns0:orthologGroup>
+            </ns0:orthologGroup>
+          </ns0:orthologGroup>
+        </ns0:orthologGroup>
+      </ns0:orthologGroup>
+      <ns0:geneRef id="9696421" />
+    </ns0:orthologGroup>
+  </ns0:groups>
+</ns0:orthoXML>
