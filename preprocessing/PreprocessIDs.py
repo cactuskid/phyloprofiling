@@ -8,6 +8,7 @@ import redis
 import gc
 from time import time
 
+
 from utils import config_utils
 from utils import preprocess_config
 import StringRedisTOOLS
@@ -20,8 +21,6 @@ def yield_hogs_with_annotations(annotation_dataset):
                 yield {fam : obj}
         except ValueError:
             pass
-
-
 
 def goterm2id(go_term_to_modif):
     return_id = int(go_term_to_modif.split(':')[1])
@@ -43,10 +42,6 @@ def _get_hog_members(hog_id, oma):
     return population
 
 
-    import redis
-    import gc
-    from utils import config_utils
-
 
 
 
@@ -58,6 +53,8 @@ def _hog_lex_range(hog):
     """
     hog_str = hog.decode() if isinstance(hog, bytes) else hog
     return hog_str.enco
+
+
 def clearDB(dbnum):
     r = redis.StrictRedis(host='10.0.63.33', port=6379, db=dbnum)
     r.flushdb()
