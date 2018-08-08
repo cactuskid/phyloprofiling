@@ -16,11 +16,9 @@ from utils import hashutils, string_utils
 from preprocessing import string_stringdataMap
 
 from time import time
-
-
 class Profiler:
 
-    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path):#, profile_matrix_path):
+    def __init__(self, lsh_path, hashes_path, mat_path = None):
 
         self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
         self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
@@ -39,7 +37,7 @@ class Profiler:
         lsh_file = open(lsh_path, 'rb')
         lsh_unpickled = pickle.Unpickler(lsh_file)
         self.lsh = lsh_unpickled.load()
-        self.hashes = h5py.File(hashes_path, mode='r')
+        self.hashes_h5 = h5py.File(hashes_path, mode='r')
 
         self.r1 = string_stringdataMap.connect2IDmap()
         self.r2 = string_stringdataMap.connect2Stringmap()
@@ -48,6 +46,85 @@ class Profiler:
         # profile_matrix_file = open(profile_matrix_path, 'rb')
         # profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
         # self.profile_matrix = profile_matrix_unpickled.load()
+
+
+        def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
+            """
+            Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+            :param hog_id: query hog id
+            :param fam_id: query fam id
+            :param events: list of events one wants to query
+            :param combination: Boolean, combination of events or not
+            :return: dictionary containing the results of the LSH for the given query
+            """
+            if hog_id is None and fam_id is None:
+                return
+
+            if hog_id is not None:
+                fam_id = hashutils.hogid2fam(hog_id)
+
+            # query_hashes dict keys:lminhashname, values:hashes
+            # get it from h5hashes instead of recomputing it
+
+            query_dict = {}
+            for event in events:
+                query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5, [event])
+                name = str(fam_id) + '-' + event
+                query_dict[name] = self.lsh.query(query_hashe)
+
+            if combination:
+                #use compbination of all hashes
+                for j in range(1, len(events)):
+                    for i in itertools.combinations(events, j + 1):
+                        comb_name = str(fam_id)
+                        for array in i:
+                            comb_name += '-' + array
+                        query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, i)
+                        query_dict[comb_name] = self.lsh.query(query_hashe)
+            else:
+                #return the results for the combination
+
+            return query_dict
+
+
+class Validation_Profiler:
+
+    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path, mat_path):
+        Profiler.__init__(lsh_path, hashes_path, mat_path)
+        self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
+        self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
+
+        self.go = obo_parser.GODag(obo_file_path)
+        self.associations = read_gaf(gaf_file_path)
+
+        self.term_counts = TermCounts(self.go, self.associations)
+        self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
+                                                                                            self.term_counts,
+                                                                                            self.go_terms_hdf5)
+
+        self.h5OMA = oma_path
+        self.db_obj = db.Database(self.h5OMA)
+
+
+        self.r1 = string_stringdataMap.connect2IDmap()
+        self.r2 = string_stringdataMap.connect2Stringmap()
+        self.string_data_path = string_data_path
+
+        # profile_matrix_file = open(profile_matrix_path, 'rb')
+        # profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
+        # self.profile_matrix = profile_matrix_unpickled.load()
+
+
+        def results_query(self, query, results_list):
+            results_dict = {}
+            hog_event_1 = query
+            results_list = [query] + results_list
+            for hog_event_2 in results_list:
+                    results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
+            return results_dict
+
+        def results_matrows(self, query, results_list )
+
 
     def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
         """
@@ -144,15 +221,6 @@ class Profiler:
                 results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
         return results_dict
 
-    def results_query(self, query, results_list):
-        results_dict = {}
-        hog_event_1 = query
-        results_list = [query] + results_list
-
-        for hog_event_2 in results_list:
-                results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-
-        return results_dict
 
     def get_scores(self, hog_event_1, hog_event_2, results_dict):
         hog1 = hashutils.result2hogid(hog_event_1)
