@@ -48,43 +48,40 @@ class Profiler:
         # self.profile_matrix = profile_matrix_unpickled.load()
 
 
-        def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
-            """
-            Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
-            :param hog_id: query hog id
-            :param fam_id: query fam id
-            :param events: list of events one wants to query
-            :param combination: Boolean, combination of events or not
-            :return: dictionary containing the results of the LSH for the given query
-            """
-            if hog_id is None and fam_id is None:
-                return
+    def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
+        """
+        Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+        :param hog_id: query hog id
+        :param fam_id: query fam id
+        :param events: list of events one wants to query
+        :param combination: Boolean, combination of events or not
+        :return: dictionary containing the results of the LSH for the given query
+        """
+        if hog_id is None and fam_id is None:
+            return
 
-            if hog_id is not None:
-                fam_id = hashutils.hogid2fam(hog_id)
+        if hog_id is not None:
+            fam_id = hashutils.hogid2fam(hog_id)
 
-            # query_hashes dict keys:lminhashname, values:hashes
-            # get it from h5hashes instead of recomputing it
+        # query_hashes dict keys:lminhashname, values:hashes
+        # get it from h5hashes instead of recomputing it
 
-            query_dict = {}
-            for event in events:
-                query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5, [event])
-                name = str(fam_id) + '-' + event
-                query_dict[name] = self.lsh.query(query_hashe)
+        query_dict = {}
+        for event in events:
+            query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5, [event])
+            name = str(fam_id) + '-' + event
+            query_dict[name] = self.lsh.query(query_hashe)
 
-            if combination:
-                #use compbination of all hashes
-                for j in range(1, len(events)):
-                    for i in itertools.combinations(events, j + 1):
-                        comb_name = str(fam_id)
-                        for array in i:
-                            comb_name += '-' + array
-                        query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, i)
-                        query_dict[comb_name] = self.lsh.query(query_hashe)
-            else:
-                #return the results for the combination
-
-            return query_dict
+        if combination:
+            #use compbination of all hashes
+            for j in range(1, len(events)):
+                for i in itertools.combinations(events, j + 1):
+                    comb_name = str(fam_id)
+                    for array in i:
+                        comb_name += '-' + array
+                    query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, i)
+                    query_dict[comb_name] = self.lsh.query(query_hashe)
+        return query_dict
 
 
 class Validation_Profiler:

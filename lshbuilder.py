@@ -145,7 +145,7 @@ class LSHBuilder:
                             print(time.clock() - global_time)
                             print_start = time.clock()
 
-                        if time.clock() - save_start > 2000:
+                        if time.clock() - save_start > 1000:
                             print(this_dataframe['Fam'].max())
                             print('saving')
                         #     with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl', 'wb') as lsh_out:
