@@ -9,9 +9,12 @@ import gc
 from time import time
 
 
+<<<<<<< HEAD
 import sys
 sys.path.insert(0, '..')
 
+=======
+>>>>>>> master
 from utils import config_utils
 from utils import preprocess_config
 import StringRedisTOOLS
@@ -24,8 +27,6 @@ def yield_hogs_with_annotations(annotation_dataset):
                 yield {fam : obj}
         except ValueError:
             pass
-
-
 
 def goterm2id(go_term_to_modif):
     return_id = int(go_term_to_modif.split(':')[1])
