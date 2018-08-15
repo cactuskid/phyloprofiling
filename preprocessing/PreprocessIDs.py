@@ -9,12 +9,9 @@ import gc
 from time import time
 
 
-<<<<<<< HEAD
 import sys
 sys.path.insert(0, '..')
 
-=======
->>>>>>> master
 from utils import config_utils
 from utils import preprocess_config
 import StringRedisTOOLS
@@ -241,19 +238,20 @@ if __name__ == '__main__':
                         start = True
                         print('started!')
 
-                    if start and uniID is not oldID and len(mapdict)>1:
-                        if 'OMA' in mapdict:
-                            if preprocess_config.verbose == True:
-                                print(mapdict)
 
+                    if start and uniID is not oldID and len(mapdict)>1:
+
+                        if 'OMA' in mapdict:
+                            print(oldID)
+                            print(mapdict)
+
+                        
                             mappings +=1
                             if mappings%1000 == 0:
                                 print(mappings)
-
                             members = list(db_obj.oma_group_members(mapdict['OMA'][0]))
                             hogs = set([ entry[4].decode() for entry in members])
                             #profiles only encode top level hogs
-
                             fams = []
                             for entry in hogs:
                                 if ':' in entry:
@@ -263,30 +261,22 @@ if __name__ == '__main__':
                                     hognum = int(hognum)
                                     fams.append(hognum)
                             fams = set(fams)
-                            print(fams)
-                            #    hogs = set([ int(entry.split(':')[1].split('.')[0]) for entry in hogs ])
                             for fam in fams:
                                 oldmapping = []
                                 for dataset in mapdict:
                                     if dataset != 'OMA':
-                                        #add array of IDS on the row corresponding to the fam
                                         if len(mappingh5[dataset]) < fam + 1:
                                             mappingh5[dataset].resize((fam + 1,  ))
                                         if len(mappingh5[dataset][fam]) > 0:
-                                            print(mappingh5[dataset][fam])
                                             oldmapping = json.loads(mappingh5[dataset][fam])
-
                                         mappingh5[dataset][fam] = json.dumps(mapdict[dataset]+oldmapping)
-
-                                        print(dataset)
-                                        print(json.dumps(mapdict[dataset]+oldmapping))
                                         mappingh5.flush()
 
 
                         mapdict = {}
 
                     if start and mapto in datasets and oldID == uniID:
-                    
+
                         if mapto in mapdict:
                             mapdict[mapto].append(mapval)
                         else:
