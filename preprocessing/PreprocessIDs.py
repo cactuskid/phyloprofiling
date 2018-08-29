@@ -204,7 +204,7 @@ if __name__ == '__main__':
 
         """
         datasets = [ 'BIOGRID' , 'COMPLEXPORTAL' , 'DIP' , 'KEGG', 'STRING', 'OMA']
-        start = True
+
         db_obj = db.Database(config_utils.omadir + 'OmaServer.h5')
         resovlver =db.IDResolver(db_obj)
         #open uniprotmappings
@@ -217,71 +217,98 @@ if __name__ == '__main__':
                     dt_2 = h5py.special_dtype(vlen=bytes)
                     if dataset not in mappingh5:
                         mappingh5.create_dataset(dataset,shape=(10,), maxshape=(None, ) ,chunks=True, dtype=dt_2)
+
+                start = True
+                record = False
+
                 count = 1
                 mappings = 0
                 start_time = time()
                 oldID = ''
-                mapdict ={}
+                OMAgroupdict={}
 
                 if preprocess_config.startseq:
                     start = False
                     print('start at')
                     print(preprocess_config.startseq)
 
+                stringchunk =''
                 for i, row in enumerate(uniprotmappings):
                     words= row.split()
                     uniID = words[0]
-                    mapto = words[1]
-                    mapval = words[2]
+                    #mapto = words[1]
+                    #mapval = words[2]
+
+
 
                     if start == False and preprocess_config.startseq == uniID:
                         start = True
                         print('started!')
 
+                    if start==True and oldID != uniID:
 
-                    if start and uniID is not oldID and len(mapdict)>1:
+                        if 'OMA' in stringchunk:
+                            mapdict ={}
+                            for row in stringchunk.split('\n'):
+                                if len(row)>0:
+                                    words= row.split()
+                                    uniID = words[0]
+                                    mapto = words[1]
+                                    mapval = words[2]
+                                    if mapto in datasets:
+                                        if mapto in mapdict:
+                                            mapdict[mapto].append(mapval)
+                                        else:
+                                            mapdict[mapto] =[ mapval]
 
-                        if 'OMA' in mapdict:
-                            print(oldID)
-                            print(mapdict)
+                            if len(mapdict)>1 and 'OMA' in mapdict:
 
-                        
-                            mappings +=1
-                            if mappings%1000 == 0:
-                                print(mappings)
-                            members = list(db_obj.oma_group_members(mapdict['OMA'][0]))
-                            hogs = set([ entry[4].decode() for entry in members])
-                            #profiles only encode top level hogs
-                            fams = []
-                            for entry in hogs:
-                                if ':' in entry:
-                                    hognum = entry.split(':')[1]
-                                    if '.' in hognum:
-                                        hognum = hognum.split('.')[0]
-                                    hognum = int(hognum)
-                                    fams.append(hognum)
-                            fams = set(fams)
-                            for fam in fams:
-                                oldmapping = []
-                                for dataset in mapdict:
-                                    if dataset != 'OMA':
-                                        if len(mappingh5[dataset]) < fam + 1:
-                                            mappingh5[dataset].resize((fam + 1,  ))
-                                        if len(mappingh5[dataset][fam]) > 0:
-                                            oldmapping = json.loads(mappingh5[dataset][fam])
-                                        mappingh5[dataset][fam] = json.dumps(mapdict[dataset]+oldmapping)
-                                        mappingh5.flush()
+                                print(uniID)
+                                print(mapdict)
+                                mappings +=1
+                                if mappings%1000 == 0:
+                                    print(mappings)
+                                fams =[]
+                                if mapdict['OMA'][0] in OMAgroupdict:
 
+                                    fams = list(OMAgroupdict[mapdict['OMA'][0]])
 
-                        mapdict = {}
+                                else:
+                                    try:
+                                        members = list(db_obj.oma_group_members(mapdict['OMA'][0]))
+                                        hogs = set([ entry[4].decode() for entry in members])
+                                        #profiles only encode top level hogs
 
-                    if start and mapto in datasets and oldID == uniID:
+                                        fams = []
+                                        for entry in hogs:
+                                            if ':' in entry:
+                                                hognum = entry.split(':')[1]
+                                                if '.' in hognum:
+                                                    hognum = hognum.split('.')[0]
+                                                hognum = int(hognum)
+                                                fams.append(hognum)
+                                        OMAgroupdict[mapdict['OMA'][0]]=fams
+                                        fams = set(fams)
+                                    except:
+                                        print('error' +  mapdict['OMA'][0] )
 
-                        if mapto in mapdict:
-                            mapdict[mapto].append(mapval)
-                        else:
-                            mapdict[mapto] =[ mapval]
+                                for fam in fams:
+                                    oldmapping = []
+                                    for dataset in mapdict:
+                                        if dataset != 'OMA':
+                                            if len(mappingh5[dataset]) < fam + 1:
+                                                mappingh5[dataset].resize((fam + 1,  ))
+                                            if len(mappingh5[dataset][fam]) > 0:
+                                                oldmapping = json.loads(mappingh5[dataset][fam])
+                                            mappingh5[dataset][fam] = json.dumps(list(set(mapdict[dataset]+oldmapping)))
+                                            mappingh5.flush()
+
+                        stringchunk = ''
                     oldID = uniID
+                    if start == False and oldID != uniID:
+                        stringchunk=''
+                    stringchunk+= row
+
 
 
 """
