@@ -19,7 +19,7 @@ from datasketch import WeightedMinHashGenerator
 
 class LSHBuilder:
 
-    def __init__(self, h5_oma, saving_folder , saving_name=None , numperm = 512,  treeweights= None , taxfilter = None, taxmask= None , lambdadict= None, start= None):
+    def __init__(self, h5_oma, saving_folder , saving_name=None , numperm = 128,  treeweights= None , taxfilter = None, taxmask= None , lambdadict= None, start= None):
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
@@ -58,9 +58,10 @@ class LSHBuilder:
         self.columns = len(self.taxaIndex)
         self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
-    def generates_dataframes(self, size=100, minhog_size=5, maxhog_size=1500):
+    def generates_dataframes(self, size=100, minhog_size=None, maxhog_size=None):
         families = {}
         start = -1
+
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
             if i > start:
                 fam = row[0]
@@ -143,17 +144,19 @@ class LSHBuilder:
                     t.sleep(1)
                     print(str(t.time() - global_time)+'seconds elapsed')
                     print(str(this_dataframe.Fam.max())+ 'fam num')
-                    print(str(count) + 'hogso find out what the epoch is on a given platform, look at gmtime(0). done')
+                    print(str(count) + ' done')
 
                     if this_dataframe is not None:
                         hashes = this_dataframe['hash'].to_dict()
+
                         for fam in hashes:
                             if hashes[fam] is not None:
                                 lsh.insert(fam, hashes[fam])
                                 forest.add(fam, hashes[fam])
+
                                 if len(datasets[dataset_name]) < fam + 10:
                                     datasets[dataset_name].resize((fam + chunk_size, len(hashes[fam].hashvalues.ravel())))
-                                    #set the hasvalues for each event and for the weighted minhash
+
                                 datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
                                 h5hashes.flush()
                             else:
@@ -193,7 +196,7 @@ class LSHBuilder:
                          'matrix_updater': (self.matrix_updater, 1, False)}
 
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
-        return None
+        return self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl' , self.saving_path + 'newlshforest.pkl' , self.saving_path + 'hashes.h5'
 
     def matrix_updater(self, i, q, retq, matq, l):
         hog_mat = None
@@ -293,22 +296,7 @@ if __name__ == '__main__':
     # hyper params
     num_perm = config_utils.num_perm
 
-    # for use with weighted minhash functions
 
-    # overall weight of category
-    lossweight = [0, 1]
-    presencweight = [0, 1]
-    dupweight=[0, 1]
-
-    # bleed to neighbors up and down
-    lossbleed = [0, 1]
-    presencebleed = [0, 1]
-    dupbleed=[0, 1]
-
-    # importance given to taxonomic levels
-    losslin = [0, 1]
-    presencelin = [0, 1]
-    duplin=[0, 1]
 
     startdict={'presence':1, 'loss':1, 'dup':1}
     lambdadict={'presence':1, 'loss':1, 'dup':1}
@@ -316,11 +304,36 @@ if __name__ == '__main__':
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
         # loop with bayes opt over hyper params
 
-        # build lsh
-        lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name='plants', numperm = 512,
-        treeweights= None , taxfilter = None, taxmask=33090 , lambdadict= lambdadict, start= startdict)
+        # build lsh with either taxfilter of taxmask
 
+        """dbdict = {
+        'plants': { 'taxfilter': None , 'taxmask': 33090 }
+        'all': { 'taxfilter': None , 'taxmask': None }
+        'archaea':{ 'taxfilter': None , 'taxmask': 2157 }
+        'bacteria':{ 'taxfilter': None , 'taxmask': 2 }
+        'eukarya':{ 'taxfilter': None , 'taxmask': 2759 }
+        'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None }
+        'fungi':{ 'taxfilter': None , 'taxmask': 4751 }
+        'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
+        }"""
+
+        #for entry in dbdict:
+            #taxfilter = dbdict[entry]['taxfilter']
+            #taxmask = dbdict[entry]['taxmask']
+
+        lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name='final', numperm = 128,
+        treeweights= None , taxfilter = None, taxmask=None , lambdadict= lambdadict, start= startdict)
         lsh_builder.run_pipeline()
+
+        #plants 33090
+        #metazoa 33208
+        #funghi 4751
+        #archaea 2157
+        #bacteria 2
+        #eukarya 2759
+        #basal eukarya (remove pants, metazoa and funghi)
+
+
 
         # run validation
 
