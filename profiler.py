@@ -12,34 +12,34 @@ from goatools.semantic import TermCounts
 from pyoma.browser import db
 
 from validation import validation_semantic_similarity
-from utils import hashutils, string_utils
-
+from utils import hashutils, string_utils , config_utils
 
 from time import time
 class Profiler:
 
-    def __init__(self, oma_path ,lsh_path, hashes_path, mat_path = None , unimap_path = None ,string_data_path = None , taxfilter = None, taxmast = None, weights = None ):
+    def __init__(self, lsh_path, hashes_path, oma_path=None , mat_path = None , unimap_path = None ,string_data_path = None , taxfilter = None, taxmast = None, weights = None , GO= None):
         #use the lsh forest or the lsh
 
-
-        self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
-        self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
-
-        self.go = obo_parser.GODag(obo_file_path)
-        self.associations = read_gaf(gaf_file_path)
-
-        self.term_counts = TermCounts(self.go, self.associations)
-        self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
-                                                                                            self.term_counts,
-                                                                                            self.go_terms_hdf5)
-
-        self.h5OMA = oma_path
+        print('init OMA db obj')
+        if oma_path:
+            self.h5OMA = oma_path
+        else:
+            self.h5OMA = config_utils.omadir+'OmaServer.h5'
         self.db_obj = db.Database(self.h5OMA)
+        print('DONE')
 
+        print('load LSH')
         lsh_file = open(lsh_path, 'rb')
         lsh_unpickled = pickle.Unpickler(lsh_file)
         self.lsh = lsh_unpickled.load()
+        lsh_file.close()
+        self.lsh_path = lsh_path
+
+        if 'forest' in lsh_path:
+            self.lsh.index()
+            print('indexing lsh')
         self.hashes_h5 = h5py.File(hashes_path, mode='r')
+        print('DONE')
 
         if unimap_path:
             self.unimap_h5 = h5py.File(unimap_h5, mode='r')
@@ -53,34 +53,54 @@ class Profiler:
             profile_matrix_file = open(profile_matrix_path, 'rb')
             profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
             self.profile_matrix = profile_matrix_unpickled.load()
+        if GO :
 
+            self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
+            self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
 
-    def hog_query(self, hog_id=None, fam_id=None):
+            self.go = obo_parser.GODag(obo_file_path)
+            self.associations = read_gaf(gaf_file_path)
+
+            self.term_counts = TermCounts(self.go, self.associations)
+            self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
+                                                                                                self.term_counts,
+                                                                                                self.go_terms_hdf5)
+
+    def hog_query(self, hog_id=None, fam_id=None , k = 100 ):
         """
         Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
         :param hog_id: query hog id
         :param fam_id: query fam id
         :return: list containing the results of the LSH for the given query
         """
-        if hog_id is None and fam_id is None:
-            return
+
         if hog_id is not None:
             fam_id = hashutils.hogid2fam(hog_id)
         # query_hashes dict keys:lminhashname, values:hashes
         # get it from h5hashes instead of recomputing it
-        query_dict = {}
-        query_hash = hashutils.fam2hash_hdf5_multiset(fam_id, self.hashes_h5)
-        results = self.lsh.query(query_hashe)
-        return query_dict
+        query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5)
+        if 'forest' in self.lsh_path:
+            print('forest query')
+            print(query_hash.hashvalues)
+            print(query_hash)
+            results = self.lsh.query(query_hash, k)
+
+        else:
+            print(query_hash.hashvalues)
+            print(query_hash)
+            print('lsh query')
+            results = self.lsh.query(query_hash)
+
+        return results
 
     def pull_hashes(self , hoglist):
         return { hog:hashutils.fam2hash_hdf5(hog, self.hashes_h5 ) for hog in hoglist}
 
-    """
+
     def pull_mapping(self, hoglist):
         #grab the crossrefs for a list of hogs
         return { hog:{ dataset: json.loads(unimap_h5[dataset][hog]) for dataset in unimap_h5 }  for hog in hoglist }
-"""
+
     def pull_go(self,hoglist):
         pass
 
@@ -109,19 +129,16 @@ class Profiler:
 
     def get_vpairs(fam):
         #get pairwise distance matrix of OMA all v all
-        ## TODO: unfinished
-
         taxa = self.db_obj.hog_levels_of_fam(fam)
-        subtaxindex =  { tup[1]:tup[0] for tup in enumerate(taxa)}
+        subtaxindex = { taxon:i for i,taxon in enumerate(taxa)}
         prots = self.db_obj.hog_members_from_hog_id(fam,  'LUCA')
         for prot in prots:
             taxon = prot.ncbi_taxon_id()
             pairs = self.db_obj.get_vpairs(prot)
             for EntryNr1, EntryNr2, RelType , score , distance in list(pairs):
                 pass
-
         return sparsemat , densemat
-"""
+
 
 class Validation_Profiler:
 
@@ -461,4 +478,3 @@ def get_hog_ids_from_results(results):
         query_event_hog_ids[query] = [hashutils.result2fam(query)] + [hashutils.result2fam(r) for r in result]
 
     return query_event_hog_ids
-"""
