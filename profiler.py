@@ -29,15 +29,13 @@ class Profiler:
         print('DONE')
 
         print('load LSH')
-        lsh_file = open(lsh_path, 'rb')
-        lsh_unpickled = pickle.Unpickler(lsh_file)
-        self.lsh = lsh_unpickled.load()
-        lsh_file.close()
+        with open(lsh_path, 'rb') as lshpickle:
+            self.lsh = pickle.loads(lshpickle.read())
         self.lsh_path = lsh_path
-
         if 'forest' in lsh_path:
             self.lsh.index()
             print('indexing lsh')
+
         self.hashes_h5 = h5py.File(hashes_path, mode='r')
         print('DONE')
 
@@ -79,18 +77,12 @@ class Profiler:
         # query_hashes dict keys:lminhashname, values:hashes
         # get it from h5hashes instead of recomputing it
         query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5)
+        print(query_hash)
+        #self.lsh.insert(fam_id+100000000000 , query_hash)
         if 'forest' in self.lsh_path:
-            print('forest query')
-            print(query_hash.hashvalues)
-            print(query_hash)
             results = self.lsh.query(query_hash, k)
-
         else:
-            print(query_hash.hashvalues)
-            print(query_hash)
-            print('lsh query')
             results = self.lsh.query(query_hash)
-
         return results
 
     def pull_hashes(self , hoglist):

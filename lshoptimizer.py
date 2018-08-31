@@ -52,7 +52,9 @@ bo = BayesianOptimization( profiling_error ,  {'lossweight': (0, 1),
                                                 'dupl_lamba':(0,1),
                                                 'presencebleed':(0,1)
                                                 'lossbleed':(0,1)
-                                                'duplbleed':(0,1)
+                                                'duplbleed':(0,1),
+                                                'nsamples':(64,256)
+
                                                 })
 
 # Hit the big red button.
