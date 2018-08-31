@@ -141,7 +141,6 @@ class LSHBuilder:
                 print('saver init ' + str(i))
                 while True:
                     this_dataframe = retq.get()
-                    t.sleep(1)
                     print(str(t.time() - global_time)+'seconds elapsed')
                     print(str(this_dataframe.Fam.max())+ 'fam num')
                     print(str(count) + ' done')
@@ -168,11 +167,10 @@ class LSHBuilder:
 
                             print('saving')
 
-                            with open(self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl', 'wb') as lsh_out:
-                                pickle.dump(lsh, lsh_out, -1)
-
+                            with open(self.saving_path + 'newlsh.pkl','wb') as lsh_out:
+                                lsh_out.write(pickle.dumps(lsh, -1))
                             with open(self.saving_path + 'newlshforest.pkl', 'wb') as forestout:
-                                pickle.dump(forest, forestout, -1)
+                                forestout.write(pickle.dumps(forest, -1))
 
                             save_start = t.time()
 
@@ -182,9 +180,9 @@ class LSHBuilder:
                         print('wrap it up')
                         #wrap it up
                         with open(self.saving_path + 'newlsh.pkl','wb') as lsh_out:
-                             pickle.dump(lsh, lsh_out, -1)
+                            lsh_out.write(pickle.dumps(lsh, -1))
                         with open(self.saving_path + 'newlshforest.pkl', 'wb') as forestout:
-                            pickle.dump(forest, forestout, -1)
+                            forestout.write(pickle.dumps(forest, -1))
 
                         print('DONE UPDATER' + str(i))
                         break
@@ -192,7 +190,7 @@ class LSHBuilder:
     def run_pipeline(self):
         ## TODO: return files saved
 
-        functype_dict = {'worker': (self.worker, int(mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
+        functype_dict = {'worker': (self.worker, int(mp.cpu_count())-4, True), 'updater': (self.saver, 1, False),
                          'matrix_updater': (self.matrix_updater, 1, False)}
 
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
@@ -268,7 +266,6 @@ class LSHBuilder:
             q.put(data)
         print('done spooling data')
 
-
         for key in work_processes:
             for i in range(2):
                 for _ in work_processes[key]:
@@ -287,6 +284,13 @@ class LSHBuilder:
                 for _ in work_processes[key]:
                     retq.put(None)
                     matq.put(None)
+
+        for key in work_processes:
+            worker_function, number_workers , joinval = functypes[key]
+            if joinval == False:
+                for process in work_processes[key]:
+                    process.join()
+
         gc.collect()
         print('DONE!')
 
@@ -295,46 +299,11 @@ if __name__ == '__main__':
 
     # hyper params
     num_perm = config_utils.num_perm
-
-
-
     startdict={'presence':1, 'loss':1, 'dup':1}
     lambdadict={'presence':1, 'loss':1, 'dup':1}
 
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
-        # loop with bayes opt over hyper params
-
-        # build lsh with either taxfilter of taxmask
-
-        """dbdict = {
-        'plants': { 'taxfilter': None , 'taxmask': 33090 }
-        'all': { 'taxfilter': None , 'taxmask': None }
-        'archaea':{ 'taxfilter': None , 'taxmask': 2157 }
-        'bacteria':{ 'taxfilter': None , 'taxmask': 2 }
-        'eukarya':{ 'taxfilter': None , 'taxmask': 2759 }
-        'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None }
-        'fungi':{ 'taxfilter': None , 'taxmask': 4751 }
-        'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
-        }"""
-
-        #for entry in dbdict:
-            #taxfilter = dbdict[entry]['taxfilter']
-            #taxmask = dbdict[entry]['taxmask']
 
         lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name='final', numperm = 128,
         treeweights= None , taxfilter = None, taxmask=None , lambdadict= lambdadict, start= startdict)
         lsh_builder.run_pipeline()
-
-        #plants 33090
-        #metazoa 33208
-        #funghi 4751
-        #archaea 2157
-        #bacteria 2
-        #eukarya 2759
-        #basal eukarya (remove pants, metazoa and funghi)
-
-
-
-        # run validation
-
-        # output score and params

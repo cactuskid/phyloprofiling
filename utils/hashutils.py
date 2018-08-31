@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadict, start):
-
+    #weighing function for tax level, masking levels etc
     weights = { type: np.zeros((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
     for node in mastertree.traverse():
         node.add_feature('degree', 1 )
@@ -30,8 +30,7 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
                     #set weight for descendants of n to 0
                     n.delete()
         for n in newtree.traverse():
-            weights[event][taxaIndex[n.name]] = start[event]*math.exp(n.degree *lambdadict[event])
-
+            weights[event][taxaIndex[n.name]] = start[event]#*math.exp(n.degree *lambdadict[event])
     return weights
 
 def hash_tree(tp , taxaIndex , treeweights , wmg):
@@ -43,22 +42,27 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
     presence = [ taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in taxaIndex  ]
 
     indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
+
     hog_matrix = lil_matrix((1, 3*len(taxaIndex)))
 
+    hogsum = 0
     for i,event in enumerate(indices):
         if len(indices[event])>0:
-            index = np.asarray(indices[event])
+            taxindex = np.asarray(indices[event])
+            hogindex = np.asarray(indices[event])+i*len(taxaIndex)
             #print(index)
             #print(treeweights[event][index].shape)
             #print(hog_matrix[:,index].shape)
             #assign the
-            hog_matrix[:,i*len(taxaIndex)+index] = treeweights[event][index].T
-    if np.sum(hog_matrix)>0:
+            hog_matrix[:,hogindex] = treeweights[event][taxindex].ravel()
+            hogsum+=np.sum(treeweights[event][taxindex])
 
-        weighted_hash = wmg.minhash(list(hog_matrix.todense().flat))
-        return  hog_matrix,weighted_hash
-    else:
-        return None, None
+    #normalize total...
+    hog_matrix/= hogsum
+
+    weighted_hash = wmg.minhash(list(hog_matrix.todense().flat))
+
+    return  hog_matrix,weighted_hash
 
 def row2hash(row , taxaIndex , treeweights , wmg):
     fam, treemap = row.tolist()
@@ -66,7 +70,7 @@ def row2hash(row , taxaIndex , treeweights , wmg):
     return [weighted_hash,hog_matrix]
 
 
-def fam2hash_hdf5(fam,  hdf5, dataset , nsamples = 512):
+def fam2hash_hdf5(fam,  hdf5, dataset = None, nsamples = 128):
     """
     Get the minhash corresponding to the given hog id number
     :param fam: hog id number
@@ -74,18 +78,20 @@ def fam2hash_hdf5(fam,  hdf5, dataset , nsamples = 512):
     :param events: list of events the hashes are build on; default: all four events
     :return: list of hashes for the given fam and events
     """
+    if dataset is None:
+        #use first dataset by default
+        dataset = list(hdf5.keys())[0]
+    print(dataset)
+    print(fam)
 
-    try:
-        hashvalues = hdf5[datset][fam, :]
-        hashvalues = hashvalues.reshape( (nsamples, -1))
-        minhash1 = datasketch.MinHash(seed=1, hashvalues=hashvalues)
-        return minhash1
 
-    except:
-        print('bug fam2hash_hdf5')
-        print(fam)
-        print(hdf5[dataset][fam,:].shape)
-        return None
+    hashvalues = hdf5[dataset][fam, :].reshape((nsamples,-1 ))
+    print(hashvalues)
+    print(np.sum(hashvalues))
+    minhash1 = datasketch.WeightedMinHash(seed=1, hashvalues=hashvalues)
+    print(minhash1)
+    return minhash1
+
 
 def hogid2fam(hog_id):
     """
