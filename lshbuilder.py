@@ -5,7 +5,7 @@ import multiprocessing as mp
 import pandas as pd
 import time as t
 import pickle
-from datasketch import MinHashLSH, MinHashLSHForest
+from datasketch import MinHashLSH,   MinHashLSHForest
 from scipy import sparse
 from datetime import datetime
 import h5py
@@ -106,7 +106,7 @@ class LSHBuilder:
         global_time = t.time()
         chunk_size = 100
         count = 0
-        threshold = 0.7
+        threshold = 0.98
 
         if config_utils.clear_redisLSH == True:
             #flush the LSH DB
@@ -141,21 +141,20 @@ class LSHBuilder:
                 print('saver init ' + str(i))
                 while True:
                     this_dataframe = retq.get()
-                    print(str(t.time() - global_time)+'seconds elapsed')
-                    print(str(this_dataframe.Fam.max())+ 'fam num')
-                    print(str(count) + ' done')
 
-                    if this_dataframe is not None:
+                    if not this_dataframe.empty:
                         hashes = this_dataframe['hash'].to_dict()
+                        print(str(t.time() - global_time)+'seconds elapsed')
+                        print(str(this_dataframe.Fam.max())+ 'fam num')
+                        print(str(count) + ' done')
 
                         for fam in hashes:
                             if hashes[fam] is not None:
-                                lsh.insert(fam, hashes[fam])
-                                forest.add(fam, hashes[fam])
 
+                                lsh.insert(str(fam), hashes[fam])
+                                forest.add(str(fam), hashes[fam])
                                 if len(datasets[dataset_name]) < fam + 10:
                                     datasets[dataset_name].resize((fam + chunk_size, len(hashes[fam].hashvalues.ravel())))
-
                                 datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
                                 h5hashes.flush()
                             else:
@@ -163,10 +162,12 @@ class LSHBuilder:
                                 print(fam)
                                 hashes_error_files.write(str(fam) + '\n')
 
-                        if t.time() - save_start > 500:
+                        if t.time() - save_start > 200:
 
                             print('saving')
-
+                            forest.index()
+                            print(forest.query(hashes[fam],100))
+                            #print(lsh.query(hashes[fam]))
                             with open(self.saving_path + 'newlsh.pkl','wb') as lsh_out:
                                 lsh_out.write(pickle.dumps(lsh, -1))
                             with open(self.saving_path + 'newlshforest.pkl', 'wb') as forestout:
@@ -190,14 +191,13 @@ class LSHBuilder:
     def run_pipeline(self):
         ## TODO: return files saved
 
-        functype_dict = {'worker': (self.worker, int(mp.cpu_count())-4, True), 'updater': (self.saver, 1, False),
-                         'matrix_updater': (self.matrix_updater, 1, False)}
+        functype_dict = {'worker': (self.worker, int(mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
+                         'matrix_updater': (self.matrix_updater, 0, False)}
 
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
-        return self.saving_path + self.date_string + '_' + str(threshold) + '_' + 'newlsh.pkl' , self.saving_path + 'newlshforest.pkl' , self.saving_path + 'hashes.h5'
 
     def matrix_updater(self, i, q, retq, matq, l):
-        hog_mat = None
+        hog_mat =  sparse.lil_matrix((600000, len(self.taxaIndex)*3))
         save_start = t.time()
 
         print('hogmat saver init ' + str(i))
@@ -209,27 +209,21 @@ class LSHBuilder:
                     if row is not None:
                         sparse_row = row['rows']
                         fam = int(row['Fam'])
-                        try:
-                            if not hog_mat:
-                                hog_mat = sparse.csr_matrix((fam+10000, sparse_row.shape[1]))
-                        except ValueError:
-                            pass
                         if hog_mat.shape[0] < fam:
                             print('extend HOGMAT')
-                            num_rows_to_add = fam - hog_mat.shape[0] + 10000
-                            new_hog_mat = sparse.csr_matrix((num_rows_to_add, sparse_row.shape[1]))
+                            num_rows_to_add = fam - hog_mat.shape[0] + 1000
+                            new_hog_mat = sparse.lil_matrix((num_rows_to_add, len(self.taxaIndex)*3 ))
                             hog_mat = sparse.vstack([hog_mat, new_hog_mat])
                         hog_mat[fam, :] = sparse_row
-                    else:
-                        break
 
-                    if time.time() - save_start > 2000:
+
+                    if t.time() - save_start > 500:
                         # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
                             # h5matrix.create_dataset('hogmat', data=hog_mat)
                         print('saving HOGMAT')
                         with open(self.saving_path + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
                             pickle.dump(hog_mat, handle, -1)
-                        save_start = time.time()
+                        save_start = t.time()
             else:
                 break
         with open(self.saving_path + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
@@ -243,9 +237,9 @@ class LSHBuilder:
         update_processes = {}
         lock = mp.Lock()
         cores = mp.cpu_count()
-        q = mp.Queue(maxsize=cores * 10)
-        retq = mp.Queue(maxsize=cores * 10)
-        matq = mp.Queue(maxsize=cores * 10)
+        q = mp.Queue(maxsize=cores * 40)
+        retq = mp.Queue(maxsize=cores * 40)
+        matq = mp.Queue(maxsize=cores * 40)
 
         work_processes = {}
         print('start workers')
