@@ -29,11 +29,12 @@ class Profiler:
         print('DONE')
 
         print('load LSH')
+
         with open(lsh_path, 'rb') as lshpickle:
-            self.lsh = pickle.loads(lshpickle.read())
+            self.lshobj = pickle.loads(lshpickle.read())
         self.lsh_path = lsh_path
         if 'forest' in lsh_path:
-            self.lsh.index()
+            self.lshobj.index()
             print('indexing lsh')
 
         self.hashes_h5 = h5py.File(hashes_path, mode='r')
@@ -80,10 +81,11 @@ class Profiler:
         print(query_hash)
         #self.lsh.insert(fam_id+100000000000 , query_hash)
         if 'forest' in self.lsh_path:
-            results = self.lsh.query(query_hash, k)
+            results = self.lshobj.query(query_hash, k)
         else:
-            results = self.lsh.query(query_hash)
+            results = self.lshobj.query(query_hash)
         return results
+        
 
     def pull_hashes(self , hoglist):
         return { hog:hashutils.fam2hash_hdf5(hog, self.hashes_h5 ) for hog in hoglist}

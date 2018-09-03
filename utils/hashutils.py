@@ -55,13 +55,13 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
             #print(hog_matrix[:,index].shape)
             #assign the
             hog_matrix[:,hogindex] = treeweights[event][taxindex].ravel()
-            hogsum+=np.sum(treeweights[event][taxindex])
+            #hogsum+=np.sum(treeweights[event][taxindex])
 
     #normalize total...
-    hog_matrix/= hogsum
+    #hog_matrix/= hogsum
 
     weighted_hash = wmg.minhash(list(hog_matrix.todense().flat))
-
+    
     return  hog_matrix,weighted_hash
 
 def row2hash(row , taxaIndex , treeweights , wmg):
@@ -71,24 +71,15 @@ def row2hash(row , taxaIndex , treeweights , wmg):
 
 
 def fam2hash_hdf5(fam,  hdf5, dataset = None, nsamples = 128):
-    """
-    Get the minhash corresponding to the given hog id number
-    :param fam: hog id number
-    :param hdf5: hdf5 file containing hashes
-    :param events: list of events the hashes are build on; default: all four events
-    :return: list of hashes for the given fam and events
-    """
+
     if dataset is None:
         #use first dataset by default
         dataset = list(hdf5.keys())[0]
     print(dataset)
-    print(fam)
-
 
     hashvalues = hdf5[dataset][fam, :].reshape((nsamples,-1 ))
-    print(hashvalues)
-    print(np.sum(hashvalues))
-    minhash1 = datasketch.WeightedMinHash(seed=1, hashvalues=hashvalues)
+    print(hashvalues.shape)
+    minhash1 = datasketch.WeightedMinHash(seed = 1, hashvalues=hashvalues)
     print(minhash1)
     return minhash1
 

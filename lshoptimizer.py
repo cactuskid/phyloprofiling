@@ -8,6 +8,15 @@ from bayes_opt import BayesianOptimization
 
 # loop with bayes opt over hyper params
 
+def GODIST_experiment():
+    #use semantic distance functions
+    #errorval sum(semantic_dist) of top scoring hogs
+    pass
+def GOENRICH_experiment():
+    #cosider the go terms of a set of results_ids
+    #errorval = pval
+    pass
+
 def profiling_error(lossweight , presencweight , dupweight , loss_lambda , presence_lambda, dupl_lamba, presencebleed , lossbleed , duplbleed , x_filter=None, tax_mask=None , randomHOGS = True):
     #compile an lsh
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
@@ -22,7 +31,11 @@ def profiling_error(lossweight , presencweight , dupweight , loss_lambda , prese
     #run experiments
     if randomHOGS = False:
         #gold standard list
-        p()
+        rando = list(np.randint())
+        results = [ p.hog_query(r) for r in rando ]
+
+        godists = [ ]
+        go_enrich = [ ]
 
     else:
         # 1000 random Hogs with annotation
