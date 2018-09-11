@@ -44,10 +44,6 @@ def _get_hog_members(hog_id, oma):
     population = frozenset([x['EntryNr'] for x in iterator])
     return population
 
-
-
-
-
 def _hog_lex_range(hog):
     """
     Decodes hog format
@@ -145,8 +141,7 @@ def _clean_dictionary(dictionary):
 if __name__ == '__main__':
     if preprocess_config.preprocessGO ==True:
         #Preprocess all of the GO terms' parents to avoid looking at the DAG
-
-        obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'project/data/go.obo')
+        obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'GOPreprocessing/go.obo')
         dt = h5py.special_dtype(vlen=np.dtype('int32'))
         omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
         with h5py.File(config_utils.datadir + 'project/data/GOparents.h5', 'w', libver='latest') as h5_go_terms:
@@ -154,11 +149,9 @@ if __name__ == '__main__':
             h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
             dataset_go_terms_parents = h5_go_terms['goterms2parents']
             count = 0
-
             for go_term in obo_reader:
                 go_term_read = obo_reader[go_term]
                 if go_term_read.namespace == 'biological_process':
-
                     go_term_parents = go_term_read.get_all_parents()
                     go_term_parents_int = [goterm2id(go_term_read.id)] + [goterm2id(parent) for parent in go_term_parents]
                     dataset_go_terms_parents[goterm2id(go_term_read.id)] = go_term_parents_int
@@ -309,10 +302,6 @@ if __name__ == '__main__':
                         stringchunk=''
                     stringchunk+= row
 
-
-
-"""
-todo finish this to read an h5 in
     if preprocess_config.preprocessGO == True:
         #Add go terms from OMA
         with h5py.File(config_utils.datadir + 'goterms.h5' , 'r+', libver='latest') as h5hashDB:
@@ -325,7 +314,7 @@ todo finish this to read an h5 in
                         print('saving {} {}'.format(time()-start_time, fam))
                         h5_go_terms.flush()
             else:
-                h5_go_terms.flush()"""
+                h5_go_terms.flush()
 
 
 
