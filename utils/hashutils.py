@@ -9,6 +9,7 @@ import math
 import numpy as np
 import pandas as pd
 
+
 def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadict, start):
     #weighing function for tax level, masking levels etc
     weights = { type: np.zeros((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
@@ -17,7 +18,6 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
     for node in mastertree.iter_descendants():
         for d in node.iter_descendants():
             d.degree+=1
-
     for event in weights:
         newtree = copy.deepcopy(mastertree)
         for n in newtree.traverse():
@@ -44,7 +44,6 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
     indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
 
     hog_matrix = lil_matrix((1, 3*len(taxaIndex)))
-
     hogsum = 0
     for i,event in enumerate(indices):
         if len(indices[event])>0:
@@ -55,14 +54,14 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
             #print(hog_matrix[:,index].shape)
             #assign the
             hog_matrix[:,hogindex] = treeweights[event][taxindex].ravel()
-            #hogsum+=np.sum(treeweights[event][taxindex])
+            hogsum+=np.sum(treeweights[event][taxindex])
 
     #normalize total...
-    #hog_matrix/= hogsum
-
-    weighted_hash = wmg.minhash(list(hog_matrix.todense().flat))
-    
-    return  hog_matrix,weighted_hash
+    if hogsum > 0:
+        weighted_hash = wmg.minhash(list(hog_matrix.todense().flat))
+        return  hog_matrix,weighted_hash
+    else:
+        return None, None
 
 def row2hash(row , taxaIndex , treeweights , wmg):
     fam, treemap = row.tolist()
@@ -70,17 +69,14 @@ def row2hash(row , taxaIndex , treeweights , wmg):
     return [weighted_hash,hog_matrix]
 
 
-def fam2hash_hdf5(fam,  hdf5, dataset = None, nsamples = 128):
-
+def fam2hash_hdf5(fam,  hdf5, dataset = None, nsamples = 128  ):
     if dataset is None:
         #use first dataset by default
         dataset = list(hdf5.keys())[0]
-    print(dataset)
+    hashvalues = np.asarray(hdf5[dataset][fam, :].reshape(nsamples,2 ))
+    hashvalues = hashvalues.astype('int64')
+    minhash1 = datasketch.WeightedMinHash( seed = 1, hashvalues=hashvalues)
 
-    hashvalues = hdf5[dataset][fam, :].reshape((nsamples,-1 ))
-    print(hashvalues.shape)
-    minhash1 = datasketch.WeightedMinHash(seed = 1, hashvalues=hashvalues)
-    print(minhash1)
     return minhash1
 
 

@@ -1,35 +1,71 @@
 import ete3
 import pandas as pd
 from Bio import Entrez
+import pyoma
+import copy
 
 
 def get_tree(oma=None, saveTree=True):
     ncbi = ete3.NCBITaxa()
-    genome_ids_list = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
-    genome_ids_list = [str(x) for x in genome_ids_list]
-    tree = ncbi.get_topology(genome_ids_list , collapse_subspecies=False)
 
-    print(len(genome_ids_list))
-    orphans = list(set(genome_ids_list) - set([x.name for x in tree.get_leaves()]))
+    genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
+    genomes = [ str(g) for g in genomes]
+
+    tax = genomes + [ 131567, 2759, 2157, 45596 ]+[ taxrel[0] for taxrel in  list(oma.root.Taxonomy[:]) ]  + [  taxrel[1] for taxrel in list(oma.root.Taxonomy[:]) ]
+
+    #add luca
+    tree_string = pyoma.browser.db.Taxonomy(oma.root.Taxonomy[:]).newick()
+    with open( './pyoma.nwk' , 'w') as nwkout:
+        nwkout.write(tree_string)
+    #print(tree_string)
+    #tree_string = ete3.Tree( tree_string , format=1 )
+
+    #ncbi.update_taxonomy_database()
+
+    tax = set(tax)
+    genomes = set(genomes)
+
+    tax.remove(0)
+    print(len(tax))
+
+    tree = ete3.PhyloTree( name = '')
+    tree.add_child(name ='131567')
+
+    topo = ncbi.get_topology(tax , collapse_subspecies=False)
+    tax = set([ str(taxid) for taxid in tax])
+
+
+    tree.add_child(topo)
+
+    orphans = list(genomes - set([x.name for x in tree.get_leaves()]))
+
     print('missing taxa:')
     print(len(orphans))
+
     Entrez.email = "clement.train@gmail.com"
-    orphans_info = {}
+    orphans_info1 = {}
+    orphans_info2 = {}
+
     for x in orphans:
         search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
         record = next(Entrez.parse(search_handle))
-        orphans_info[x] = [x['TaxId'] for x in record['LineageEx']]
-    tree = add_orphans(orphans_info, tree, genome_ids_list)
-    for n in tree.traverse():
-        if len([x for x in n.get_descendants()]) == 1:
-            # remove node with one Child
-            parent = n.get_ancestors()[0]
-            child = n.get_leaves()[0]
-            parent.add_child(name=child.name)
-            parent.add_child(name =n.name)
-            child.delete()
-    orphans = set(genome_ids_list) - set([x.name for x in tree.get_leaves()])
+        print(record)
+        orphans_info1[ record['ParentTaxId']] = x
+        orphans_info2[x] = [x['TaxId'] for x in record['LineageEx']]
 
+    for n in tree.traverse():
+        if n.name in orphans_info1:
+            n.add_sister(name = orphans_info1[n.name])
+            print(n)
+
+
+    orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
+    print(orphans)
+
+    tree = add_orphans(orphans_info2, tree, genomes)
+
+
+    orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
     print(orphans)
     tree_string = tree.write(format=1)
 
@@ -40,18 +76,29 @@ def get_tree(oma=None, saveTree=True):
     return tree_string, tree
 
 
-def generate_taxa_index(tree):
+def generate_taxa_index(tree , taxfilter, taxmask):
     """
     Generates an index for the global taxonomic tree for all OMA
     :param tree: ete3 tree
     :return: taxaIndex: dictionary key: node name (species name); value: index
         taxaIndexReverse: dictionary key: index: value: species name
     """
+    newtree = copy.deepcopy(tree)
+    for n in newtree.traverse():
+        if taxmask:
+            if str(n.name) == str(taxmask):
+                newtree = n
+                break
+        if taxfilter:
+            if n.name in taxfilter:
+                #set weight for descendants of n to 0
+                n.delete()
+
     taxa_index = {}
     taxa_index_reverse = {}
     for i, n in enumerate(tree.traverse()):
         taxa_index_reverse[i] = n.name
-        taxa_index[n.name] = i
+        taxa_index[n.name] = i-1
 
     return taxa_index, taxa_index_reverse
 
@@ -86,7 +133,7 @@ def add_orphans(orphan_info, tree, genome_ids_list, verbose=False):
         for n in tree.traverse():
             if n.name in newdict and n.name not in leaves:
                 for orph in newdict[n.name]:
-                    n.add_child(name=orph)
+                    n.add_sister(name=orph)
                 del newdict[n.name]
 
         for orphan in orphans:

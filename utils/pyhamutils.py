@@ -1,5 +1,8 @@
 import pyham
 import xml.etree.cElementTree as ET
+import pickle
+from utils import config_utils
+
 
 
 def get_orthoxml(fam, db_obj):
@@ -35,32 +38,33 @@ def get_ham_treemap_from_fam(fam, tree, db_obj):
     try:
         ham_obj = pyham.Ham(tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=False,
                             orthoXML_as_string=True)
-        hog = ham_obj.get_hog_by_id(fam)
-        tp = ham_obj.create_tree_profile(hog=hog)
+        tp = ham_obj.create_tree_profile(ham, hog=ham_obj.get_list_top_level_hogs()[0])
+        #tp = ham_obj.create_tree_profile(hog=hog)
         return tp.treemap
     except TypeError as err:
         print('Pyham error:', err)
         return None
 
 
-def get_ham_treemap_from_row(row, tree, tax_filter=None):
+def get_ham_treemap_from_row(row, tree):
 
     fam, orthoxml = row
     orthoxml = switch_name_ncbi_id(orthoxml)
     try:
         ham_obj = pyham.Ham(tree, orthoxml, type_hog_file="orthoxml", use_internal_name=True, orthoXML_as_string=True)
-        hog = ham_obj.get_hog_by_id(fam)
-        tp = ham_obj.create_tree_profile(hog=hog)
-
-        if tax_filter:
-            for n in tp.treemap.traverse():
-                if str(n.name) == str(tax_filter):
-                    return n
-
+        tp = ham_obj.create_tree_profile(hog=ham_obj.get_list_top_level_hogs()[0])
+        if int(fam) % 3000 == 0:
+            try:
+                with open( config_utils.datadir  + str(fam) + 'ham.pkl' , 'wb') as hashout:
+                    hashout.write( pickle.dumps(ham_obj))
+            except:
+                pass
+        
         return tp.treemap
     except TypeError as err:
         print('Type error:', err)
         return None
+
     except AttributeError as err:
         print('Attribute error:', err)
         return None

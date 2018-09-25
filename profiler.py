@@ -119,7 +119,6 @@ class Profiler:
     def pull_hashes(self , hoglist):
         return { hog:hashutils.fam2hash_hdf5(hog, self.hashes_h5 ) for hog in hoglist}
 
-
     def pull_mapping(self, hoglist):
         #grab the crossrefs for a list of hogs
         return { hog:{ dataset: json.loads(unimap_h5[dataset][hog]) for dataset in unimap_h5 }  for hog in hoglist }

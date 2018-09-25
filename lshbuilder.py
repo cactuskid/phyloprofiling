@@ -37,7 +37,7 @@ class LSHBuilder:
             with open( masterTree, 'r') as treein:
                 self.tree_string = treein.read()
             self.tree_ete3 = ete3.Tree(masterTree ,format= '1')
-        self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.tree_ete3)
+        self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.tree_ete3 , self.tax_filter, self.tax_mask)
         self.numperm = numperm
         if treeweights is None:
             self.treeweights = hashutils.generate_treeweights(self.tree_ete3  , self.taxaIndex , taxfilter, taxmask , lambdadict, start)
@@ -194,15 +194,15 @@ class LSHBuilder:
                                     h5hashes.flush()
                                 else:
                                     pass
-                                    #print('error')
-                                    #print(fam)
+                                    print('none in fam:'+str(fam))
                                     #hashes_error_files.write(str(fam) + '\n')
 
                             if t.time() - save_start > 200:
 
                                 print('saving')
                                 forest.index()
-                                print(forest.query(hashes[fam],100))
+                                if hashes[fam]:
+                                    print(forest.query(hashes[fam],100))
                                 #print(lsh.query(hashes[fam]))
                                 with open(self.lshpath,'wb') as lsh_out:
                                     lsh_out.write(pickle.dumps(lsh, -1))
@@ -331,12 +331,12 @@ if __name__ == '__main__':
     num_perm = config_utils.num_perm
     startdict={'presence':1, 'loss':1, 'dup':1}
     lambdadict={'presence':1, 'loss':1, 'dup':1}
-    
-    dbdict = {
-    'all': { 'taxfilter': None , 'taxmask': None },
-    'plants': { 'taxfilter': None , 'taxmask': 33090 },
 
-    'archaea':{ 'taxfilter': None , 'taxmask': 2157 },
+    dbdict = {
+    #'all': { 'taxfilter': None , 'taxmask': None },
+    #'plants': { 'taxfilter': None , 'taxmask': 33090 },
+
+    #'archaea':{ 'taxfilter': None , 'taxmask': 2157 },
     'bacteria':{ 'taxfilter': None , 'taxmask': 2 },
     'eukarya':{ 'taxfilter': None , 'taxmask': 2759 },
     'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None },
