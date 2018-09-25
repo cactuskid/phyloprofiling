@@ -214,17 +214,10 @@ if __name__ == '__main__':
                 for i, row in enumerate(uniprotmappings):
                     words= row.split()
                     uniID = words[0]
-                    #mapto = words[1]
-                    #mapval = words[2]
-
-
-
                     if start == False and preprocess_config.startseq == uniID:
                         start = True
                         print('started!')
-
                     if start==True and oldID != uniID:
-
                         if 'OMA' in stringchunk:
                             mapdict ={}
                             for row in stringchunk.split('\n'):
@@ -256,7 +249,6 @@ if __name__ == '__main__':
                                         members = list(db_obj.oma_group_members(mapdict['OMA'][0]))
                                         hogs = set([ entry[4].decode() for entry in members])
                                         #profiles only encode top level hogs
-
                                         fams = []
                                         for entry in hogs:
                                             if ':' in entry:
@@ -269,7 +261,6 @@ if __name__ == '__main__':
                                         fams = set(fams)
                                     except:
                                         print('error' +  mapdict['OMA'][0] )
-
                                 for fam in fams:
                                     oldmapping = []
                                     for dataset in mapdict:
@@ -280,7 +271,6 @@ if __name__ == '__main__':
                                                 oldmapping = json.loads(mappingh5[dataset][fam])
                                             mappingh5[dataset][fam] = json.dumps(list(set(mapdict[dataset]+oldmapping)))
                                             mappingh5.flush()
-
                         stringchunk = ''
                     oldID = uniID
                     if start == False and oldID != uniID:
