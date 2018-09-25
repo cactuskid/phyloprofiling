@@ -33,7 +33,6 @@ def goterm2id(go_term_to_modif):
 def _get_entry_gene_ontology(oma, entry):
     return oma.root.Annotations.GeneOntology.read_where('EntryNr == {}'.format(entry))
 
-
 def _get_hog_members(hog_id, oma):
     """
     Gets all gene members from the hog
@@ -54,12 +53,6 @@ def _hog_lex_range(hog):
     return hog_str.enco
 
 
-def clearDB(dbnum):
-    r = redis.StrictRedis(host='10.0.63.33', port=6379, db=dbnum)
-    r.flushdb()
-    return rde('ascii'), (hog_str[0:-1] + chr(1 + ord(hog_str[-1]))).encode('ascii')
-
-
 def _iter_hog_memober(hog_id, oma):
     """
     iterator over hog members / get genes
@@ -71,11 +64,9 @@ def _iter_hog_memober(hog_id, oma):
     for row in it:
         yield row.fetch_all_fields()
 
-
 def iter_hog(oma):
     for hog in oma.root.HogLevel:
         yield hog[0]
-
 
 def fam2hogid(fam_id):
     """
@@ -84,9 +75,7 @@ def fam2hogid(fam_id):
     :return: hog id
     """
     hog_id = "HOG:" + (7-len(str(fam_id))) * '0' + str(fam_id)
-
     return hog_id
-
 
 def _get_go_terms(hog_id, oma, go_file):
     """
@@ -107,16 +96,12 @@ def _format_go_term(e):
 
 
 def _filter_result(go_dict, go_file):
-
     go_dict_filtered = {}
-
     for gene_name, terms in go_dict.items():
         filtered_terms = _filter_namespace(terms, go_file)
         if filtered_terms:
             go_dict_filtered[gene_name] = filtered_terms
-
     return go_dict_filtered
-
 
 def _filter_namespace(list_terms, go_file, name='biological_process'):
     """
