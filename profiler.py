@@ -31,6 +31,7 @@ class Profiler:
     def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None,  lsh_builder_path = None, unimap_path = None ,string_data_path = None , GO= None):
         #use the lsh forest or the lsh
         if lsh_builder_path:
+
             with open( lsh_builder_path, mode='rb', buffering=None) as lshin:
                 lsh_builder = pickle.loads(lshin.read())
             self.lsh_builder = lsh_builder
@@ -46,7 +47,7 @@ class Profiler:
             self.hashes_h5 = h5py.File(lsh_builder.hashes_h5, mode='r')
             print('DONE')
         else:
-
+            print('loading lsh')
             with open(lshforestpath, 'rb') as lshpickle:
                 self.lshobj = pickle.loads(lshpickle.read())
                 print('indexing lsh')
@@ -58,13 +59,12 @@ class Profiler:
             self.unimap_h5 = h5py.File(unimap_h5, mode='r')
 
         if string_data_path:
-
-
             self.string_data_path = string_data_path
             self.r1 = string_stringdataMap.connect2IDmap()
             self.r2 = string_stringdataMap.connect2Stringmap()
 
         if mat_path:
+
             profile_matrix_file = open(profile_matrix_path, 'rb')
             profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
             self.profile_matrix = profile_matrix_unpickled.load()
@@ -88,40 +88,39 @@ class Profiler:
         if hog_id is not None:
             fam_id = hashutils.hogid2fam(hog_id)
         query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  128 )
-        #print(query_hash)
 
         results = self.lshobj.query(query_hash, k)
         return results
 
 
 
-    def hog_query_OMA(hog_id=None, fam_id=None , k = 100 ):
+    def hog_query_OMA(self,hog_id=None, fam_id=None , k = 100 ):
         #construct a profile on the fly
+        #rand seed values need to be identical between the construction of the lsh DB and the use of this function
+        """
+        Untested, Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+        Generates the tree profile and hashes on the fly
+        :param hog_id: query hog id
+        :param fam_id: query fam id
+        :return: list containing the results of the LSH for the given query
+        """
         if hog_id is not None:
             fam_id = hashutils.hogid2fam(hog_id)
-
         ortho = self.lshobj.READ_ORTHO(fam)
         tp = self.lshobj.HAM_PIPELINE((fam, ortho))
         hash = self.lshobj.HASH_PIPELINE((fam, tp))
-
-        results = self.lshobj.query(query_hash, k)
-
-        return results
-
-    def hog_query_manual(famtree , k = 100 ):
-        #construct a profile on the fly
-        #feed the hash pipeline a tree with events.
-        #hacky way of getting
-        hash = self.lshobj.HASH_PIPELINE(('1', tp))
         results = self.lshobj.query(query_hash, k)
         return results
 
     def pull_hashes(self , hoglist):
+        """
+        Given a list of hog_ids , returns a dictionary containing their hashes.
+        This uses the hdf5 file to get the hashvalues
+        :param hog_id: query hog id
+        :param fam_id: query fam id
+        :return: a dict containing the hash values of the hogs in hoglist
+        """
         return { hog:hashutils.fam2hash_hdf5(hog, self.hashes_h5 ) for hog in hoglist}
-
-    def pull_mapping(self, hoglist):
-        #grab the crossrefs for a list of hogs
-        return { hog:{ dataset: json.loads(unimap_h5[dataset][hog]) for dataset in unimap_h5 }  for hog in hoglist }
 
     def pull_go(self,hoglist):
         pass
@@ -132,9 +131,16 @@ class Profiler:
 
         :return:fams sorted, sparse mat
         """
-        return self.profile_matrix[fams,:]
+        return self.profile_matrix[np.asarray(fams),:]
 
     def sort_hashes(query_hash,hashes):
+        """
+        Given a dict of hogs:hashes, returns a sorted array of hogs and jaccard distances relative to query hog.
+        :param query hash: weighted minhash of the query
+        :param hashes: a dict of hogs:hashes
+        :return: sortedhogs, jaccard
+        """
+        #sort the hashes by their jaccard relative to query hash
         jaccard=[ query_hash.jaccard(hashes[hog]) for hog in hashes]
         index = np.argsort(jaccard)
         sortedhogs = np.asarry(list(hashes.keys()))[index]
@@ -142,6 +148,12 @@ class Profiler:
         return sortedhogs, jaccard
 
     def allvall_hashes(hashes):
+        """
+        Given a dict of hogs:hashes, returns generate an all v all jaccard distance matrix.
+        :param hashes: a dict of hogs:hashes
+        :return: hashmat
+        """
+        #generate an all v all jaccard distance matrix
         hashmat = np.zeros((len(hashes),len(hashes)))
         for i , hog1 in enumerate(hashes):
             for j, hog2 in enumerate(hahes):
@@ -150,6 +162,8 @@ class Profiler:
 
     def get_vpairs(fam):
         #get pairwise distance matrix of OMA all v all
+        #not finished
+
         taxa = self.db_obj.hog_levels_of_fam(fam)
         subtaxindex = { taxon:i for i,taxon in enumerate(taxa)}
         prots = self.db_obj.hog_members_from_hog_id(fam,  'LUCA')
@@ -159,7 +173,6 @@ class Profiler:
             for EntryNr1, EntryNr2, RelType , score , distance in list(pairs):
                 pass
         return sparsemat , densemat
-
 
     def compute_semantic_distance(self, hog_1, hog_2):
         semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog_1, hog_2)

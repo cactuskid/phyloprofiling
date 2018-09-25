@@ -2,15 +2,13 @@ from goatools import semantic
 import ujson as json
 from utils import hashutils
 from goatools.go_enrichment import GOEnrichmentStudy
-from goatools.base import download_ncbi_associations
-from goatools.associations import read_ncbi_gene2go
 
-##############enrichment##############################################3
+##############enrichment##############################################
+
 def return_enrichment_study_obj(gaf_taxfiltered):
     #make an enrichment study obj
-    obo_fname = download_go_basic_obo()
+    #obo_fname = download_go_basic_obo()
     obodag = GODag("go-basic.obo")
-
     goeaobj = GOEnrichmentStudy(
         gaf_taxfiltered.keys(), #
         gaf_taxfiltered, # geneid/GO associations possible with tree used for DB
@@ -20,16 +18,13 @@ def return_enrichment_study_obj(gaf_taxfiltered):
         methods = ['fdr_bh']) # defult multipletest correction method
     return goeaobj
 
-def run_GOEA_onresults(results, db_obj):
+def run_GOEA_onresults(results, db_obj, goeaobj, outfile = None):
     #use lsh results to perform go enrichment
     #grab all ncbi ids
     geneids_study = [ member.omaid for member in [db_obj.iter_members_of_hog_id(int(result)) for result in results] ]
     goea_results_all = goeaobj.run_study(geneids_study)
-    return goea_results_all
     hogids =[ "HOG:" + (7-len(fam_id)) * '0' + fam_id for fam_id in HOGS[hog]['result'] ]
     prots = set([])
-    print('fetching results for ' +str(hog))
-    done = True
     for hogname in hogids:
         print(hogname)
         iterator = db_obj.iter_members_of_hog_id(hogname)
@@ -37,27 +32,23 @@ def run_GOEA_onresults(results, db_obj):
         HOGS[hog]['size']=len( omaids)
         HOGS[hog]['members'][hogname]=omaids
         prots = prots.union(omaids)
-    print('fetching results for ' +str(hog))
-    #if all omaids were pulled down
-    if done == True:
-       count+=1
-       print(count)
-       goea_results_all = goeaobj.run_study(prots)
-       goea_results_sig = [r for r in goea_results_all if r.p_fdr_bh < 0.05]
-       goeaobj.wr_txt(folder + str(hog)+"enrichment.txt", goea_results_all)
-       goea_results_terms = [ r.get_field_values(flds) for r in goea_results_sig ]
-       goea_results_scores = [ r.p_fdr_bh for r in goea_results_sig ]
-       HOGS[hog]['scores'] = goea_results_scores
-       HOGS[hog]['terms'] = goea_results_terms
-       print(goea_results_terms)
-       with open( 'enrichmentman.pkl' , 'wb' ) as save:
+    goea_results_all = goeaobj.run_study(prots)
+    goea_results_sig = [r for r in goea_results_all if r.p_fdr_bh < 0.05]
+    goeaobj.wr_txt(folder + str(hog)+"enrichment.txt", goea_results_all)
+    goea_results_terms = [ r.get_field_values(flds) for r in goea_results_sig ]
+    goea_results_scores = [ r.p_fdr_bh for r in goea_results_sig ]
+    HOGS[hog]['scores'] = goea_results_scores
+    HOGS[hog]['terms'] = goea_results_terms
+    HOGS[hog]['entrylist'] = list(prots)
+    print(goea_results_terms)
+    if outfile:
+       with open(outfile , 'wb' ) as save:
            save.write(pickle.dumps(HOGS,2))
-       HOGS[hog]['entrylist'] = list(prots)
 
 
 
 
-######################semsim ###################################################
+######################resnik semsim ###################################################
 
 def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
     '''

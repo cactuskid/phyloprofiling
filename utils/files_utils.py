@@ -6,6 +6,12 @@ import copy
 
 
 def get_tree(oma=None, saveTree=True):
+        """
+        Generates an index for the global taxonomic tree for all OMA
+        :param oma:  a pyoma db object
+        :param saveTree: Bool for whether or not to save a mastertree newick file
+        :return: tree_string: a newick string tree: an ete3 object
+        """
     ncbi = ete3.NCBITaxa()
 
     genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
@@ -104,6 +110,14 @@ def generate_taxa_index(tree , taxfilter, taxmask):
 
 
 def add_orphans(orphan_info, tree, genome_ids_list, verbose=False):
+    """
+    Fix the NCBI taxonomy by adding missing species.
+    :param: orphan_info: a dictionary containing info from the NCBI on the missing taxa
+    :param: tree : an ete3 tree missing some species
+    :param: genome_ids_list: the comlete set of taxids that should be on the tree
+    :verbose: Bool print debugging stuff
+    :return: tree: a species tree with the orphan genomes added
+    """
     first = True
 
 

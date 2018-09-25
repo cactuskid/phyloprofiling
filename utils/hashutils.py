@@ -12,6 +12,18 @@ import pandas as pd
 
 def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadict, start):
     #weighing function for tax level, masking levels etc
+    """
+    Generate the weights of each taxonomic level to be applied during the
+    constructin of weighted minhashes
+
+    :param mastertree: full corrected ncbi taxonomy
+    :param taxaIndex: dict mapping taxa to columns
+    :param taxfilter: list of branches to delete
+    :param taxmask: if this is not NONE taxmask, the DB is constructed with this subtree
+    :param lambdadict: parameters for weight functions
+    :param start: parameters for weight functions
+    :return: weights: a vector of weights for each tax level
+    """
     weights = { type: np.zeros((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
     for node in mastertree.traverse():
         node.add_feature('degree', 1 )
@@ -34,7 +46,19 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
     return weights
 
 def hash_tree(tp , taxaIndex , treeweights , wmg):
+    """
+    Generate the weights of each taxonomic level to be applied during the
+    constructin of weighted minhashes
 
+    :param tp: a pyham tree profile
+    :param taxaIndex: dict mapping taxa to columns
+    :param treeweights: a vector of weights for each tax levels
+    :param wmg: Datasketch weighted minhash generator
+    :return hog_matrix: a vector of weights for each tax level
+    :return weighted_hash: a weighted minhash of a HOG
+
+    """
+    #convert a tree profile to a weighted minhash
     losses = [ taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in taxaIndex  ]
 
     dupl = [ taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in taxaIndex  ]
@@ -64,12 +88,30 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
         return None, None
 
 def row2hash(row , taxaIndex , treeweights , wmg):
+        """
+        turn a dataframe row with an orthoxml file to hash and matrix row
+        :param row: lsh builder dataframe row
+        :param taxaIndex: dict mapping taxa to columnsfam
+        :param treeweights: a vector of weights for each tax levels
+        :param wmg: Datasketch weighted minhash generator
+        :return: hog_matrix: a vector of weights for each tax level
+        :return: weighted_hash: a weighted minhash of a HOG
+        """
+    #convert a dataframe row to a weighted minhash
     fam, treemap = row.tolist()
     hog_matrix,weighted_hash = hash_tree(treemap , taxaIndex , treeweights , wmg)
     return [weighted_hash,hog_matrix]
 
 
 def fam2hash_hdf5(fam,  hdf5, dataset = None, nsamples = 128  ):
+    #read the stored hash values and return a weighted minhash
+    """
+    Read the stored hash values and return a weighted minhash
+    :param fam: hog id
+    :param hdf5: h5py object of the hashvalues
+    :param dataset: which dataset to use when constructing the hash
+    :return: minhash1: the weighted hash of your HOG
+    """
     if dataset is None:
         #use first dataset by default
         dataset = list(hdf5.keys())[0]

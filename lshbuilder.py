@@ -333,16 +333,16 @@ if __name__ == '__main__':
     lambdadict={'presence':1, 'loss':1, 'dup':1}
 
     dbdict = {
-    #'all': { 'taxfilter': None , 'taxmask': None },
-    #'plants': { 'taxfilter': None , 'taxmask': 33090 },
-
-    #'archaea':{ 'taxfilter': None , 'taxmask': 2157 },
+    'all': { 'taxfilter': None , 'taxmask': None },
+    'plants': { 'taxfilter': None , 'taxmask': 33090 },
+    'archaea':{ 'taxfilter': None , 'taxmask': 2157 },
     'bacteria':{ 'taxfilter': None , 'taxmask': 2 },
     'eukarya':{ 'taxfilter': None , 'taxmask': 2759 },
     'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None },
     'fungi':{ 'taxfilter': None , 'taxmask': 4751 },
-    'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
+        'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
     }
+
 
     for dbname in dbdict:
         print('compiling' + dbname)
