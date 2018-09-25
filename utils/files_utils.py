@@ -16,7 +16,7 @@ def get_tree(oma=None, saveTree=True):
 
     genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
     genomes = [ str(g) for g in genomes]
-
+    
     tax = genomes + [ 131567, 2759, 2157, 45596 ]+[ taxrel[0] for taxrel in  list(oma.root.Taxonomy[:]) ]  + [  taxrel[1] for taxrel in list(oma.root.Taxonomy[:]) ]
 
     #add luca

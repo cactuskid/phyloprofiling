@@ -6,8 +6,9 @@ from goatools.go_enrichment import GOEnrichmentStudy
 ##############enrichment##############################################
 
 def return_enrichment_study_obj(gaf_taxfiltered):
-    #make an enrichment study obj
-    #obo_fname = download_go_basic_obo()
+    '''
+    Generate go enrichment study object with a background dataset.
+    '''
     obodag = GODag("go-basic.obo")
     goeaobj = GOEnrichmentStudy(
         gaf_taxfiltered.keys(), #
@@ -18,9 +19,19 @@ def return_enrichment_study_obj(gaf_taxfiltered):
         methods = ['fdr_bh']) # defult multipletest correction method
     return goeaobj
 
+
+def buildGAF(gaf_file , taxa):
+    ## TODO: implement taxonomic filter
+    gaf_filtered = {}
+    with open(gaf_file, mode='r') as gafin:
+        for line in gafin:
+            
+    return gaf_filtered
+
 def run_GOEA_onresults(results, db_obj, goeaobj, outfile = None):
-    #use lsh results to perform go enrichment
-    #grab all ncbi ids
+    '''
+        Perform enrichment analysis on returned results
+    '''
     geneids_study = [ member.omaid for member in [db_obj.iter_members_of_hog_id(int(result)) for result in results] ]
     goea_results_all = goeaobj.run_study(geneids_study)
     hogids =[ "HOG:" + (7-len(fam_id)) * '0' + fam_id for fam_id in HOGS[hog]['result'] ]
@@ -73,7 +84,7 @@ def deepest_common_ancestor_hdf5(go_ids, godag, hdf5):
 
 def common_parent_go_ids_hdf5(go_ids, hdf5_set):
     '''
-        Fins the common ancestors in the GO
+        Finds the common ancestors in the GO
         tree of the list of goids in the input.
     '''
     candidates = set(hdf5_set[go_ids[0]].tolist())
@@ -84,6 +95,9 @@ def common_parent_go_ids_hdf5(go_ids, hdf5_set):
     return corrected_candidates
 
 def get_go_terms_hdf5(hog_id, hdf5_set):
+    '''
+        grabs the preprocessed GO term info for HOGs from an HDF5.
+    '''
     fam = hashutils.hogid2fam(hog_id)
     try:
         go_terms = json.loads(hdf5_set[fam])
@@ -92,6 +106,7 @@ def get_go_terms_hdf5(hog_id, hdf5_set):
     return go_terms
 
 def goterm2id(go_term_to_modif):
+
     return int(go_term_to_modif.split(':')[1])
 
 def id2goterm(go_term_to_modif):

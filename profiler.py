@@ -125,14 +125,14 @@ class Profiler:
     def pull_go(self,hoglist):
         pass
 
-    def pull_matrows(fams):
+    def pull_matrows(self,fams):
         """
         given a list of fams return the submatrix containing their profiles
 
         :return:fams sorted, sparse mat
         """
         return self.profile_matrix[np.asarray(fams),:]
-
+    @staticmethod
     def sort_hashes(query_hash,hashes):
         """
         Given a dict of hogs:hashes, returns a sorted array of hogs and jaccard distances relative to query hog.
@@ -146,7 +146,7 @@ class Profiler:
         sortedhogs = np.asarry(list(hashes.keys()))[index]
         jaccard= jaccard[index]
         return sortedhogs, jaccard
-
+    @staticmethod
     def allvall_hashes(hashes):
         """
         Given a dict of hogs:hashes, returns generate an all v all jaccard distance matrix.
@@ -160,10 +160,33 @@ class Profiler:
                 hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
         return hashmat
 
-    def get_vpairs(fam):
-        #get pairwise distance matrix of OMA all v all
-        #not finished
+    def allvall_nx(G,hashes,thresh =None):
+        """
+        Given a dict of hogs:hashes, returns generate an all v all jaccard distance matrix.
+        :param hashes: a dict of hogs:hashes
+        :return: hashmat
+        """
+        #generate an all v all jaccard distance matrix
+        hashmat = np.zeros((len(hashes),len(hashes)))
 
+        for i , hog1 in enumerate(hashes):
+            for j, hog2 in enumerate(hahes):
+                hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
+        return hashmat
+
+    iternetwork(seedHOG):
+
+        sort_hashes(query_hash,hashes)
+
+    def get_vpairs(fam):
+
+        """
+        get pairwise distance matrix of OMA all v all
+        #not finished
+        :param fam: an oma fam
+        :return sparesemat: a mat with all taxa in Oma with nonzero entries where this protein is found
+        :return densemat: a mat with the taxa covered by the fam
+        """
         taxa = self.db_obj.hog_levels_of_fam(fam)
         subtaxindex = { taxon:i for i,taxon in enumerate(taxa)}
         prots = self.db_obj.hog_members_from_hog_id(fam,  'LUCA')
