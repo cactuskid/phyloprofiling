@@ -24,6 +24,7 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
     :param start: parameters for weight functions
     :return: weights: a vector of weights for each tax level
     """
+
     weights = { type: np.zeros((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
     for node in mastertree.traverse():
         node.add_feature('degree', 1 )
@@ -42,7 +43,8 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
                     #set weight for descendants of n to 0
                     n.delete()
         for n in newtree.traverse():
-            weights[event][taxaIndex[n.name]] = start[event]#*math.exp(n.degree *lambdadict[event])
+            #exponential decay of initial weigh over node degree
+            weights[event][taxaIndex[n.name]] = start[event]*math.exp(n.degree*lambdadict[event])
     return weights
 
 def hash_tree(tp , taxaIndex , treeweights , wmg):
