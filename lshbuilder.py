@@ -328,9 +328,10 @@ class LSHBuilder:
 if __name__ == '__main__':
 
     # hyper params
+    #compile default db with weights at 1
     num_perm = config_utils.num_perm
     startdict={'presence':1, 'loss':1, 'dup':1}
-    lambdadict={'presence':1, 'loss':1, 'dup':1}
+    lambdadict={'presence':0, 'loss':0, 'dup':0}
 
     dbdict = {
     'all': { 'taxfilter': None , 'taxmask': None },
@@ -340,7 +341,7 @@ if __name__ == '__main__':
     'eukarya':{ 'taxfilter': None , 'taxmask': 2759 },
     'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None },
     'fungi':{ 'taxfilter': None , 'taxmask': 4751 },
-        'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
+    'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
     }
 
 

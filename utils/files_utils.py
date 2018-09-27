@@ -6,17 +6,17 @@ import copy
 
 
 def get_tree(oma=None, saveTree=True):
-        """
-        Generates an index for the global taxonomic tree for all OMA
-        :param oma:  a pyoma db object
-        :param saveTree: Bool for whether or not to save a mastertree newick file
-        :return: tree_string: a newick string tree: an ete3 object
-        """
+    """
+    Generates a working species tree for all OMA
+    :param oma:  a pyoma db object
+    :param saveTree: Bool for whether or not to save a mastertree newick file
+    :return: tree_string: a newick string tree: an ete3 object
+    """
     ncbi = ete3.NCBITaxa()
 
     genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
     genomes = [ str(g) for g in genomes]
-    
+
     tax = genomes + [ 131567, 2759, 2157, 45596 ]+[ taxrel[0] for taxrel in  list(oma.root.Taxonomy[:]) ]  + [  taxrel[1] for taxrel in list(oma.root.Taxonomy[:]) ]
 
     #add luca
