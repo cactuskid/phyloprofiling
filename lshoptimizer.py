@@ -3,35 +3,39 @@ import profiler
 import validation_semantic_similarity
 
 import config_utils
+from functools import partial
 import pickle
 
 from bayes_opt import BayesianOptimization
 
 
-def profiling_error( db , taxfilter, tax_mask lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba, presenceweight ):
+def profiling_error( db , taxfilter, tax_mask lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba, presenceweight, hoglist ):
 
+    print('compiling' + dbname)
 
+    #record param settings
+    
     #compile lsh
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
         lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=db, numperm = 256,
         treeweights= None , taxfilter = taxfilter, taxmask= tax_mask , lambdadict= lambdadict, start= startdict)
         lsh, forest, hashes = lsh_builder.run_pipeline()
     #init profiler
+    print( 'done compiling')
+    print('query DB and calculate error')
+
     p = profiler.Profiler(lsh_path = forest, hashes_path = hashes, oma_path= config_utils.omadir + 'OmaServer.h5', mat_path = None,
     unimap_path = None, string_data_path = None, taxfilter = None, taxmast = None, weights = None, GO= )
 
-    #
-    if randomHOGS = False:
-        #gold standard list
-        rando = list(np.randint())
-        results = [ p.hog_query(r) for r in rando ]
-        godists = [ ]
-        go_enrich = [ ]
-    else:
-        # 1000 random Hogs with annotation
-        p()
 
-    return 1/errorval
+    for hog in hog_list:
+
+    #record performance
+
+
+
+
+    return errorval
 
 
 if __name__ == 'main':
@@ -47,10 +51,14 @@ if __name__ == 'main':
     }
     for db in dbdict:
 
-        error = partial()
+        #compile validation HOG list
+
+
+
+        error = partial(db , taxfilter, tax_mask lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba, presenceweight, hoglist)
 
         #get error for the first point with all weights at 1
-        
+
         bo = BayesianOptimization( profiling_error ,  {'lossweight': (0, 1),
                                                         'presencweight': (0, 1),
                                                         'dupweight':(0,1),

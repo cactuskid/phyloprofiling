@@ -20,12 +20,15 @@ def return_enrichment_study_obj(gaf_taxfiltered):
     return goeaobj
 
 
-def buildGAF(gaf_file , taxa):
+def buildGAF(gaf_file , universe= None):
     ## TODO: implement taxonomic filter
     gaf_filtered = {}
     with open(gaf_file, mode='r') as gafin:
         for line in gafin:
-            
+            words = line.split()
+            gaf_filtered[words[0]]=words[1]
+    if universe:
+        gaf_filtered = { prot:gaf_filtered[prot] for prot in universe}
     return gaf_filtered
 
 def run_GOEA_onresults(results, db_obj, goeaobj, outfile = None):

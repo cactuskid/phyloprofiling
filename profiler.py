@@ -30,6 +30,10 @@ class Profiler:
 
     def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None,  lsh_builder_path = None, unimap_path = None ,string_data_path = None , GO= None):
         #use the lsh forest or the lsh
+        """
+        A profiler object allows the user to query the LSH with HOGs and get a list of result HOGs back
+
+        """
         if lsh_builder_path:
 
             with open( lsh_builder_path, mode='rb', buffering=None) as lshin:
@@ -46,6 +50,7 @@ class Profiler:
 
             self.hashes_h5 = h5py.File(lsh_builder.hashes_h5, mode='r')
             print('DONE')
+
         else:
             print('loading lsh')
             with open(lshforestpath, 'rb') as lshpickle:
@@ -174,10 +179,10 @@ class Profiler:
                 hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
         return hashmat
 
-    iternetwork(seedHOG):
-
-        sort_hashes(query_hash,hashes)
-
+    def iternetwork(seedHOG):
+        pass
+    def sort_hashes(query_hash,hashes):
+        pass
     def get_vpairs(fam):
 
         """

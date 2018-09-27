@@ -90,15 +90,15 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
         return None, None
 
 def row2hash(row , taxaIndex , treeweights , wmg):
-        """
-        turn a dataframe row with an orthoxml file to hash and matrix row
-        :param row: lsh builder dataframe row
-        :param taxaIndex: dict mapping taxa to columnsfam
-        :param treeweights: a vector of weights for each tax levels
-        :param wmg: Datasketch weighted minhash generator
-        :return: hog_matrix: a vector of weights for each tax level
-        :return: weighted_hash: a weighted minhash of a HOG
-        """
+    """
+    turn a dataframe row with an orthoxml file to hash and matrix row
+    :param row: lsh builder dataframe row
+    :param taxaIndex: dict mapping taxa to columnsfam
+    :param treeweights: a vector of weights for each tax levels
+    :param wmg: Datasketch weighted minhash generator
+    :return: hog_matrix: a vector of weights for each tax level
+    :return: weighted_hash: a weighted minhash of a HOG
+    """
     #convert a dataframe row to a weighted minhash
     fam, treemap = row.tolist()
     hog_matrix,weighted_hash = hash_tree(treemap , taxaIndex , treeweights , wmg)
