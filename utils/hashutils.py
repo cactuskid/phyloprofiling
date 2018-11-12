@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 
-def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadict, start):
+def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadict, start, exp = True):
     #weighing function for tax level, masking levels etc
     """
     Generate the weights of each taxonomic level to be applied during the
@@ -44,7 +44,12 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
                     n.delete()
         for n in newtree.traverse():
             #exponential decay of initial weigh over node degree
-            weights[event][taxaIndex[n.name]] = start[event]*math.exp(n.degree*lambdadict[event])
+            if exp == True:
+                #exponential
+                weights[event][taxaIndex[n.name]] = start[event]*math.exp(n.degree*lambdadict[event])
+            else :
+                #linear
+                weights[event][taxaIndex[n.name]] = start[event] + n.degree*lambdadict[event]
     return weights
 
 def hash_tree(tp , taxaIndex , treeweights , wmg):

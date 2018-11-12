@@ -1,6 +1,10 @@
 from goatools import semantic
+from goatools.obo_parser import GODag
+
 import ujson as json
 from utils import hashutils
+from utils import config_utils
+import pickle
 from goatools.go_enrichment import GOEnrichmentStudy
 
 ##############enrichment##############################################
@@ -9,7 +13,8 @@ def return_enrichment_study_obj(gaf_taxfiltered):
     '''
     Generate go enrichment study object with a background dataset.
     '''
-    obodag = GODag("go-basic.obo")
+
+    obodag = GODag(config_utils.datadir+"/GOData/go-basic.obo")
     goeaobj = GOEnrichmentStudy(
         gaf_taxfiltered.keys(), #
         gaf_taxfiltered, # geneid/GO associations possible with tree used for DB
@@ -19,45 +24,59 @@ def return_enrichment_study_obj(gaf_taxfiltered):
         methods = ['fdr_bh']) # defult multipletest correction method
     return goeaobj
 
-
 def buildGAF(gaf_file , universe= None):
-    ## TODO: implement taxonomic filter
     gaf_filtered = {}
     with open(gaf_file, mode='r') as gafin:
         for line in gafin:
             words = line.split()
-            gaf_filtered[words[0]]=words[1]
+            if words[0] not in gaf_filtered:
+                gaf_filtered[words[0]]=set([words[1]])
+            else:
+                gaf_filtered[words[0]].add(words[1])
+
     if universe:
         gaf_filtered = { prot:gaf_filtered[prot] for prot in universe}
+
+
     return gaf_filtered
 
-def run_GOEA_onresults(results, db_obj, goeaobj, outfile = None):
+def run_GOEA_onresults(results, db_obj, goeaobj, outname = None):
     '''
         Perform enrichment analysis on returned results
+        grabs all member protein of all hogs in result
+        returns goe results and HOG composition
     '''
-    geneids_study = [ member.omaid for member in [db_obj.iter_members_of_hog_id(int(result)) for result in results] ]
-    goea_results_all = goeaobj.run_study(geneids_study)
-    hogids =[ "HOG:" + (7-len(fam_id)) * '0' + fam_id for fam_id in HOGS[hog]['result'] ]
-    prots = set([])
-    for hogname in hogids:
-        print(hogname)
-        iterator = db_obj.iter_members_of_hog_id(hogname)
-        omaids = frozenset([prot.omaid for prot in iterator ])
-        HOGS[hog]['size']=len( omaids)
-        HOGS[hog]['members'][hogname]=omaids
-        prots = prots.union(omaids)
-    goea_results_all = goeaobj.run_study(prots)
-    goea_results_sig = [r for r in goea_results_all if r.p_fdr_bh < 0.05]
-    goeaobj.wr_txt(folder + str(hog)+"enrichment.txt", goea_results_all)
-    goea_results_terms = [ r.get_field_values(flds) for r in goea_results_sig ]
-    goea_results_scores = [ r.p_fdr_bh for r in goea_results_sig ]
-    HOGS[hog]['scores'] = goea_results_scores
-    HOGS[hog]['terms'] = goea_results_terms
-    HOGS[hog]['entrylist'] = list(prots)
-    print(goea_results_terms)
-    if outfile:
-       with open(outfile , 'wb' ) as save:
-           save.write(pickle.dumps(HOGS,2))
+
+    #print(db_obj.member_of_hog_id(int(results[0])))
+    hogids =[ "HOG:" + (7-len(fam_id)) * '0' + fam_id for fam_id in results ]
+    #print( db_obj.member_of_hog_id(hogids[0]) )
+    HOGS={}
+    print('compiling hogs')
+    prots = []
+
+    for i,result in enumerate(hogids):
+        if i %10 ==0:
+            print(i)
+
+        HOGS[result]=[]
+
+        for member in db_obj.iter_members_of_hog_id(result):
+            HOGS[result].append(member.omaid)
+            prots.append(member.omaid)
+    print('done')
+    print('running GO enrichment study')
+
+
+    goea_results_all = goeaobj.run_study(prots )
+    print('done')
+    with open( config_utils.datadir + outname + 'Hogs2Prots.pkl' , 'wb' ) as save:
+       save.write(pickle.dumps(HOGS,2))
+
+    goeaobj.wr_txt(config_utils.datadir+ str(outname)+"enrichment.txt", goea_results_all)
+    print('DONE!')
+    return goea_results_all, HOGS
+
+
 
 
 

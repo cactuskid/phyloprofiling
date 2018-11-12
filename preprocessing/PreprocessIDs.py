@@ -2,11 +2,12 @@ from goatools import obo_parser
 import h5py
 import numpy as np
 import tables
-import ujson as json
+import json
 from pyoma.browser import db
 import redis
 import gc
-from time import time
+import time
+
 
 
 import sys
@@ -14,7 +15,7 @@ sys.path.insert(0, '..')
 
 from utils import config_utils
 from utils import preprocess_config
-import StringRedisTOOLS
+from utils import goatools_utils
 
 def yield_hogs_with_annotations(annotation_dataset):
     for fam, annotations in enumerate(hogs):
@@ -39,7 +40,7 @@ def _get_hog_members(hog_id, oma):
     :param hog_id: hog id
     :return: list of genes from the hog
     """
-    iterator = _iter_hog_member(hog_id, oma)
+    iterator = _iter_hog_members(hog_id, oma)
     population = frozenset([x['EntryNr'] for x in iterator])
     return population
 
@@ -50,10 +51,10 @@ def _hog_lex_range(hog):
     :return: hog_str: encoded hog id
     """
     hog_str = hog.decode() if isinstance(hog, bytes) else hog
-    return hog_str.enco
+    return hog_str.encode()
 
 
-def _iter_hog_memober(hog_id, oma):
+def _iter_hog_members(hog_id, oma):
     """
     iterator over hog members / get genes
     :param hog_id: hog id
@@ -124,12 +125,14 @@ def _clean_dictionary(dictionary):
     return {k: v for k, v in dictionary.items() if v}
 
 if __name__ == '__main__':
-    if preprocess_config.preprocessGO ==True:
+    #if preprocess_config.preprocessGO ==True:
+    if preprocess_config.preprocessGO ==  False:
+
         #Preprocess all of the GO terms' parents to avoid looking at the DAG
-        obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'GOPreprocessing/go.obo')
+        obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'GOData/go-basic.obo')
         dt = h5py.special_dtype(vlen=np.dtype('int32'))
         omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
-        with h5py.File(config_utils.datadir + 'project/data/GOparents.h5', 'w', libver='latest') as h5_go_terms:
+        with h5py.File(config_utils.datadir + 'GOData/GOparents.h5', 'w', libver='latest') as h5_go_terms:
             start_time = time()
             h5_go_terms.create_dataset('goterms2parents', (10000000,), dtype=dt)
             dataset_go_terms_parents = h5_go_terms['goterms2parents']
@@ -146,6 +149,46 @@ if __name__ == '__main__':
                         h5_go_terms.flush()
             h5_go_terms.flush()
             print('Done with the parents in {} seconds'.format(time()-start_time))
+
+    if preprocess_config.preprocessGO == True:
+        #Add go terms from OMA
+        obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'GOData/go-basic.obo')
+
+        omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
+
+        db = db.Database(omah5)
+        print('building Gaf')
+        gaf = goatools_utils.buildGAF( config_utils.datadir+'GOData/oma-go.txt'  )
+        print('done')
+        with h5py.File(config_utils.datadir + 'GOData/goterms.h5' , 'w', libver='latest') as h5hashDB:
+            dt = h5py.special_dtype(vlen=bytes)
+            h5hashDB.create_dataset('annotations', (10000000,), dtype=dt)
+            h5annotations = h5hashDB['annotations']
+
+            for i,row in enumerate(omah5.root.HogLevel):
+                #check if hash was compiled
+                fam = row[0]
+                members = db.member_of_fam(fam)
+                annotations={}
+                for nr in members:
+                    if nr[10] in gaf:
+                        annotations[ str(nr[10])] = gaf[str(nr[10])]
+                    else:
+                        annotations[str(nr[10])]=[]
+                dumpstr = bytes(json.dumps(annotations).encode())
+                h5annotations[fam] = dumpstr
+
+                if i % 1000 == 0:
+                    print(i)
+                    print('saving:' + str(time.clock()) )
+                    h5hashDB.flush()
+            else:
+                h5hashDB.flush()
+
+
+
+
+
 
     if preprocess_config.preprocessSTRINGDB:
         if preprocess_config.clearRedis == True:
@@ -276,23 +319,6 @@ if __name__ == '__main__':
                     if start == False and oldID != uniID:
                         stringchunk=''
                     stringchunk+= row
-
-    if preprocess_config.preprocessGO == True:
-        #Add go terms from OMA
-        with h5py.File(config_utils.datadir + 'goterms.h5' , 'r+', libver='latest') as h5hashDB:
-            for row in h5h5hashDB['hashes']:
-                #check if hash was compiled
-                if len(row) > 0:
-                    hog_dict = _get_go_terms(fam2hogid(fam), omah5, obo_reader)
-                    hog2goterms[fam] = json.dumps(hog_dict).encode()
-                    if i % 1000 == 0:
-                        print('saving {} {}'.format(time()-start_time, fam))
-                        h5_go_terms.flush()
-            else:
-                h5_go_terms.flush()
-
-
-
 
 
 
