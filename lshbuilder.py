@@ -25,6 +25,12 @@ np.random.seed(0)
 random.seed(0)
 class LSHBuilder:
 
+    """
+    This class contains the stuff you need to make a phylogenetic profiling database with input orthxml files and a taxonomic tree
+
+    The input can be an OMA HDF5 for now...
+
+    """
     def __init__(self, h5_oma, saving_folder , saving_name=None , masterTree = None,  numperm = 128,  treeweights= None , taxfilter = None, taxmask= None , lambdadict= None, start= None):
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
@@ -66,34 +72,29 @@ class LSHBuilder:
         self.columns = len(self.taxaIndex)
         self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
-
     def load_one(self, fam):
         ortho_fam = self.READ_ORTHO(fam)
         pyham_tree = self.HAM_PIPELINE([fam, ortho_fam])
         hog_matrix,weighted_hash = hashutils.hash_tree(pyham_tree , self.taxaIndex , self.treeweights , self.wmg)
         return ortho_fam , pyham_tree, weighted_hash,hog_matrix
 
-    def generates_dataframes(self, size=100, minhog_size=None, maxhog_size=None):
+    def generates_dataframes(self, size=100, minhog_size=None, maxhog_size=None ):
         families = {}
         start = -1
-
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
             if i > start:
                 fam = row[0]
                 ## TODO: add further quality check here for hog_size / hogspread
-
                 ortho_fam = self.READ_ORTHO(fam)
-
                 hog_size = ortho_fam.count('<species name=')
-
                 if (maxhog_size is None or hog_size < maxhog_size) and (minhog_size is None or hog_size > minhog_size):
                     families[fam] = {'ortho': ortho_fam}
-
                 if len(families) > size:
                     pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
                     pd_dataframe['Fam'] = pd_dataframe.index
                     yield pd_dataframe
                     families = {}
+
 
         pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
         pd_dataframe['Fam'] = pd_dataframe.index
@@ -102,6 +103,20 @@ class LSHBuilder:
         families = {}
 
 
+
+    def universe_saver(self, i, q, retq, matq,univerq, l):
+        allowed = set( [n.name for n in self.tree_ete3.get_leaves()] )
+        with open(self.saving_path+'universe.txt') as universeout:
+            while True:
+                prots = univerq.get()
+
+                for row in df.iterrows():
+                    for ID in row.prots.tolist():
+                        universeout.write(ID)
+                else:
+                    print('Universe saver done' + str(i))
+                    break
+
     def worker(self, i, q, retq, matq, l):
 
         print('worker init ' + str(i))
@@ -109,7 +124,9 @@ class LSHBuilder:
             df = q.get()
             if df is not None :
                 df['tree'] = df[['Fam', 'ortho']].apply(self.HAM_PIPELINE, axis=1)
+
                 df[['hash','rows']] = df[['Fam', 'tree']].apply(self.HASH_PIPELINE, axis=1)
+
                 retq.put(df[['Fam', 'hash']])
                 #matq.put(df[['Fam', 'rows']])
 
@@ -173,13 +190,7 @@ class LSHBuilder:
 
                             for fam in hashes:
 
-                                if fam < 300:
-                                    with open( self.saving_path  + str(fam) + '.pkl' , 'wb') as hashout:
-                                        hashout.write( pickle.dumps(hashes[fam]))
 
-                                if fam % 3000 == 0:
-                                    with open( self.saving_path  + str(fam) + '.pkl' , 'wb') as hashout:
-                                        hashout.write( pickle.dumps(hashes[fam]))
 
                                 if hashes[fam] is not None:
 
@@ -231,6 +242,9 @@ class LSHBuilder:
                          'matrix_updater': (self.matrix_updater, 0, False)}
 
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
+
+        return self.hashes_path, self.lshforestpath , self.lshpath
+
 
     def matrix_updater(self, i, q, retq, matq, l):
         hog_mat =  sparse.lil_matrix((600000, len(self.taxaIndex)*3))

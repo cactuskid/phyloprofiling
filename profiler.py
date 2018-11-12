@@ -76,7 +76,6 @@ class Profiler:
         if GO :
             self.go = obo_parser.GODag(obo_file_path)
             self.associations = read_gaf(gaf_file_path)
-
             self.term_counts = TermCounts(self.go, self.associations)
             self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
                                                                                                 self.term_counts,
@@ -175,14 +174,24 @@ class Profiler:
         hashmat = np.zeros((len(hashes),len(hashes)))
 
         for i , hog1 in enumerate(hashes):
-            for j, hog2 in enumerate(hahes):
+            for j, hog2 in enumerate(hashes):
                 hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
         return hashmat
 
     def iternetwork(seedHOG):
         pass
-    def sort_hashes(query_hash,hashes):
-        pass
+    def rank_hashes(query_hash,hashes):
+        jaccard = []
+        sorted = []
+        scores = {}
+        hogsRanked = np.asarray(list(hashes.keys()))
+        for i, hog in enumerate(hashes):
+            score = query_hash.jaccard(hashes[hog])
+            jaccard.append( score)
+            scores[hog] = score
+        hogsRanked = list( hogsRanked[ np.argsort(jaccard) ] )
+        jaccard = np.sort(jaccard)
+        return hogsRanked, jaccard
     def get_vpairs(fam):
 
         """

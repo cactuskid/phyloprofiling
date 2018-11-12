@@ -9,31 +9,46 @@ import pickle
 from bayes_opt import BayesianOptimization
 
 
-def profiling_error( db , taxfilter, tax_mask lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba, presenceweight, hoglist ):
+def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba, presenceweight, hoglist ):
 
     print('compiling' + dbname)
-
     #record param settings
-    
     #compile lsh
+
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
         lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=db, numperm = 256,
         treeweights= None , taxfilter = taxfilter, taxmask= tax_mask , lambdadict= lambdadict, start= startdict)
         lsh, forest, hashes = lsh_builder.run_pipeline()
+        hashes, forest, lshpath =lsh_builder.run_pipeline()
+
     #init profiler
     print( 'done compiling')
     print('query DB and calculate error')
 
+    print('load lsh')
     p = profiler.Profiler(lsh_path = forest, hashes_path = hashes, oma_path= config_utils.omadir + 'OmaServer.h5', mat_path = None,
     unimap_path = None, string_data_path = None, taxfilter = None, taxmast = None, weights = None, GO= )
+    print('done')
 
-
+    print('testing db')
     for hog in hog_list:
 
+
+
+    print('testing db')
     #record performance
+    results={}
+    print('querying lsh')
+    for hog in hoglist:
+        results[hog]=p.hog_query(fam_id=hog)
+    print('done')
+
+    print('calculating semantic similarity')
 
 
 
+    
+    print('done')
 
     return errorval
 
