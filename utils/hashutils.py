@@ -135,8 +135,10 @@ def hogid2fam(hog_id):
     :param hog_id: hog id
     :return: fam
     """
-    fam = int(hog_id.split(':')[1])
-
+    if ':' in hog_id:
+        fam = int(hog_id.split(':')[1])
+    else:
+        fam = int(hog_id)
     return fam
 
 
