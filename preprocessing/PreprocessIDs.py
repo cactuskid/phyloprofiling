@@ -4,11 +4,9 @@ import numpy as np
 import tables
 import json
 from pyoma.browser import db
-import redis
-import gc
+
+import pandas as pd
 import time
-
-
 
 import sys
 sys.path.insert(0, '..')
@@ -16,6 +14,7 @@ sys.path.insert(0, '..')
 from utils import config_utils
 from utils import preprocess_config
 from utils import goatools_utils
+import pickle
 
 def yield_hogs_with_annotations(annotation_dataset):
     for fam, annotations in enumerate(hogs):
@@ -141,6 +140,7 @@ if __name__ == '__main__':
                 go_term_read = obo_reader[go_term]
                 if go_term_read.namespace == 'biological_process':
                     go_term_parents = go_term_read.get_all_parents()
+
                     go_term_parents_int = [goterm2id(go_term_read.id)] + [goterm2id(parent) for parent in go_term_parents]
                     dataset_go_terms_parents[goterm2id(go_term_read.id)] = go_term_parents_int
                     count += 1
@@ -150,176 +150,24 @@ if __name__ == '__main__':
             h5_go_terms.flush()
             print('Done with the parents in {} seconds'.format(time()-start_time))
 
-    if preprocess_config.preprocessGO == True:
-        #Add go terms from OMA
+    if preprocess_config.preprocessGO ==  True:
+        #Preprocess all of the GO terms' parents to avoid looking at the DAG
+        start_time = time.time()
         obo_reader = obo_parser.GODag(obo_file=config_utils.datadir + 'GOData/go-basic.obo')
-
-        omah5 = tables.open_file(config_utils.omadir + 'OmaServer.h5', mode='r')
-
-        db = db.Database(omah5)
-        print('building Gaf')
-        gaf = goatools_utils.buildGAF( config_utils.datadir+'GOData/oma-go.txt'  )
-        print('done')
-        with h5py.File(config_utils.datadir + 'GOData/goterms.h5' , 'w', libver='latest') as h5hashDB:
-            dt = h5py.special_dtype(vlen=bytes)
-            h5hashDB.create_dataset('annotations', (10000000,), dtype=dt)
-            h5annotations = h5hashDB['annotations']
-
-            for i,row in enumerate(omah5.root.HogLevel):
-                #check if hash was compiled
-                fam = row[0]
-                members = db.member_of_fam(fam)
-                annotations={}
-                for nr in members:
-                    if nr[10] in gaf:
-                        annotations[ str(nr[10])] = gaf[str(nr[10])]
-                    else:
-                        annotations[str(nr[10])]=[]
-                dumpstr = bytes(json.dumps(annotations).encode())
-                h5annotations[fam] = dumpstr
-
-                if i % 1000 == 0:
-                    print(i)
-                    print('saving:' + str(time.clock()) )
-                    h5hashDB.flush()
-            else:
-                h5hashDB.flush()
-
-
-
-
-
-
-    if preprocess_config.preprocessSTRINGDB:
-        if preprocess_config.clearRedis == True:
-            #clear the stringDB mapping
-            StringRedisTOOLS.clearDB(1)
-        r1 = redis.StrictRedis(host='localhost', port=6379, db=1)
-        # sort the IDs alphanumerically.
-        # protein1 protein2 neighborhood fusion cooccurence coexpression
-        # experimental database textmining combined_score
-        # 394.NGR_c00010 394.NGR_c33930 0 0 165 0 0 0 145 255
-        # 37200000
-        # save file line...
-        refs = ['neighborhood', 'fusion', 'cooccurence', 'coexpression', 'experimental', 'database', 'textmining', 'combined_score']
-        start_line = 0
-        with open(preprocess_config.string_interactors +'/stringdata/protein.links.detailed.v10.5.txt', 'r') as stringAll:
-            for i, line in enumerate(stringAll):
-                if i > start_line:
-                    words = line.split()
-                    IDS = ''.join(sorted([words[0], words[1]]))
-                    r1.set(IDS, stringAll.tell())
-                if i % 1000000 == 0:
-                    print(i)
-
-
-    if preprocess_config.preprocessUNIPROT == True:
-        #annotate the HOG hash values h5 file with IDs from the uniprot mapper
-        """
-        to grab
-        KEGG	KEGG_ID
-        BioGrid	BIOGRID_ID
-        ComplexPortal	COMPLEXPORTAL_ID
-        DIP	DIP_ID
-        STRING	STRING_ID
-
-        """
-        datasets = [ 'BIOGRID' , 'COMPLEXPORTAL' , 'DIP' , 'KEGG', 'STRING', 'OMA']
-
-        db_obj = db.Database(config_utils.omadir + 'OmaServer.h5')
-        resovlver =db.IDResolver(db_obj)
-        #open uniprotmappings
-        with open( preprocess_config.uniprotmappings , 'r')as uniprotmappings:
-        #open hashes h5
-            with h5py.File(config_utils.datadir + 'unimapings.h5' , 'a', libver='latest') as mappingh5:
-                #mapping h5 row = fam number
-                for dataset in datasets:
-                    #add a datasets for each ID mapping in uniprot
-                    dt_2 = h5py.special_dtype(vlen=bytes)
-                    if dataset not in mappingh5:
-                        mappingh5.create_dataset(dataset,shape=(10,), maxshape=(None, ) ,chunks=True, dtype=dt_2)
-
-                start = True
-                record = False
-
-                count = 1
-                mappings = 0
-                start_time = time()
-                oldID = ''
-                OMAgroupdict={}
-
-                if preprocess_config.startseq:
-                    start = False
-                    print('start at')
-                    print(preprocess_config.startseq)
-
-                stringchunk =''
-                for i, row in enumerate(uniprotmappings):
-                    words= row.split()
-                    uniID = words[0]
-                    if start == False and preprocess_config.startseq == uniID:
-                        start = True
-                        print('started!')
-                    if start==True and oldID != uniID:
-                        if 'OMA' in stringchunk:
-                            mapdict ={}
-                            for row in stringchunk.split('\n'):
-                                if len(row)>0:
-                                    words= row.split()
-                                    uniID = words[0]
-                                    mapto = words[1]
-                                    mapval = words[2]
-                                    if mapto in datasets:
-                                        if mapto in mapdict:
-                                            mapdict[mapto].append(mapval)
-                                        else:
-                                            mapdict[mapto] =[ mapval]
-
-                            if len(mapdict)>1 and 'OMA' in mapdict:
-
-                                print(uniID)
-                                print(mapdict)
-                                mappings +=1
-                                if mappings%1000 == 0:
-                                    print(mappings)
-                                fams =[]
-                                if mapdict['OMA'][0] in OMAgroupdict:
-
-                                    fams = list(OMAgroupdict[mapdict['OMA'][0]])
-
-                                else:
-                                    try:
-                                        members = list(db_obj.oma_group_members(mapdict['OMA'][0]))
-                                        hogs = set([ entry[4].decode() for entry in members])
-                                        #profiles only encode top level hogs
-                                        fams = []
-                                        for entry in hogs:
-                                            if ':' in entry:
-                                                hognum = entry.split(':')[1]
-                                                if '.' in hognum:
-                                                    hognum = hognum.split('.')[0]
-                                                hognum = int(hognum)
-                                                fams.append(hognum)
-                                        OMAgroupdict[mapdict['OMA'][0]]=fams
-                                        fams = set(fams)
-                                    except:
-                                        print('error' +  mapdict['OMA'][0] )
-                                for fam in fams:
-                                    oldmapping = []
-                                    for dataset in mapdict:
-                                        if dataset != 'OMA':
-                                            if len(mappingh5[dataset]) < fam + 1:
-                                                mappingh5[dataset].resize((fam + 1,  ))
-                                            if len(mappingh5[dataset][fam]) > 0:
-                                                oldmapping = json.loads(mappingh5[dataset][fam])
-                                            mappingh5[dataset][fam] = json.dumps(list(set(mapdict[dataset]+oldmapping)))
-                                            mappingh5.flush()
-                        stringchunk = ''
-                    oldID = uniID
-                    if start == False and oldID != uniID:
-                        stringchunk=''
-                    stringchunk+= row
-
+        godict = {}
+        for i,go_term in enumerate(obo_reader):
+            go_term_read = obo_reader[go_term]
+            if i %1000==0:
+                print(go_term_read)
+            if go_term_read.namespace == 'biological_process':
+                godict[go_term_read.id]={}
+                godict[go_term_read.id]['parents'] = [ p for p in go_term_read.get_all_parents()] + [go_term_read.id]
+                godict[go_term_read.id]['level'] = go_term_read.level
+                godict[go_term_read.id]['depth'] = go_term_read.depth
+        goframe = pd.DataFrame.from_dict( godict , orient = 'index')
+        print(goframe)
+        open(config_utils.datadir + 'GOData/goframe.pkl' , 'wb').write(pickle.dumps( goframe, -1))
+        print('Done with the parents in {} seconds'.format(time.time()-start_time))
 
 
 print('DONE!')

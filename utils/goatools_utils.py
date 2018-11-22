@@ -1,3 +1,4 @@
+
 from goatools import semantic
 from goatools.obo_parser import GODag
 
@@ -76,11 +77,6 @@ def run_GOEA_onresults(results, db_obj, goeaobj, outname = None):
     print('DONE!')
     return goea_results_all, HOGS
 
-
-
-
-
-
 ######################resnik semsim ###################################################
 
 def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
@@ -94,6 +90,7 @@ def resnik_sim_hdf5(go_id1, go_id2, godag, termcounts, hdf5):
         score = -1
     return score
 
+
 def deepest_common_ancestor_hdf5(go_ids, godag, hdf5):
     '''
         Gets the nearest common ancestor
@@ -102,7 +99,6 @@ def deepest_common_ancestor_hdf5(go_ids, godag, hdf5):
     '''
     # Take the element at maximum depth.
     return max(common_parent_go_ids_hdf5(go_ids, hdf5), key=lambda t: godag[t].depth)
-
 
 def common_parent_go_ids_hdf5(go_ids, hdf5_set):
     '''
@@ -116,16 +112,39 @@ def common_parent_go_ids_hdf5(go_ids, hdf5_set):
     corrected_candidates = [id2goterm(c) for c in candidates]
     return corrected_candidates
 
-def get_go_terms_hdf5(hog_id, hdf5_set):
+def resnik_sim_pandas(tup, df , termcounts):
     '''
-        grabs the preprocessed GO term info for HOGs from an HDF5.
+        Computes Resnik's similarity measure.
+    '''
+    go_id1, go_id2 = tup
+    #print(df.head())
+    if go_id1 == go_id2:
+        return semantic.get_info_content(go_id1, termcounts)
+
+    elif go_id2 in df.index and go_id1 in df.index:
+
+        ancestors = df.loc[str(go_id2)].parents
+        ancestors += df.loc[str(go_id1)].parents
+        terms = df.loc[ancestors]
+        ancestors_set = terms.parents.tolist()
+        intersection = set(ancestors_set[0]).intersection(* ancestors_set[1:])
+        common_ancestors = df.loc[list(intersection)]
+        common_ancestors = common_ancestors.sort_values('depth', ascending= False)
+        msca_goid = common_ancestors.index.tolist()[0]
+        return semantic.get_info_content(msca_goid, termcounts)
+
+    else:
+        return -1
+
+
+def get_go_terms_gaf(hog_id, pyoma_dbobj, gaf , genomes = None):
+    '''
+        iterate over hog members and get the go information from a gaf in memory
     '''
     fam = hashutils.hogid2fam(hog_id)
-    try:
-        go_terms = json.loads(hdf5_set[fam])
-    except:
-        go_terms = None
+    go_terms = { mr.omaid:gaf[mr.omaid] for mr in pyoma_dbobj.iter_members_of_hog_id(hog_id) if mr.omaid in gaf  }
     return go_terms
+
 
 def goterm2id(go_term_to_modif):
 

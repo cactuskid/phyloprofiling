@@ -7,11 +7,7 @@ import ujson as json
 import random
 from scipy.sparse import csr_matrix
 
-import lshbuilder
 
-from goatools import obo_parser
-from goatools.associations import read_gaf
-from goatools.semantic import TermCounts
 from pyoma.browser import db
 
 import numpy as np
@@ -28,59 +24,26 @@ from utils import hashutils, string_utils , config_utils
 from time import time
 class Profiler:
 
-    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None,  lsh_builder_path = None, unimap_path = None ,string_data_path = None , GO= None):
+    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, GO= None):
         #use the lsh forest or the lsh
         """
         A profiler object allows the user to query the LSH with HOGs and get a list of result HOGs back
 
         """
-        if lsh_builder_path:
 
-            with open( lsh_builder_path, mode='rb', buffering=None) as lshin:
-                lsh_builder = pickle.loads(lshin.read())
-            self.lsh_builder = lsh_builder
-
-            self.lshpath = self.saving_path + 'newlsh.pkl'
-            self.lshforestpath = self.saving_path + 'newlshforest.pkl'
-            print('loading lsh')
-            with open(lsh_builder.lshforestpath, 'rb') as lshpickle:
-                self.lshobj = pickle.loads(lshpickle.read())
-                print('indexing lsh')
-                self.lshobj.index()
-
-            self.hashes_h5 = h5py.File(lsh_builder.hashes_h5, mode='r')
-            print('DONE')
-
-        else:
-            print('loading lsh')
-            with open(lshforestpath, 'rb') as lshpickle:
-                self.lshobj = pickle.loads(lshpickle.read())
-                print('indexing lsh')
-                self.lshobj.index()
-            self.hashes_h5 = h5py.File(hashes_h5, mode='r')
-            print('DONE')
-
-        if unimap_path:
-            self.unimap_h5 = h5py.File(unimap_h5, mode='r')
-
-        if string_data_path:
-            self.string_data_path = string_data_path
-            self.r1 = string_stringdataMap.connect2IDmap()
-            self.r2 = string_stringdataMap.connect2Stringmap()
+        print('loading lsh')
+        with open(lshforestpath, 'rb') as lshpickle:
+            self.lshobj = pickle.loads(lshpickle.read())
+            print('indexing lsh')
+            self.lshobj.index()
+        self.hashes_h5 = h5py.File(hashes_h5, mode='r')
+        print('DONE')
 
         if mat_path:
 
             profile_matrix_file = open(profile_matrix_path, 'rb')
             profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
             self.profile_matrix = profile_matrix_unpickled.load()
-        if GO :
-            self.go = obo_parser.GODag(obo_file_path)
-            self.associations = read_gaf(gaf_file_path)
-            self.term_counts = TermCounts(self.go, self.associations)
-            self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
-                                                                                                self.term_counts,
-                                                                                                self.go_terms_hdf5)
-
 
     def hog_query(self, hog_id=None, fam_id=None , k = 100 ):
         """
@@ -95,8 +58,6 @@ class Profiler:
 
         results = self.lshobj.query(query_hash, k)
         return results
-
-
 
     def hog_query_OMA(self,hog_id=None, fam_id=None , k = 100 ):
         #construct a profile on the fly
@@ -150,6 +111,8 @@ class Profiler:
         sortedhogs = np.asarry(list(hashes.keys()))[index]
         jaccard= jaccard[index]
         return sortedhogs, jaccard
+
+
     @staticmethod
     def allvall_hashes(hashes):
         """
@@ -163,6 +126,8 @@ class Profiler:
             for j, hog2 in enumerate(hahes):
                 hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
         return hashmat
+
+
 
     def allvall_nx(G,hashes,thresh =None):
         """
@@ -192,6 +157,8 @@ class Profiler:
         hogsRanked = list( hogsRanked[ np.argsort(jaccard) ] )
         jaccard = np.sort(jaccard)
         return hogsRanked, jaccard
+
+
     def get_vpairs(fam):
 
         """
