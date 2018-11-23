@@ -66,46 +66,37 @@ class Validation_semantic_similarity(object):
         :param go_terms_genes_2: dictionary of genes
         :return: matrix of distance between genes of hogs
         """
-        # try:
         if type(go_terms_genes_1) is dict and type(go_terms_genes_2) is dict:
-
 
             gos1 = list(go_terms_genes_1.values())
             gos2 = list( go_terms_genes_2.values())
 
-
             setgo1 = set(gos1[0]).union( *gos1[1:] )
             setgo2 = set(gos2[0]).union( *gos2[1:] )
             keys=[]
-            #define min go term comparisons to be calculated
             for go1 in setgo1:
                 for go2 in setgo2:
                     keys.append(tuple(sorted((go1,go2))))
-
-            t = time.time()
             res = [ self.resniksimpreconf(tup) for tup in keys]
             res = dict( zip(keys,res))
-            #print(res)
-            print( time.time() - t)
-
-            gene_dist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
-            print(gene_dist.shape)
-
+            genedist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
             for i,gene1 in enumerate(go_terms_genes_1):
                 for j,gene2 in enumerate(go_terms_genes_2):
-                    keyset =[]
+                    keyset =set([])
+
                     for go1 in go_terms_genes_1[gene1]:
                         for go2 in go_terms_genes_2[gene2]:
-                            keys.append(tuple(sorted((go1,go2))))
-
+                            keyset.add(tuple(sorted((go1,go2))))
                     keyset = set(keyset)
                     #keyset = set([  tuple(sorted((go1,go2))) for go1 in go_terms_genes_1[gene1] for  go1 in go_terms_genes_2[gene2]  ] )
-                    print(keyset)
-                    gene_dist[i,j] = np.amax( [ res[go] for go in keyset  ] )
-
-            print(genedist)
-
-            return gene_dist
+                    #print(keyset)
+                    if len(keyset)>0:
+                        #take max between gene annotations
+                        
+                        genedist[i,j] = np.amax( [ res[go] for go in keyset  ] )
+                    else:
+                        genedist[i,j] = 0
+            return genedist
         else:
             return -1
 

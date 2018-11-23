@@ -10,12 +10,11 @@ import numpy as np
 import pandas as pd
 
 
-def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadict, start, exp = True):
+def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadict, start, exp = False):
     #weighing function for tax level, masking levels etc
     """
     Generate the weights of each taxonomic level to be applied during the
     constructin of weighted minhashes
-
     :param mastertree: full corrected ncbi taxonomy
     :param taxaIndex: dict mapping taxa to columns
     :param taxfilter: list of branches to delete
@@ -24,13 +23,13 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
     :param start: parameters for weight functions
     :return: weights: a vector of weights for each tax level
     """
-
     weights = { type: np.zeros((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
     for node in mastertree.traverse():
         node.add_feature('degree', 1 )
     for node in mastertree.iter_descendants():
         for d in node.iter_descendants():
             d.degree+=1
+
     for event in weights:
         newtree = copy.deepcopy(mastertree)
         for n in newtree.traverse():
@@ -44,12 +43,13 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
                     n.delete()
         for n in newtree.traverse():
             #exponential decay of initial weigh over node degree
+            #weight must be positive
             if exp == True:
                 #exponential
-                weights[event][taxaIndex[n.name]] = start[event]*math.exp(n.degree*lambdadict[event])
+                weights[event][taxaIndex[n.name]] = max( 0,  start[event]*math.exp(n.degree*lambdadict[event]) )
             else :
                 #linear
-                weights[event][taxaIndex[n.name]] = start[event] + n.degree*lambdadict[event]
+                weights[event][taxaIndex[n.name]] = max( 0, start[event] + n.degree*lambdadict[event] )
     return weights
 
 def hash_tree(tp , taxaIndex , treeweights , wmg):
@@ -67,23 +67,15 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
     """
     #convert a tree profile to a weighted minhash
     losses = [ taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in taxaIndex  ]
-
     dupl = [ taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in taxaIndex  ]
-
     presence = [ taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in taxaIndex  ]
-
     indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
-
     hog_matrix = lil_matrix((1, 3*len(taxaIndex)))
     hogsum = 0
     for i,event in enumerate(indices):
         if len(indices[event])>0:
             taxindex = np.asarray(indices[event])
             hogindex = np.asarray(indices[event])+i*len(taxaIndex)
-            #print(index)
-            #print(treeweights[event][index].shape)
-            #print(hog_matrix[:,index].shape)
-            #assign the
             hog_matrix[:,hogindex] = treeweights[event][taxindex].ravel()
             hogsum+=np.sum(treeweights[event][taxindex])
 

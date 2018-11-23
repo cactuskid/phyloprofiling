@@ -143,11 +143,6 @@ class LSHBuilder:
         count = 0
         threshold = 0.98
 
-        if config_utils.clear_redisLSH == True:
-            #flush the LSH DB
-            r = redis.StrictRedis(host='10.0.63.33', port=6379, db=2)
-            r.flushdb()
-
         lsh = MinHashLSH(
             threshold=threshold,
             num_perm=self.numperm
@@ -243,41 +238,33 @@ class LSHBuilder:
 
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
 
-        return self.hashes_path, self.lshforestpath , self.lshpath
+        return self.hashes_path, self.lshforestpath , self.lshpath , self.mat_path
 
 
-    def matrix_updater(self, i, q, retq, matq, l):
-        hog_mat =  sparse.lil_matrix((600000, len(self.taxaIndex)*3))
+    def matrix_updater(self, iprocess , q, retq, matq, l):
         save_start = t.time()
-
-        print('hogmat saver init ' + str(i))
-
-        while True:
-            rows = matq.get()
-            if rows is not None:
-                for index, row in rows.iterrows():
-                    if row is not None:
-                        sparse_row = row['rows']
-                        fam = int(row['Fam'])
-                        if hog_mat.shape[0] < fam:
-                            print('extend HOGMAT')
-                            num_rows_to_add = fam - hog_mat.shape[0] + 1000
-                            new_hog_mat = sparse.lil_matrix((num_rows_to_add, len(self.taxaIndex)*3 ))
-                            hog_mat = sparse.vstack([hog_mat, new_hog_mat])
-                        hog_mat[fam, :] = sparse_row
-
-
-                    if t.time() - save_start > 500:
-                        # with h5sparse.File(self.saving_path + self.date_string + "matrix.h5", 'w') as h5matrix:
-                            # h5matrix.create_dataset('hogmat', data=hog_mat)
-                        print('saving HOGMAT')
-                        with open(self.saving_path + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
-                            pickle.dump(hog_mat, handle, -1)
-                        save_start = t.time()
-            else:
-                break
-        with open(self.saving_path + '_matnum_'+ str(i) + "matrix.pkl", 'wb') as handle:
-            pickle.dump(hog_mat, handle, -1)
+        chunk_size = 100
+        print('hogmat saver init ' + str(iprocess))
+        self.mat_path = self.saving_path+ 'hogmat.h5'
+        with h5py.File(self.mat_path , 'w', libver='latest') as h5hashes:
+            h5hashes.create_dataset( 'matrows', (chunk_size, 0), maxshape=(None, None), dtype='int32')
+            h5mat = h5hashes['matrows']
+            i =0
+            while True:
+                rows = matq.get()
+                i +=1
+                if rows is not None:
+                    for index, row in rows.iterrows():
+                        if row is not None:
+                            sparse_row = row['rows']
+                            fam = int(row['Fam'])
+                            h5mat[fam, :] = sparse_row.todense().ravel
+                        if t.time() - save_start > 500 or i % 1000 == 0:
+                            h5mat.flush()
+                            save_start = t.time()
+                else:
+                    break
+            h5mat.flush()
         print('DONE MAT UPDATER' + str(i))
 
 
@@ -365,7 +352,7 @@ if __name__ == '__main__':
         taxfilter = dbdict[dbname]['taxfilter']
 
         with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
-            lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=dbname, numperm = 128 ,
+            lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=dbname, numperm = 256 ,
             treeweights= None , taxfilter = taxfilter, taxmask=taxmask , lambdadict= lambdadict, start= startdict)
             lsh_builder.run_pipeline()
             #save config
