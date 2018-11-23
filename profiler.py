@@ -24,8 +24,9 @@ from utils import hashutils, string_utils , config_utils
 from time import time
 class Profiler:
 
-    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, GO= None):
+    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None):
         #use the lsh forest or the lsh
+
         """
         A profiler object allows the user to query the LSH with HOGs and get a list of result HOGs back
 
@@ -40,10 +41,12 @@ class Profiler:
         print('DONE')
 
         if mat_path:
+            ## TODO: change this to read hdf5
+            #profile_matrix_file = open(profile_matrix_path, 'rb')
+            #profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
+            #self.profile_matrix = profile_matrix_unpickled.load()
+            pass
 
-            profile_matrix_file = open(profile_matrix_path, 'rb')
-            profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
-            self.profile_matrix = profile_matrix_unpickled.load()
 
     def hog_query(self, hog_id=None, fam_id=None , k = 100 ):
         """
@@ -127,8 +130,6 @@ class Profiler:
                 hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
         return hashmat
 
-
-
     def allvall_nx(G,hashes,thresh =None):
         """
         Given a dict of hogs:hashes, returns generate an all v all jaccard distance matrix.
@@ -145,6 +146,7 @@ class Profiler:
 
     def iternetwork(seedHOG):
         pass
+
     def rank_hashes(query_hash,hashes):
         jaccard = []
         sorted = []
@@ -178,30 +180,13 @@ class Profiler:
                 pass
         return sparsemat , densemat
 
-    def compute_semantic_distance(self, hog_1, hog_2):
-        semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog_1, hog_2)
-        return semantic_dist
-
-    def get_hogs_with_annotations(self):
-        print('getting hogs')
-        hogs_with_annotations = []
-        for fam, goterms in enumerate(self.hogs2goterms):
-            if goterms:
-                if json.loads(goterms):
-                    hogs_with_annotations.append(fam)
-        print(len(hogs_with_annotations))
-        return hogs_with_annotations
-
 
     def get_submatrix_form_results(self, results):
-
         res_mat_list = []
-
         for query, result in results.items():
             res_mat = csr_matrix((len(result), self.profile_matrix.shape[1]))
             for i, r in enumerate(result):
                 res_mat[i, :] = self.profile_matrix[r, :]
-
             res_mat_list.append(res_mat)
-
+        final = np.vstack(res_mat_list)
         return res_mat_list
