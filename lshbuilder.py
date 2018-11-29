@@ -68,6 +68,10 @@ class LSHBuilder:
         self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=wmg )
         self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
 
+        self.hashes_path = self.saving_path + 'hashes.h5'
+        self.lshpath = self.saving_path + 'newlsh.pkl'
+        self.lshforestpath = self.saving_path + 'newlshforest.pkl'
+        self.mat_path = self.saving_path+ 'hogmat.h5'
 
         self.columns = len(self.taxaIndex)
         self.rows = len(self.h5OMA.root.OrthoXML.Index)
@@ -94,8 +98,6 @@ class LSHBuilder:
                     pd_dataframe['Fam'] = pd_dataframe.index
                     yield pd_dataframe
                     families = {}
-
-
         pd_dataframe = pd.DataFrame.from_dict(families, orient='index')
         pd_dataframe['Fam'] = pd_dataframe.index
         yield pd_dataframe
@@ -105,11 +107,11 @@ class LSHBuilder:
 
 
     def universe_saver(self, i, q, retq, matq,univerq, l):
+        #only useful to save all prots within a taxonomic range as db is being compiled
         allowed = set( [n.name for n in self.tree_ete3.get_leaves()] )
         with open(self.saving_path+'universe.txt') as universeout:
             while True:
                 prots = univerq.get()
-
                 for row in df.iterrows():
                     for ID in row.prots.tolist():
                         universeout.write(ID)
@@ -118,18 +120,14 @@ class LSHBuilder:
                     break
 
     def worker(self, i, q, retq, matq, l):
-
         print('worker init ' + str(i))
         while True:
             df = q.get()
             if df is not None :
                 df['tree'] = df[['Fam', 'ortho']].apply(self.HAM_PIPELINE, axis=1)
-
                 df[['hash','rows']] = df[['Fam', 'tree']].apply(self.HASH_PIPELINE, axis=1)
-
                 retq.put(df[['Fam', 'hash']])
                 #matq.put(df[['Fam', 'rows']])
-
             else:
                 print('Worker done' + str(i))
                 break
@@ -143,14 +141,11 @@ class LSHBuilder:
         count = 0
         threshold = 0.98
 
-        lsh = MinHashLSH(
-            threshold=threshold,
-            num_perm=self.numperm
-            )#storage_config={'type': 'redis', 'redis': {'host': '10.0.63.33', 'port': 6379, 'db': 2}})
-
+        #lsh = MinHashLSH( threshold=threshold, num_perm=self.numperm)
         forest = MinHashLSHForest(num_perm=self.numperm)
 
         #create datasets
+        forest_add = forest.add
         if self.tax_filter is None:
             taxstr = 'NoFilter'
         if self.tax_mask is None:
@@ -160,9 +155,7 @@ class LSHBuilder:
         dataset_name = self.saving_name+'_'+taxstr
         self.errorfile = self.saving_path + 'errors.txt'
         with open(self.errorfile, 'w') as hashes_error_files:
-            self.hashes_path = self.saving_path + 'hashes.h5'
-            self.lshpath = self.saving_path + 'newlsh.pkl'
-            self.lshforestpath = self.saving_path + 'newlshforest.pkl'
+
 
             with h5py.File(self.hashes_path, 'w', libver='latest') as h5hashes:
                 datasets = {}
@@ -173,6 +166,7 @@ class LSHBuilder:
                     h5hashes.create_dataset(dataset_name+'_'+taxstr, (chunk_size, 0), maxshape=(None, None), dtype='int32')
                     datasets[dataset_name] = h5hashes[dataset_name+'_'+taxstr]
                     print(datasets)
+                    h5flush = h5hashes.flush
                 print('saver init ' + str(i))
                 while True:
                     this_dataframe = retq.get()
@@ -182,50 +176,37 @@ class LSHBuilder:
                             print(str(t.time() - global_time)+'seconds elapsed')
                             print(str(this_dataframe.Fam.max())+ 'fam num')
                             print(str(count) + ' done')
-
+                            hashes = {fam:hashes[fam] for fam in hashes if hashes[fam] is not None}
+                            [ forest_add(str(fam),hashes[fam]) for fam in hashes]
+                            #try indexing here?
                             for fam in hashes:
-
-
-
-                                if hashes[fam] is not None:
-
-                                    lsh.insert(str(fam), hashes[fam])
-                                    forest.add(str(fam), hashes[fam])
-
-
-
-                                    if len(datasets[dataset_name]) < fam + 10:
-                                        datasets[dataset_name].resize((fam + chunk_size, len(hashes[fam].hashvalues.ravel())))
-                                    datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
-                                    h5hashes.flush()
-                                else:
-                                    pass
-                                    print('none in fam:'+str(fam))
-                                    #hashes_error_files.write(str(fam) + '\n')
-
+                                #lsh.insert(str(fam), hashes[fam])
+                                #forest_add(str(fam), hashes[fam])
+                                if len(datasets[dataset_name]) < fam + 10:
+                                    datasets[dataset_name].resize((fam + chunk_size, len(hashes[fam].hashvalues.ravel())))
+                                datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
                             if t.time() - save_start > 200:
-
+                                h5flush()
                                 print('saving')
                                 forest.index()
                                 if hashes[fam]:
                                     print(forest.query(hashes[fam],100))
                                 #print(lsh.query(hashes[fam]))
-                                with open(self.lshpath,'wb') as lsh_out:
-                                    lsh_out.write(pickle.dumps(lsh, -1))
+                                #with open(self.lshpath,'wb') as lsh_out:
+                                #    lsh_out.write(pickle.dumps(lsh, -1))
                                 with open(self.lshforestpath , 'wb') as forestout:
                                     forestout.write(pickle.dumps(forest, -1))
-
                                 save_start = t.time()
-
                                 print('save done at' + str(t.time() - global_time))
                             count += len(this_dataframe)
                     else:
                         print('wrap it up')
                         #wrap it up
-                        with open(self.lshpath,'wb') as lsh_out:
-                            lsh_out.write(pickle.dumps(lsh, -1))
+                        #with open(self.lshpath,'wb') as lsh_out:
+                        #    lsh_out.write(pickle.dumps(lsh, -1))
                         with open(self.lshforestpath , 'wb') as forestout:
                             forestout.write(pickle.dumps(forest, -1))
+                        h5flush()
 
                         print('DONE UPDATER' + str(i))
                         break
@@ -235,17 +216,15 @@ class LSHBuilder:
 
         functype_dict = {'worker': (self.worker, int(mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
                          'matrix_updater': (self.matrix_updater, 0, False)}
-
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
-
-        return self.hashes_path, self.lshforestpath , self.lshpath , self.mat_path
+        return self.hashes_path, self.lshforestpath , self.mat_path
 
 
     def matrix_updater(self, iprocess , q, retq, matq, l):
         save_start = t.time()
         chunk_size = 100
         print('hogmat saver init ' + str(iprocess))
-        self.mat_path = self.saving_path+ 'hogmat.h5'
+
         with h5py.File(self.mat_path , 'w', libver='latest') as h5hashes:
             h5hashes.create_dataset( 'matrows', (chunk_size, 0), maxshape=(None, None), dtype='int32')
             h5mat = h5hashes['matrows']

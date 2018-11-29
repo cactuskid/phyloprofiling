@@ -9,9 +9,11 @@ import itertools
 from bayes_opt import BayesianOptimization
 from utils import hashutils
 import numpy as np
+import random
 
 #set rand seed
 np.random.seed(0)
+random.seed(0)
 from tables import *
 
 def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist ):
@@ -26,7 +28,7 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
     with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
         lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=db, numperm = 256,
         treeweights= None , taxfilter = taxfilter, taxmask= tax_mask , lambdadict= lambdadict, start= startdict)
-        lsh, forest, hashes = lsh_builder.run_pipeline()
+        hashes, forest , mat = lsh_builder.run_pipeline()
         #hashes, forest, lshpath =lsh_builder.run_pipeline()
     print( 'done compiling')
     print('query DB and calculate error')
@@ -34,28 +36,32 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
     p = profiler.Profiler(lshforestpath = forest, hashes_h5=hashes, mat_path= None )
     print('done')
     print('loading validation')
+
+    folder = config_utils.datadir + 'GOData/'
     val = val = validation_semantic_similarity.Validation_semantic_similarity( folder + 'go-basic.obo' ,
         folder + 'goframe.pkl' , folder + 'oma-go.txt' , config_utils.omadir + 'OmaServer.h5' , folder + 'termcounts.pkl' )
+
     print( 'done')
     print('testing db')
-    if hoglist == None:
-        #sample random hogs
-        sample = list(np.random.randint(0, high=600000, size=5000, dtype='l'))
-        sample = [ hashutils.fam2hogid(s)  for s in sample]
-    scores = {}
 
-    for i,hog in enumerate(hog_list):
+    if not hoglist:
+        #sample random hogs
+        hoglist = list(np.random.randint(0, high=610000, size=5000, dtype='l'))
+        hoglist = [ hashutils.fam2hogid(s)  for s in sample]
+
+    scores = {}
+    for i,hog in enumerate(hoglist):
         print(hog)
         res = p.hog_query( hog_query= hog , k = 20)
         res = [ hashutils.fam2hogid(r) for r in res]
-        scores.update( { combo: {'query_num':i, 'hog_sem_sim': val.semantic_similarity_score(combo[0], combo[1]) }  for combo in itertools.combinations(res,2) } )
-
+        scores.update( { combo: {'query_num':i, 'hog_sem_sim': val.semantic_similarity_score(combo[0], combo[1])
+        , 'hog_resnik_sim' : p.hog_v_hog(combo[0], combo[1])
+        }  for combo in itertools.combinations(res,2) } )
     resdf = pd.DataFrame.from_dict( scores, orient = 'index')
     resdf.to_csv( config_utils.datadir + 'resdf_' +  parastr + '.csv')
     #take positive information values
     errorval = resdf[resdf.hog_sem_sim >0].hog_sem_sim.mean()
     print(errorval)
-
     print('done')
     print(errorval)
     return errorval

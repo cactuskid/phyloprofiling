@@ -6,32 +6,28 @@ import itertools
 import ujson as json
 import random
 from scipy.sparse import csr_matrix
-
-
+from tables import *
 from pyoma.browser import db
-
 import numpy as np
 import random
-
 np.random.seed(0)
 random.seed(0)
-
-
+import ete3
 from datasketch import WeightedMinHashGenerator
 from validation import validation_semantic_similarity
-from utils import hashutils, string_utils , config_utils
-
+from utils import hashutils,  config_utils , pyhamutils , files_utils
 from time import time
+
 class Profiler:
 
-    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None):
+
+    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, omapath = None):
         #use the lsh forest or the lsh
 
         """
         A profiler object allows the user to query the LSH with HOGs and get a list of result HOGs back
 
         """
-
         print('loading lsh')
         with open(lshforestpath, 'rb') as lshpickle:
             self.lshobj = pickle.loads(lshpickle.read())
@@ -41,11 +37,42 @@ class Profiler:
         print('DONE')
 
         if mat_path:
+
             ## TODO: change this to read hdf5
             #profile_matrix_file = open(profile_matrix_path, 'rb')
             #profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
             #self.profile_matrix = profile_matrix_unpickled.load()
             pass
+
+        if omapath:
+            #open oma db object
+            ## TODO: unfinished
+            #open up taxa Index
+            self.taxtree = ete3.Tree.phylotree('./mastertree.nwk')
+            self.taxaIndex = { n.name:i for i,n in enumerate(self.taxtree.traverse()) }
+
+            h5_oma = open_file(config_utils.omadir + 'OmaServer.h5', mode="r")
+            self.db_obj = db.Database(h5_oma)
+
+            #open up master tree
+            self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree_string )
+            self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=wmg )
+            self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
+
+
+            #setup function to generate a profile on the fly
+
+    def return_profile_OTF(self, fam):
+        ## TODO: unfinished
+        ortho_fam = self.READ_ORTHO(fam)
+        pyham_tree = self.HAM_PIPELINE([fam, ortho_fam])
+        losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
+        dupl = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in self.taxaIndex  ]
+        presence = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in self.taxaIndex  ]
+        return mat
+
+    def return_profile_mat_OTF(self , hogs):
+        return np.vstack([ self.return_profile_OTF(hog) for hog in hogs])
 
 
     def hog_query(self, hog_id=None, fam_id=None , k = 100 ):
@@ -129,6 +156,19 @@ class Profiler:
             for j, hog2 in enumerate(hahes):
                 hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
         return hashmat
+
+    @staticmethod
+    def hog_v_hog(hog1,hog2):
+        """
+        give two hogs returns jaccard distance.
+        :param hog1 , hog2: str hog id
+        :return: jaccard score
+        """
+        #generate an all v all jaccard distance matrix
+        hashes = self.pull_hashes([hog1,hog2])
+        hashes = list(hashes.values())
+
+        return hashes[0].jaccard(hashes[1])
 
     def allvall_nx(G,hashes,thresh =None):
         """
