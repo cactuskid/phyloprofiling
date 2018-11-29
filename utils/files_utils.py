@@ -67,10 +67,7 @@ def get_tree(oma=None, saveTree=True):
 
     orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
     print(orphans)
-
     tree = add_orphans(orphans_info2, tree, genomes)
-
-
     orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
     print(orphans)
     tree_string = tree.write(format=1)

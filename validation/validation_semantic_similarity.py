@@ -77,26 +77,32 @@ class Validation_semantic_similarity(object):
             for go1 in setgo1:
                 for go2 in setgo2:
                     keys.append(tuple(sorted((go1,go2))))
+            #infocontent of each term
+
+
+
             res = [ self.resniksimpreconf(tup) for tup in keys]
             res = dict( zip(keys,res))
+
             genedist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
+            normalizedgenedist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
+
+            maxinf =   {go:self.resniksimpreconf((go,go)) for go in setgo1.union(setgo2) }
             for i,gene1 in enumerate(go_terms_genes_1):
                 for j,gene2 in enumerate(go_terms_genes_2):
                     keyset =set([])
-
-                    for go1 in go_terms_genes_1[gene1]:
-                        for go2 in go_terms_genes_2[gene2]:
-                            keyset.add(tuple(sorted((go1,go2))))
-                    keyset = set(keyset)
-                    #keyset = set([  tuple(sorted((go1,go2))) for go1 in go_terms_genes_1[gene1] for  go1 in go_terms_genes_2[gene2]  ] )
-                    #print(keyset)
+                    #generate all possible keys
+                    [ keyset.add(tuple(sorted((go1,go2)))) for go1 in go_terms_genes_1[gene1] for go2 in go_terms_genes_2[gene2] ]
+                    #get all go terms for these two genes
+                    unique = set( go_terms_genes_1[gene1].union( go_terms_genes_2[gene2] ) )
                     if len(keyset)>0:
-                        #take max between gene annotations
-                        
-                        genedist[i,j] = np.amax( [ res[go] for go in keyset  ] )
+                        genedist[i,j] = np.amax( [ res[gopair]  for gopair in keyset  ] )
+                        normalizedgenedist[i,j] = genedist[i,j] / np.amax([ maxinf[go] for go in unique ])
+
                     else:
                         genedist[i,j] = 0
-            return genedist
+
+            return genedist, normalizedgenedist
         else:
             return -1
 
@@ -107,10 +113,14 @@ class Validation_semantic_similarity(object):
         :param result_go_terms: dict of genes: list of go terms
         :return: semantic similarity score
         """
-        dist_mat = self._compute_genes_distance_cheap(query_go_terms, result_go_terms)
-        score = self._mean_max_score_matrix(dist_mat)
+        dist_mat, normalized = self._compute_genes_distance_cheap(query_go_terms, result_go_terms)
 
-        return score
+        score = self._mean_max_score_matrix(dist_mat)
+        nscore = self._mean_max_score_matrix(normalized)
+        #print(score)
+        #only return nscore for now..
+
+        return  nscore, score
 
 
     def _compute_genes_distance(self, go_terms_genes_1, go_terms_genes_2):
@@ -166,15 +176,9 @@ class Validation_semantic_similarity(object):
         :param matrix: matrix
         :return: score: BMA of the matrix; returns -1 if matrix has 0 or 1 dimension
         """
-        #
-        # try:
         matrix_size = np.prod(matrix.shape)
         if not matrix_size:
             return -1
-        score = sum(matrix.max(0))+sum(matrix.max(1)) / matrix_size
-        # except:
-        #     score = -1
-
-        return score
+        score =  np.sum( matrix[np.where( matrix > 0 )] )  / matrix_size
 
         return score
