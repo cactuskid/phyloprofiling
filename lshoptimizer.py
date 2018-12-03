@@ -47,7 +47,7 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
     if not hoglist:
         #sample random hogs
         hoglist = list(np.random.randint(0, high=610000, size=5000, dtype='l'))
-        hoglist = [ hashutils.fam2hogid(s)  for s in sample]
+        hoglist = [ hashutils.fam2hogid(s)  for s in hoglist]
 
     scores = {}
     for i,hog in enumerate(hoglist):
@@ -57,6 +57,7 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
         scores.update( { combo: {'query_num':i, 'hog_sem_sim': val.semantic_similarity_score(combo[0], combo[1])
         , 'hog_resnik_sim' : p.hog_v_hog(combo[0], combo[1])
         }  for combo in itertools.combinations(res,2) } )
+    
     resdf = pd.DataFrame.from_dict( scores, orient = 'index')
     resdf.to_csv( config_utils.datadir + 'resdf_' +  parastr + '.csv')
     #take positive information values
