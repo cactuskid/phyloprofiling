@@ -16,7 +16,7 @@ np.random.seed(0)
 random.seed(0)
 from tables import *
 
-def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist ):
+def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist , compile = True):
     print('compiling' + db)
     #record param settings
     #compile lsh
@@ -24,40 +24,45 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
     #print(parastr)
     startdict={'presence':presenceweight, 'loss':lossweight, 'dup':dupweight}
     lambdadict={'presence':presence_lambda, 'loss':loss_lambda, 'dup':dupl_lamba}
+    if compile == True:
+        with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
+            lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=db, numperm = 256,
+            treeweights= None , taxfilter = taxfilter, taxmask= tax_mask , lambdadict= lambdadict, start= startdict)
+            hashes, forest , mat = lsh_builder.run_pipeline()
+            #hashes, forest, lshpath =lsh_builder.run_pipeline()
+        print( 'done compiling')
+    else:
+        saving_path = config_utils.datadir + db
+        hashes = saving_path + 'hashes.h5'
+        forest = saving_path + 'newlshforest.pkl'
+        mat = saving_path+ 'hogmat.h5'
 
-    with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
-        lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=db, numperm = 256,
-        treeweights= None , taxfilter = taxfilter, taxmask= tax_mask , lambdadict= lambdadict, start= startdict)
-        hashes, forest , mat = lsh_builder.run_pipeline()
-        #hashes, forest, lshpath =lsh_builder.run_pipeline()
-    print( 'done compiling')
     print('query DB and calculate error')
     print('load profiler')
     p = profiler.Profiler(lshforestpath = forest, hashes_h5=hashes, mat_path= None )
     print('done')
     print('loading validation')
-
     folder = config_utils.datadir + 'GOData/'
     val = val = validation_semantic_similarity.Validation_semantic_similarity( folder + 'go-basic.obo' ,
         folder + 'goframe.pkl' , folder + 'oma-go.txt' , config_utils.omadir + 'OmaServer.h5' , folder + 'termcounts.pkl' )
-
     print( 'done')
     print('testing db')
-
+    import pdb; pdb.set_trace()
     if not hoglist:
         #sample random hogs
         hoglist = list(np.random.randint(0, high=610000, size=5000, dtype='l'))
         hoglist = [ hashutils.fam2hogid(s)  for s in hoglist]
-
     scores = {}
     for i,hog in enumerate(hoglist):
         print(hog)
-        res = p.hog_query( hog_query= hog , k = 20)
-        res = [ hashutils.fam2hogid(r) for r in res]
-        scores.update( { combo: {'query_num':i, 'hog_sem_sim': val.semantic_similarity_score(combo[0], combo[1])
-        , 'hog_resnik_sim' : p.hog_v_hog(combo[0], combo[1])
+        res = p.hog_query( hog_id = hog , k = 20)
+        res = set([ hashutils.fam2hogid(r) for r in res]+[hog])
+        if i%100 ==0 :
+            print(res)
+        scores.update( { combo: {'query_num':i, 'hog_sem_sim': val.semantic_similarity_score(combo[0],combo[1])
+        , 'hog_resnik_sim' : p.hog_v_hog(combo[0],combo[1])
         }  for combo in itertools.combinations(res,2) } )
-    
+
     resdf = pd.DataFrame.from_dict( scores, orient = 'index')
     resdf.to_csv( config_utils.datadir + 'resdf_' +  parastr + '.csv')
     #take positive information values
@@ -117,6 +122,53 @@ if __name__ == '__main__':
                                                         'dupl_lamba':(-1,1)
                                                         })
         import pdb; pdb.set_trace()
+
+        #try some points
+        bo.probe(
+        params={'lossweight':  1,
+                'presenceweight': 0,
+                'dupweight':0,
+                'loss_lambda':0,
+                'presence_lambda':0,
+                'dupl_lamba':0
+                },
+        lazy=False,
+        )
+
+        bo.probe(
+        params={'lossweight':  0,
+                'presenceweight': 1,
+                'dupweight':0,
+                'loss_lambda':0,
+                'presence_lambda':0,
+                'dupl_lamba':0
+                },
+        lazy=False,
+        )
+
+        bo.probe(
+        params={'lossweight':  0,
+                'presenceweight': 0,
+                'dupweight':1,
+                'loss_lambda':0,
+                'presence_lambda':0,
+                'dupl_lamba':0
+                },
+        lazy=False,
+        )
+
+        #intuitively... seems like a good idea
+        bo.probe(
+        params={'lossweight':  1,
+                'presenceweight': .5,
+                'dupweight':0,
+                'loss_lambda':0,
+                'presence_lambda':0,
+                'dupl_lamba':0
+                },
+        lazy=False,
+        )
+
         bo.maximize(init_points=5, n_iter=15, kappa=2)
 
         #save the friggin result
