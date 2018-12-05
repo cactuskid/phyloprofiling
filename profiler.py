@@ -21,7 +21,7 @@ from time import time
 class Profiler:
 
 
-    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, omapath = None):
+    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, omapath = None , nsamples = 256):
         #use the lsh forest or the lsh
 
         """
@@ -34,6 +34,7 @@ class Profiler:
             print('indexing lsh')
             self.lshobj.index()
         self.hashes_h5 = h5py.File(hashes_h5, mode='r')
+        self.nsamples = nsamples
         print('DONE')
 
         if mat_path:
@@ -74,8 +75,7 @@ class Profiler:
     def return_profile_mat_OTF(self , hogs):
         return np.vstack([ self.return_profile_OTF(hog) for hog in hogs])
 
-
-    def hog_query(self, hog_id=None, fam_id=None , k = 100 ):
+    def hog_query(self, hog_id=None, fam_id=None , k = 100  ):
         """
         Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
         :param hog_id: query hog id
@@ -84,9 +84,23 @@ class Profiler:
         """
         if hog_id is not None:
             fam_id = hashutils.hogid2fam(hog_id)
-        query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  128 )
-
+        query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  self.nsamples )
         results = self.lshobj.query(query_hash, k)
+        return results
+    def hog_query_sorted(self, hog_id=None, fam_id=None , k = 100  ):
+        """
+        Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+        :param hog_id: query hog id
+        :param fam_id: query fam id
+        :return: list containing the results of the LSH for the given query
+        """
+        if hog_id is not None:
+            fam_id = hashutils.hogid2fam(hog_id)
+        query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  self.nsamples )
+        results = self.lshobj.query(query_hash, k)
+        hogdict = pull_hashes(results)
+        hogdict[fam_id]= query_hash
+        
         return results
 
     def hog_query_OMA(self,hog_id=None, fam_id=None , k = 100 ):
@@ -115,10 +129,7 @@ class Profiler:
         :param fam_id: query fam id
         :return: a dict containing the hash values of the hogs in hoglist
         """
-        return { hog:hashutils.fam2hash_hdf5(hog, self.hashes_h5 ) for hog in hoglist}
-
-    def pull_go(self,hoglist):
-        pass
+        return { hog: hashutils.fam2hash_hdf5( hashutils.hogid2fam(hog), self.hashes_h5 , nsamples=  self.nsamples) for hog in hoglist}
 
     def pull_matrows(self,fams):
         """
@@ -127,6 +138,8 @@ class Profiler:
         :return:fams sorted, sparse mat
         """
         return self.profile_matrix[np.asarray(fams),:]
+
+
     @staticmethod
     def sort_hashes(query_hash,hashes):
         """
@@ -157,8 +170,7 @@ class Profiler:
                 hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
         return hashmat
 
-    @staticmethod
-    def hog_v_hog(hog1,hog2):
+    def hog_v_hog(self, hog1,hog2):
         """
         give two hogs returns jaccard distance.
         :param hog1 , hog2: str hog id
@@ -167,7 +179,6 @@ class Profiler:
         #generate an all v all jaccard distance matrix
         hashes = self.pull_hashes([hog1,hog2])
         hashes = list(hashes.values())
-
         return hashes[0].jaccard(hashes[1])
 
     def allvall_nx(G,hashes,thresh =None):

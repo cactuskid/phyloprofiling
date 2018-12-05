@@ -72,7 +72,6 @@ class LSHBuilder:
         self.lshpath = self.saving_path + 'newlsh.pkl'
         self.lshforestpath = self.saving_path + 'newlshforest.pkl'
         self.mat_path = self.saving_path+ 'hogmat.h5'
-
         self.columns = len(self.taxaIndex)
         self.rows = len(self.h5OMA.root.OrthoXML.Index)
 
@@ -139,12 +138,8 @@ class LSHBuilder:
         global_time = t.time()
         chunk_size = 100
         count = 0
-        threshold = 0.98
-
-        #lsh = MinHashLSH( threshold=threshold, num_perm=self.numperm)
         forest = MinHashLSHForest(num_perm=self.numperm)
 
-        #create datasets
         forest_add = forest.add
         if self.tax_filter is None:
             taxstr = 'NoFilter'
@@ -155,8 +150,6 @@ class LSHBuilder:
         dataset_name = self.saving_name+'_'+taxstr
         self.errorfile = self.saving_path + 'errors.txt'
         with open(self.errorfile, 'w') as hashes_error_files:
-
-
             with h5py.File(self.hashes_path, 'w', libver='latest') as h5hashes:
                 datasets = {}
                 if dataset_name not in h5hashes.keys():
@@ -173,27 +166,18 @@ class LSHBuilder:
                     if this_dataframe is not None:
                         if not this_dataframe.empty:
                             hashes = this_dataframe['hash'].to_dict()
-                            print(str(t.time() - global_time)+'seconds elapsed')
+                            print(str(t.time() - global_time)+' seconds ')
                             print(str(this_dataframe.Fam.max())+ 'fam num')
                             print(str(count) + ' done')
                             hashes = {fam:hashes[fam] for fam in hashes if hashes[fam] is not None}
                             [ forest_add(str(fam),hashes[fam]) for fam in hashes]
-                            #try indexing here?
                             for fam in hashes:
-                                #lsh.insert(str(fam), hashes[fam])
-                                #forest_add(str(fam), hashes[fam])
                                 if len(datasets[dataset_name]) < fam + 10:
                                     datasets[dataset_name].resize((fam + chunk_size, len(hashes[fam].hashvalues.ravel())))
                                 datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
                             if t.time() - save_start > 200:
                                 h5flush()
                                 print('saving')
-                                forest.index()
-                                if hashes[fam]:
-                                    print(forest.query(hashes[fam],100))
-                                #print(lsh.query(hashes[fam]))
-                                #with open(self.lshpath,'wb') as lsh_out:
-                                #    lsh_out.write(pickle.dumps(lsh, -1))
                                 with open(self.lshforestpath , 'wb') as forestout:
                                     forestout.write(pickle.dumps(forest, -1))
                                 save_start = t.time()
@@ -201,30 +185,16 @@ class LSHBuilder:
                             count += len(this_dataframe)
                     else:
                         print('wrap it up')
-                        #wrap it up
-                        #with open(self.lshpath,'wb') as lsh_out:
-                        #    lsh_out.write(pickle.dumps(lsh, -1))
                         with open(self.lshforestpath , 'wb') as forestout:
                             forestout.write(pickle.dumps(forest, -1))
                         h5flush()
-
                         print('DONE UPDATER' + str(i))
                         break
-
-    def run_pipeline(self):
-        ## TODO: return files saved
-
-        functype_dict = {'worker': (self.worker, int(mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
-                         'matrix_updater': (self.matrix_updater, 0, False)}
-        self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
-        return self.hashes_path, self.lshforestpath , self.mat_path
-
 
     def matrix_updater(self, iprocess , q, retq, matq, l):
         save_start = t.time()
         chunk_size = 100
         print('hogmat saver init ' + str(iprocess))
-
         with h5py.File(self.mat_path , 'w', libver='latest') as h5hashes:
             h5hashes.create_dataset( 'matrows', (chunk_size, 0), maxshape=(None, None), dtype='int32')
             h5mat = h5hashes['matrows']
@@ -237,8 +207,8 @@ class LSHBuilder:
                         if row is not None:
                             sparse_row = row['rows']
                             fam = int(row['Fam'])
-                            h5mat[fam, :] = sparse_row.todense().ravel
-                        if t.time() - save_start > 500 or i % 1000 == 0:
+                            h5mat[fam, :] = sparse_row.ravel()
+                        if t.time() - save_start > 500 or i % 100 == 0:
                             h5mat.flush()
                             save_start = t.time()
                 else:
@@ -246,6 +216,11 @@ class LSHBuilder:
             h5mat.flush()
         print('DONE MAT UPDATER' + str(i))
 
+    def run_pipeline(self):
+        functype_dict = {'worker': (self.worker, int(mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
+                         'matrix_updater': (self.matrix_updater, 0, False)}
+        self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
+        return self.hashes_path, self.lshforestpath , self.mat_path
 
     @staticmethod
     def mp_with_timeout(functypes, data_generator):
