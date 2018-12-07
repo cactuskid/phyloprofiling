@@ -217,7 +217,7 @@ class LSHBuilder:
         print('DONE MAT UPDATER' + str(i))
 
     def run_pipeline(self):
-        functype_dict = {'worker': (self.worker, int(mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
+        functype_dict = {'worker': (self.worker, int(2*mp.cpu_count()/3), True), 'updater': (self.saver, 1, False),
                          'matrix_updater': (self.matrix_updater, 0, False)}
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
         return self.hashes_path, self.lshforestpath , self.mat_path

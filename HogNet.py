@@ -33,12 +33,10 @@ def ID2HOG(ID):
         HOG = entry[4]
     except:
         return None
-
     if len(HOG)>0:
         return HOG
     else:
         return None
-
 
 for file in networks:
     ##species   uniprot_ac|uniprot_id   string_id   identity   bit_score
@@ -53,8 +51,6 @@ for file in networks:
 
     for data in experiments.split():
         nxdf['experimental']=nxdf['experimental'].add( nxdf[data.strip()])
-
-
 
     nxdf['uni1'] = nxdf.merge( unidf , how='left', left_on='prot1cut' , right_on='string_id' )['uniprot_code']
     nxdf['uni2'] = nxdf.merge( unidf , how='left', left_on='prot2cut' , right_on='string_id' )['uniprot_code']
@@ -91,8 +87,6 @@ for file in networks:
     nxdf['HOG1'][nxdf.HOG1.isnull()] =nxdf.prot1cut[nxdf.HOG1.isnull()].map(hogmapHAILMARRY)
 
     nxdf['HOG2'][nxdf.HOG2.isnull()] =nxdf.prot2cut[nxdf.HOG2.isnull()].map(hogmapHAILMARRY)
-
-
 
     count_nan = len(nxdf) - nxdf.count()
     print(count_nan)
