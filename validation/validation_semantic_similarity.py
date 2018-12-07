@@ -1,7 +1,7 @@
 import numpy as np
 
-import sys
-sys.path.append('../')
+#import sys
+#sys.path.append('../')
 
 from tables import *
 from pyoma.browser import db
@@ -55,7 +55,27 @@ class Validation_semantic_similarity(object):
 
         go_terms_1 = goatools_utils.get_go_terms_gaf(hog_id_1, self.db_obj , self.gaf)
         go_terms_2 = goatools_utils.get_go_terms_gaf(hog_id_2, self.db_obj , self.gaf)
+
         score = self._compute_score(go_terms_1, go_terms_2)
+        return score
+
+
+    def semantic_similarity_score_mp(self, hog_id_1, hog_id_2 , retq,  lock):
+        """
+        Runs semantic similarity analysis from 2 hog ids
+        :param hog_id_1: first hog id
+        :param hog_id_2: second hog id
+        :return: semantic similarity score between the two hog ids
+        """
+
+        lock.acquire()
+        go_terms_1 = goatools_utils.get_go_terms_gaf(hog_id_1, self.db_obj , self.gaf)
+        go_terms_2 = goatools_utils.get_go_terms_gaf(hog_id_2, self.db_obj , self.gaf)
+        lock.release()
+
+        score = self._compute_score(go_terms_1, go_terms_2)
+        print(score)
+        retq.put( ((hog_id_1, hog_id_2) , score) )
         return score
 
 
@@ -66,45 +86,40 @@ class Validation_semantic_similarity(object):
         :param go_terms_genes_2: dictionary of genes
         :return: matrix of distance between genes of hogs
         """
-        if type(go_terms_genes_1) is dict and type(go_terms_genes_2) is dict:
-
+        if type(go_terms_genes_1) is dict and type(go_terms_genes_2) is dict and len(go_terms_genes_1)>0 and len(go_terms_genes_2):
             gos1 = list(go_terms_genes_1.values())
             gos2 = list( go_terms_genes_2.values())
-
-            setgo1 = set(gos1[0]).union( *gos1[1:] )
-            setgo2 = set(gos2[0]).union( *gos2[1:] )
-            keys=[]
-            for go1 in setgo1:
-                for go2 in setgo2:
-                    keys.append(tuple(sorted((go1,go2))))
-            #infocontent of each term
-
-
-
-            res = [ self.resniksimpreconf(tup) for tup in keys]
-            res = dict( zip(keys,res))
-
-            genedist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
-            normalizedgenedist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
-
-            maxinf =   {go:self.resniksimpreconf((go,go)) for go in setgo1.union(setgo2) }
-            for i,gene1 in enumerate(go_terms_genes_1):
-                for j,gene2 in enumerate(go_terms_genes_2):
-                    keyset =set([])
-                    #generate all possible keys
-                    [ keyset.add(tuple(sorted((go1,go2)))) for go1 in go_terms_genes_1[gene1] for go2 in go_terms_genes_2[gene2] ]
-                    #get all go terms for these two genes
-                    unique = set( go_terms_genes_1[gene1].union( go_terms_genes_2[gene2] ) )
-                    if len(keyset)>0:
-                        genedist[i,j] = np.amax( [ res[gopair]  for gopair in keyset  ] )
-                        normalizedgenedist[i,j] = genedist[i,j] / np.amax([ maxinf[go] for go in unique ])
-
-                    else:
-                        genedist[i,j] = 0
-
-            return genedist, normalizedgenedist
+            if len(gos2)>0 and len(gos1)>0:
+                try:
+                    setgo1 = set(gos1[0]).union( *gos1 )
+                    setgo2 = set(gos2[0]).union( *gos2 )
+                    keys=[]
+                    for go1 in setgo1:
+                        for go2 in setgo2:
+                            keys.append(tuple(sorted((go1,go2))))
+                    #infocontent of each term
+                    res = [ self.resniksimpreconf(tup) for tup in keys]
+                    res = dict( zip(keys,res))
+                    genedist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
+                    normalizedgenedist = np.zeros((len(go_terms_genes_1), len(go_terms_genes_2)))
+                    maxinf =   {go:self.resniksimpreconf((go,go)) for go in setgo1.union(setgo2) }
+                    for i,gene1 in enumerate(go_terms_genes_1):
+                        for j,gene2 in enumerate(go_terms_genes_2):
+                            keyset =set([])
+                            #generate all possible keys
+                            [ keyset.add(tuple(sorted((go1,go2)))) for go1 in go_terms_genes_1[gene1] for go2 in go_terms_genes_2[gene2] ]
+                            #get all go terms for these two genes
+                            unique = set( go_terms_genes_1[gene1].union( go_terms_genes_2[gene2] ) )
+                            if len(keyset)>0:
+                                genedist[i,j] = np.amax( [ res[gopair]  for gopair in keyset  ] )
+                                normalizedgenedist[i,j] = genedist[i,j] / np.amax([ maxinf[go] for go in unique ])
+                            else:
+                                genedist[i,j] = 0
+                    return genedist, normalizedgenedist
+                except:
+                    return -1 , -1
         else:
-            return -1
+            return -1 , -1
 
     def _compute_score(self, query_go_terms, result_go_terms):
         """
@@ -113,7 +128,10 @@ class Validation_semantic_similarity(object):
         :param result_go_terms: dict of genes: list of go terms
         :return: semantic similarity score
         """
+
         dist_mat, normalized = self._compute_genes_distance_cheap(query_go_terms, result_go_terms)
+        if type(dist_mat) is int and dist_mat ==-1:
+            return -1 , -1
 
         score = self._mean_max_score_matrix(dist_mat)
         nscore = self._mean_max_score_matrix(normalized)

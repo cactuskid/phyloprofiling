@@ -10,13 +10,15 @@ from bayes_opt import BayesianOptimization
 from utils import hashutils
 import numpy as np
 import random
+import multiprocessing as mp
+import time
 
 #set rand seed
 np.random.seed(0)
 random.seed(0)
 from tables import *
 
-def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist , compile = True):
+def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist , val = None, compile = True):
     print('compiling' + db)
     #record param settings
     #compile lsh
@@ -24,6 +26,9 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
     #print(parastr)
     startdict={'presence':presenceweight, 'loss':lossweight, 'dup':dupweight}
     lambdadict={'presence':presence_lambda, 'loss':loss_lambda, 'dup':dupl_lamba}
+
+
+
     if compile == True:
         with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
             lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=db, numperm = 256,
@@ -42,26 +47,63 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
     p = profiler.Profiler(lshforestpath = forest, hashes_h5=hashes, mat_path= None )
     print('done')
     print('loading validation')
+
     folder = config_utils.datadir + 'GOData/'
-    val = val = validation_semantic_similarity.Validation_semantic_similarity( folder + 'go-basic.obo' ,
-        folder + 'goframe.pkl' , folder + 'oma-go.txt' , config_utils.omadir + 'OmaServer.h5' , folder + 'termcounts.pkl' )
+    if val is None:
+        val = validation_semantic_similarity.Validation_semantic_similarity( folder + 'go-basic.obo' ,
+            folder + 'goframe.pkl' , folder + 'oma-go.txt' , config_utils.omadir + 'OmaServer.h5' , folder + 'termcounts.pkl' )
     print( 'done')
     print('testing db')
-    import pdb; pdb.set_trace()
+
     if not hoglist:
         #sample random hogs
         hoglist = list(np.random.randint(0, high=610000, size=5000, dtype='l'))
         hoglist = [ hashutils.fam2hogid(s)  for s in hoglist]
+
     scores = {}
+    retq = mp.Queue()
+    lock = mp.Lock()
+    timelimit = 100
+
     for i,hog in enumerate(hoglist):
         print(hog)
         res = p.hog_query( hog_id = hog , k = 20)
         res = set([ hashutils.fam2hogid(r) for r in res]+[hog])
-        if i%100 ==0 :
-            print(res)
-        scores.update( { combo: {'query_num':i, 'hog_sem_sim': val.semantic_similarity_score(combo[0],combo[1])
-        , 'hog_resnik_sim' : p.hog_v_hog(combo[0],combo[1])
-        }  for combo in itertools.combinations(res,2) } )
+        #write loop for sem sim check with timeout here
+        processes = {}
+        for combo in itertools.combinations(res,2):
+            processes[combo] = {'time':time.time() , 'process': mp.Process( target = val.semantic_similarity_score_mp , args = (combo[0],combo[1],retq , lock)  ) }
+            processes[combo]['process'].start()
+            while len(processes)> mp.cpu_count()/4:
+                time.sleep(.01)
+                for c in processes:
+                    if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
+                        #print( c[0] +':' + c[1] + ' done')
+                        processes[c]['process'].terminate()
+                        del(processes[c])
+                        break
+
+        while len(processes)> 0:
+            time.sleep(.01)
+            for c in processes:
+                if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
+                    processes[c]['process'].terminate()
+                    if rocesses[c]['time']>timelimit:
+                        print('timeout')
+                    del(processes[c])
+                    break
+        hogsemsim ={}
+        while retq.empty() == False:
+            combo,semsim = retq.get()
+            print(combo)
+            print(semsim)
+
+            hogsemsim[combo]=semsim
+
+        scores.update( { combo: {'query_num':i, 'hog_sem_sim': hogsemsim[combo]
+        , 'hog_jaccard_sim' : p.hog_v_hog(combo[0],combo[1])
+        }  for combo in itertools.combinations(res,2)  if combo in hogsemsim } )
+        print(scores)
 
     resdf = pd.DataFrame.from_dict( scores, orient = 'index')
     resdf.to_csv( config_utils.datadir + 'resdf_' +  parastr + '.csv')

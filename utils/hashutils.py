@@ -78,18 +78,20 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
 
 
     indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
-    hog_matrix = lil_matrix((1, 3*len(taxaIndex)))
+    hog_matrix_weighted = np.zeros((1, 3*len(taxaIndex)))
+    hog_matrix_raw = np.zeros((1, 3*len(taxaIndex)))
     hogsum = 0
 
     for i,event in enumerate(indices):
         if len(indices[event])>0:
             taxindex = np.asarray(indices[event])
             hogindex = np.asarray(indices[event])+i*len(taxaIndex)
-            hog_matrix[:,hogindex] = treeweights[event][taxindex].ravel()
+            hog_matrix_weighted[:,hogindex] = treeweights[event][taxindex].ravel()
+            hog_matrix_raw[:,hogindex] = 1
             hogsum+=np.sum(treeweights[event][taxindex])
     if hogsum > 0:
-        weighted_hash = wmg.minhash(list(hog_matrix.todense().flat))
-        return  hog_matrix,weighted_hash
+        weighted_hash = wmg.minhash(list(hog_matrix_weighted.flat))
+        return  hog_matrix_raw , weighted_hash
     else:
         return None, None
 
