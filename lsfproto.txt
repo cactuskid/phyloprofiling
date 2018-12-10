@@ -1,0 +1,9 @@
+
+#!/bin/bash
+#BSUB -L /bin/bash
+
+#BSUB -o BOout[run].txt -o:	standard	output
+#BSUB -e BOerror[run].txt
+
+pyenv activate myenv
+python lshoptimizer.py [params]
