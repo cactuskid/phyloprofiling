@@ -31,12 +31,14 @@ class LSHBuilder:
     The input can be an OMA HDF5 for now...
 
     """
-    def __init__(self, h5_oma, saving_folder , saving_name=None , masterTree = None,  numperm = 128,  treeweights= None , taxfilter = None, taxmask= None , lambdadict= None, start= None):
+    def __init__(self, h5_oma, saving_folder , saving_name=None , masterTree = None,  numperm = 128,  treeweights= None , taxfilter = None, taxmask= None , lambdadict= None, start= None, verbose = False):
         self.h5OMA = h5_oma
         self.db_obj = db.Database(h5_oma)
         self.oma_id_obj = db.OmaIdMapper(self.db_obj)
         self.tax_filter = taxfilter
         self.tax_mask = taxmask
+        self.verbose = verbose
+
         if masterTree is None:
             self.tree_string, self.tree_ete3 = files_utils.get_tree(self.h5OMA)
         else:
@@ -103,8 +105,6 @@ class LSHBuilder:
         print('last dataframe sent')
         families = {}
 
-
-
     def universe_saver(self, i, q, retq, matq,univerq, l):
         #only useful to save all prots within a taxonomic range as db is being compiled
         allowed = set( [n.name for n in self.tree_ete3.get_leaves()] )
@@ -119,7 +119,8 @@ class LSHBuilder:
                     break
 
     def worker(self, i, q, retq, matq, l):
-        print('worker init ' + str(i))
+        if self.verbose == True:
+            print('worker init ' + str(i))
         while True:
             df = q.get()
             if df is not None :
@@ -128,7 +129,8 @@ class LSHBuilder:
                 retq.put(df[['Fam', 'hash']])
                 #matq.put(df[['Fam', 'rows']])
             else:
-                print('Worker done' + str(i))
+                if self.verbose == True:
+                    print('Worker done' + str(i))
                 break
 
 
@@ -153,12 +155,14 @@ class LSHBuilder:
             with h5py.File(self.hashes_path, 'w', libver='latest') as h5hashes:
                 datasets = {}
                 if dataset_name not in h5hashes.keys():
-                    print('creating dataset')
-                    print(dataset_name)
-                    print('filtered at taxonomic level:'+taxstr)
+                    if self.verbose == True:
+                        print('creating dataset')
+                        print(dataset_name)
+                        print('filtered at taxonomic level:'+taxstr)
                     h5hashes.create_dataset(dataset_name+'_'+taxstr, (chunk_size, 0), maxshape=(None, None), dtype='int32')
                     datasets[dataset_name] = h5hashes[dataset_name+'_'+taxstr]
-                    print(datasets)
+                    if self.verbose == True:
+                        print(datasets)
                     h5flush = h5hashes.flush
                 print('saver init ' + str(i))
                 while True:
@@ -166,9 +170,10 @@ class LSHBuilder:
                     if this_dataframe is not None:
                         if not this_dataframe.empty:
                             hashes = this_dataframe['hash'].to_dict()
-                            print(str(t.time() - global_time)+' seconds ')
-                            print(str(this_dataframe.Fam.max())+ 'fam num')
-                            print(str(count) + ' done')
+                            if self.verbose == True:
+                                print(str(t.time() - global_time)+' seconds ')
+                                print(str(this_dataframe.Fam.max())+ 'fam num')
+                                print(str(count) + ' done')
                             hashes = {fam:hashes[fam] for fam in hashes if hashes[fam] is not None}
                             [ forest_add(str(fam),hashes[fam]) for fam in hashes]
                             for fam in hashes:
@@ -177,18 +182,24 @@ class LSHBuilder:
                                 datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
                             if t.time() - save_start > 200:
                                 h5flush()
-                                print('saving')
+
                                 with open(self.lshforestpath , 'wb') as forestout:
                                     forestout.write(pickle.dumps(forest, -1))
-                                save_start = t.time()
-                                print('save done at' + str(t.time() - global_time))
+                                if self.verbose == True:
+                                    save_start = t.time()
+                                    print('save done at' + str(t.time() - global_time))
+
                             count += len(this_dataframe)
                     else:
-                        print('wrap it up')
+                        if self.verbose == True:
+                            print('wrap it up')
+
                         with open(self.lshforestpath , 'wb') as forestout:
                             forestout.write(pickle.dumps(forest, -1))
                         h5flush()
-                        print('DONE UPDATER' + str(i))
+
+                        if self.verbose == True:
+                            print('DONE SAVER' + str(i))
                         break
 
     def matrix_updater(self, iprocess , q, retq, matq, l):
@@ -250,12 +261,10 @@ class LSHBuilder:
         for data in data_generator:
             q.put(data)
         print('done spooling data')
-
         for key in work_processes:
             for i in range(2):
                 for _ in work_processes[key]:
                     q.put(None)
-
         print('joining processes')
         for key in work_processes:
             worker_function, number_workers , joinval = functypes[key]
@@ -275,7 +284,6 @@ class LSHBuilder:
             if joinval == False:
                 for process in work_processes[key]:
                     process.join()
-
         gc.collect()
         print('DONE!')
 
@@ -304,7 +312,6 @@ if __name__ == '__main__':
         print('compiling' + dbname)
         taxmask = dbdict[dbname]['taxmask']
         taxfilter = dbdict[dbname]['taxfilter']
-
         with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
             lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=dbname, numperm = 256 ,
             treeweights= None , taxfilter = taxfilter, taxmask=taxmask , lambdadict= lambdadict, start= startdict)

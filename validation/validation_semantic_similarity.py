@@ -14,7 +14,6 @@ import time
 from utils import config_utils
 import h5py
 from functools import partial
-
 import sys
 sys.setrecursionlimit(500000)
 
@@ -52,7 +51,6 @@ class Validation_semantic_similarity(object):
         :return: semantic similarity score between the two hog ids
         """
 
-
         go_terms_1 = goatools_utils.get_go_terms_gaf(hog_id_1, self.db_obj , self.gaf)
         go_terms_2 = goatools_utils.get_go_terms_gaf(hog_id_2, self.db_obj , self.gaf)
 
@@ -72,10 +70,9 @@ class Validation_semantic_similarity(object):
         go_terms_1 = goatools_utils.get_go_terms_gaf(hog_id_1, self.db_obj , self.gaf)
         go_terms_2 = goatools_utils.get_go_terms_gaf(hog_id_2, self.db_obj , self.gaf)
         lock.release()
-
         score = self._compute_score(go_terms_1, go_terms_2)
-        print(score)
         retq.put( ((hog_id_1, hog_id_2) , score) )
+
         return score
 
 

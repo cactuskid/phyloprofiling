@@ -13,12 +13,49 @@ import random
 import multiprocessing as mp
 import time
 
+from tables import *
+import argparse, sys
+import os
+
+from bayes_opt.observer import JSONLogger
+from bayes_opt.event import Events
+from bayes_opt.util import load_logs
+import gc
+
+import glob
 #set rand seed
 np.random.seed(0)
 random.seed(0)
-from tables import *
 
-def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist , val = None, compile = True):
+
+parser=argparse.ArgumentParser()
+parser.add_argument('--lw', help='loss weight',type = float)
+parser.add_argument('--pw', help='presence weight',type = float)
+parser.add_argument('--dw', help='duplication weight' , type = float)
+
+parser.add_argument('--ll', help='loss lambda', type = float)
+parser.add_argument('--pl', help='presence lambda' , type = float)
+parser.add_argument('--dl', help='duplication lambda', type = float )
+
+parser.add_argument('--db', help='DB type' , type=str)
+parser.add_argument('--dir', help='save dir')
+
+args=parser.parse_args()
+
+
+dbdict = {
+'plants': { 'taxfilter': None , 'taxmask': 33090 },
+'all': { 'taxfilter': None , 'taxmask': None },
+'archaea':{ 'taxfilter': None , 'taxmask': 2157 },
+'bacteria':{ 'taxfilter': None , 'taxmask': 2 },
+'eukarya':{ 'taxfilter': None , 'taxmask': 2759 },
+'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None },
+'fungi':{ 'taxfilter': None , 'taxmask': 4751 },
+'metazoa':{ 'taxfilter': None , 'taxmask': 33208 },
+}
+
+
+def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist , val = None, compile = True , dir = None):
     print('compiling' + db)
     #record param settings
     #compile lsh
@@ -26,47 +63,46 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
     #print(parastr)
     startdict={'presence':presenceweight, 'loss':lossweight, 'dup':dupweight}
     lambdadict={'presence':presence_lambda, 'loss':loss_lambda, 'dup':dupl_lamba}
-
-
-
     if compile == True:
         with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
-            lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=db, numperm = 256,
+            lsh_builder = LSHBuilder(h5_oma, saving_folder= dir , saving_name=db, numperm = 512,
             treeweights= None , taxfilter = taxfilter, taxmask= tax_mask , lambdadict= lambdadict, start= startdict)
             hashes, forest , mat = lsh_builder.run_pipeline()
             #hashes, forest, lshpath =lsh_builder.run_pipeline()
         print( 'done compiling')
     else:
-        saving_path = config_utils.datadir + db
-        hashes = saving_path + 'hashes.h5'
-        forest = saving_path + 'newlshforest.pkl'
-        mat = saving_path+ 'hogmat.h5'
-
+        hashes = dir + 'hashes.h5'
+        forest = dir + 'newlshforest.pkl'
+        mat = dir + 'hogmat.h5'
     print('query DB and calculate error')
+
     print('load profiler')
-    p = profiler.Profiler(lshforestpath = forest, hashes_h5=hashes, mat_path= None )
+    p = profiler.Profiler(lshforestpath = forest, hashes_h5=hashes, mat_path= None , nsamples = 512)
+
     print('done')
     print('loading validation')
-
-    folder = config_utils.datadir + 'GOData/'
     if val is None:
-        val = validation_semantic_similarity.Validation_semantic_similarity( folder + 'go-basic.obo' ,
-            folder + 'goframe.pkl' , folder + 'oma-go.txt' , config_utils.omadir + 'OmaServer.h5' , folder + 'termcounts.pkl' )
+        if not os.path.isfile(config.datadir + 'val.pkl'):
+            folder = config_utils.datadir + 'GOData/'
+            val = validation_semantic_similarity.Validation_semantic_similarity( folder + 'go-basic.obo' ,
+                folder + 'goframe.pkl' , folder + 'oma-go.txt' , config_utils.omadir + 'OmaServer.h5' , folder + 'termcounts.pkl' )
+            with open(config.datadir + 'val.pkl' , 'wb')as valout:
+                valout.write(pickle.dumps(val))
+        else:
+            with open(config.datadir + 'val.pkl' , 'rb')as valout:
+                val = pickle.loadds(valout.read())
     print( 'done')
-    print('testing db')
 
+    print('testing db')
     if not hoglist:
         #sample random hogs
-        hoglist = list(np.random.randint(0, high=610000, size=5000, dtype='l'))
+        hoglist = list(np.random.randint(0, high=610000, size=200, dtype='l'))
         hoglist = [ hashutils.fam2hogid(s)  for s in hoglist]
-
     scores = {}
     retq = mp.Queue()
     lock = mp.Lock()
     timelimit = 100
-
     for i,hog in enumerate(hoglist):
-        print(hog)
         res = p.hog_query( hog_id = hog , k = 20)
         res = set([ hashutils.fam2hogid(r) for r in res]+[hog])
         #write loop for sem sim check with timeout here
@@ -80,9 +116,9 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
                     if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
                         #print( c[0] +':' + c[1] + ' done')
                         processes[c]['process'].terminate()
+                        gc.collect()
                         del(processes[c])
                         break
-
         while len(processes)> 0:
             time.sleep(.01)
             for c in processes:
@@ -90,143 +126,93 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
                     processes[c]['process'].terminate()
                     if rocesses[c]['time']>timelimit:
                         print('timeout')
+                    gc.collect()
                     del(processes[c])
+
                     break
-        hogsemsim ={}
+
+        hogsemsim = {}
         while retq.empty() == False:
             combo,semsim = retq.get()
             print(combo)
             print(semsim)
-
             hogsemsim[combo]=semsim
 
-        scores.update( { combo: {'query_num':i, 'hog_sem_sim': hogsemsim[combo]
+        scores.update( { combo: {'query_num':i, 'hog_sem_sim_normalize': hogsemsim[combo][0] , 'hog_sem_sim': hogsemsim[combo][1]
         , 'hog_jaccard_sim' : p.hog_v_hog(combo[0],combo[1])
         }  for combo in itertools.combinations(res,2)  if combo in hogsemsim } )
         print(scores)
-
     resdf = pd.DataFrame.from_dict( scores, orient = 'index')
-    resdf.to_csv( config_utils.datadir + 'resdf_' +  parastr + '.csv')
+    resdf.to_csv( dir + 'resdf' + '.csv')
     #take positive information values
-    errorval = resdf[resdf.hog_sem_sim >0].hog_sem_sim.mean()
-    print(errorval)
+    semsim_mean = resdf[resdf.hog_sem_sim >0].hog_sem_sim_normalize.mean()
+    print(semsim_mean)
     print('done')
-    print(errorval)
-    return errorval
+    return semsim_mean
 
-
-class Observer_saver():
-    def __init__(self, savepath):
-        pass
-    def update(self, event):
-
-        if event is Events.INIT_DONE:
-            print("Initialization completed")
-        elif event is Events.FIT_STEP_DONE:
-            print("Optimization step finished, current max: ", instance.res['max'])
-        elif event is Events.FIT_DONE:
-            print("Optimization finished, maximum value at: ", instance.res['max'])
 
 if __name__ == '__main__':
+    print(sys.argv)
+    args = vars(parser.parse_args(sys.argv[1:]))
 
-    dbdict = {
-    #'plants': { 'taxfilter': None , 'taxmask': 33090 }
-    'all': { 'taxfilter': None , 'taxmask': None }
-    #'archaea':{ 'taxfilter': None , 'taxmask': 2157 }
-    #'bacteria':{ 'taxfilter': None , 'taxmask': 2 }
-    #'eukarya':{ 'taxfilter': None , 'taxmask': 2759 }
-    #'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None }
-    #'fungi':{ 'taxfilter': None , 'taxmask': 4751 }
-    #'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
-    }
+    db = args['db']
+    print(args)
+    savedir = config_utils.datadir+args['dir']
+    if not os.path.exists(savedir):
+        os.makedirs(savedir)
+    error = functools.partial( profiling_error , db=db , taxfilter = dbdict[db]['taxfilter'], tax_mask = dbdict[db]['taxmask'],  hoglist =None , dir = args['dir'])
+    #get error for the first point with all weights at 1
+    bo = BayesianOptimization( f = error ,  pbounds = {'lossweight': (0, 1),
+                                                    'presenceweight': (0, 1),
+                                                    'dupweight':(0,1),
+                                                    'loss_lambda':(-1,1),
+                                                    'presence_lambda':(-1,1),
+                                                    'dupl_lamba':(-1,1)
+                                                    } ,
+                                verbose = 2,
+                                random_state = 0,
+                                                )
 
-    for db in dbdict:
-        print(db)
-        #compile validation HOG list
+    if len(glob.glob("./logs"+db+".json") )>0:
+        load_logs(bo, logs=["./logs"+db+".json"])
+    logger = JSONLogger(path="./logs"+db+".json")
+    bo.subscribe(Events.OPTMIZATION_STEP, logger)
+    try:
+        if args['lw'] and args['pw'] and args['dw']:
+            #try specific points
+            lw = args['lw']
+            pw = args['pw']
+            dw = args['dw']
+            ll = 0
+            pl = 0
+            dl = 0
 
-        num_rounds = 3000
-        random_state = 2016
-        num_iter = 25
-        init_points = 5
+            try:
+                if args['ll'] and args['pl'] and args['dl']:
+                    ll = args['ll']
+                    pl = args['pl']
+                    dl = args['dl']
+            except:
+                pass
 
-        observer = Observer_saver('./')
+            bo.probe(
+            params={'lossweight':  lw,
+                    'presenceweight': pw,
+                    'dupweight': dw,
+                    'loss_lambda':ll,
+                    'presence_lambda':pl,
+                    'dupl_lamba':dl
+                    },
+            lazy=True,
+            )
+    except:
+        pass
 
-        #give the validation hog list and taxfilter and taxmask parameters
+    #else use loaded points to try new interesting ones
+    bo.maximize(init_points=2, n_iter=15, kappa=2)
 
-        error = functools.partial( profiling_error , db=db , taxfilter = dbdict[db]['taxfilter'], tax_mask = dbdict[db]['taxmask'],  hoglist =None)
-
-        #get error for the first point with all weights at 1
-        bo = BayesianOptimization( error ,  {'lossweight': (0, 1),
-                                                        'presenceweight': (0, 1),
-                                                        'dupweight':(0,1),
-                                                        'loss_lambda':(-1,1),
-                                                        'presence_lambda':(-1,1),
-                                                        'dupl_lamba':(-1,1)
-                                                        })
-        import pdb; pdb.set_trace()
-
-        #try some points
-        bo.probe(
-        params={'lossweight':  1,
-                'presenceweight': 0,
-                'dupweight':0,
-                'loss_lambda':0,
-                'presence_lambda':0,
-                'dupl_lamba':0
-                },
-        lazy=False,
-        )
-
-        bo.probe(
-        params={'lossweight':  0,
-                'presenceweight': 1,
-                'dupweight':0,
-                'loss_lambda':0,
-                'presence_lambda':0,
-                'dupl_lamba':0
-                },
-        lazy=False,
-        )
-
-        bo.probe(
-        params={'lossweight':  0,
-                'presenceweight': 0,
-                'dupweight':1,
-                'loss_lambda':0,
-                'presence_lambda':0,
-                'dupl_lamba':0
-                },
-        lazy=False,
-        )
-
-        #intuitively... seems like a good idea
-        bo.probe(
-        params={'lossweight':  1,
-                'presenceweight': .5,
-                'dupweight':0,
-                'loss_lambda':0,
-                'presence_lambda':0,
-                'dupl_lamba':0
-                },
-        lazy=False,
-        )
-
-        bo.maximize(init_points=5, n_iter=15, kappa=2)
-
-        #save the friggin result
-        with open( './bayesopt.pkl', mode='wb', buffering=None) as bayesout:
-            bayesout.write(pickle.dumps(bo, -1))
-
-        print(bo.res['max'])
-
-        # Making changes to the gaussian process can impact the algorithm
-        # dramatically.
-        gp_params = {'kernel': None,
-                     'alpha': 1e-5}
-
-        # Run it again with different acquisition function
-        bo.maximize(n_iter=5, acq='ei', **gp_params)
-
-        # Finally, we take a look at the final results.
-        print(bo.res['max'])
-        print(bo.res['all'])
+    #save the friggin result
+    with open( savedir+'bayesopt.pkl', mode='wb', buffering=None) as bayesout:
+        bayesout.write(  pickle.dumps(bo, -1))
+    print('DONE')
+    print(bo.res['max'])

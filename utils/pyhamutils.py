@@ -50,21 +50,15 @@ def get_ham_treemap_from_row(row, tree):
 
     fam, orthoxml = row
     orthoxml = switch_name_ncbi_id(orthoxml)
+
     try:
         ham_obj = pyham.Ham(tree, orthoxml, type_hog_file="orthoxml", use_internal_name=True, orthoXML_as_string=True)
         tp = ham_obj.create_tree_profile(hog=ham_obj.get_list_top_level_hogs()[0])
-        if int(fam) % 3000 == 0:
-            try:
-                with open( config_utils.datadir  + str(fam) + 'ham.pkl' , 'wb') as hashout:
-                    hashout.write( pickle.dumps(ham_obj))
-            except:
-                pass
-        
         return tp.treemap
+
     except TypeError as err:
         print('Type error:', err)
         return None
-
     except AttributeError as err:
         print('Attribute error:', err)
         return None
