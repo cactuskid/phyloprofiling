@@ -12,7 +12,7 @@ import sys
 
 def openprocess(args , inputstr =None , verbose = False , wait = True):
 	args = shlex.split(args)
-	p = subprocess.Popen(args,  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr= subprocess.PIPE )
+	p = subprocess.Popen(args,  shell = True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr= subprocess.PIPE )
 	if verbose == True and inputstr is not None:
 		print(inputstr.decode())
 
@@ -27,14 +27,15 @@ def openprocess(args , inputstr =None , verbose = False , wait = True):
 	else:
 		return p
 
-def bsub( script_path , test = True):
+def bsub( script_path , test = False):
 	argstr = 'bsub < '+script_path
 	if test == True:
 		print(argstr)
 		script = open(script_path,'r').read()
 		print(script)
 	else:
-		p = openprocess(argstr, inputstr =None, verbose = False, wait = True)
+		print(argstr)
+		p = openprocess(argstr, inputstr =None, verbose = True , wait = True)
 		return p
 
 
@@ -62,7 +63,7 @@ if __name__ == '__main__':
 			scriptout.write(script)
 		count+=1
 
-		bsub(new_script_path, test = True)
+		bsub(new_script_path, test = False)
 
 
 	for k in range(npoints):
@@ -75,4 +76,4 @@ if __name__ == '__main__':
 		with open( new_script_path , 'w') as scriptout:
 			scriptout.write(script)
 		count+=1
-		bsub(new_script_path, test = True)
+		bsub(new_script_path, test = False)

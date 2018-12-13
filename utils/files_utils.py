@@ -3,6 +3,7 @@ import pandas as pd
 from Bio import Entrez
 import pyoma
 import copy
+import os
 
 
 def get_tree(oma=None, saveTree=True):
@@ -12,6 +13,8 @@ def get_tree(oma=None, saveTree=True):
     :param saveTree: Bool for whether or not to save a mastertree newick file
     :return: tree_string: a newick string tree: an ete3 object
     """
+    #if not os.path.isfile('./mastertree.nwk'):
+
     ncbi = ete3.NCBITaxa()
 
     genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
@@ -20,9 +23,9 @@ def get_tree(oma=None, saveTree=True):
     tax = genomes + [ 131567, 2759, 2157, 45596 ]+[ taxrel[0] for taxrel in  list(oma.root.Taxonomy[:]) ]  + [  taxrel[1] for taxrel in list(oma.root.Taxonomy[:]) ]
 
     #add luca
-    tree_string = pyoma.browser.db.Taxonomy(oma.root.Taxonomy[:]).newick()
-    with open( './pyoma.nwk' , 'w') as nwkout:
-        nwkout.write(tree_string)
+    #tree_string = pyoma.browser.db.Taxonomy(oma.root.Taxonomy[:]).newick()
+    #with open( './pyoma.nwk' , 'w') as nwkout:
+    #    nwkout.write(tree_string)
     #print(tree_string)
     #tree_string = ete3.Tree( tree_string , format=1 )
 
@@ -75,8 +78,11 @@ def get_tree(oma=None, saveTree=True):
     if saveTree == True:
         with open( './mastertree.nwk' , 'w') as nwkout:
             nwkout.write(tree_string)
-
+    """else:
+        tree_string = open('./mastertree.nwk', 'r').read()
+        tree =  ete3.PhyloTree(tree_string)"""
     return tree_string, tree
+
 
 
 def generate_taxa_index(tree , taxfilter, taxmask):

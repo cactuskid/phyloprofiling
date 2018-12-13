@@ -12,6 +12,7 @@ import numpy as np
 import random
 import multiprocessing as mp
 import time
+import gc
 
 from tables import *
 import argparse, sys
@@ -54,7 +55,6 @@ dbdict = {
 'metazoa':{ 'taxfilter': None , 'taxmask': 33208 },
 }
 
-
 def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupweight, loss_lambda , presence_lambda , dupl_lamba,  hoglist , val = None, compile = True , dir = None):
     print('compiling' + db)
     #record param settings
@@ -75,7 +75,6 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
         forest = dir + 'newlshforest.pkl'
         mat = dir + 'hogmat.h5'
     print('query DB and calculate error')
-
     print('load profiler')
     p = profiler.Profiler(lshforestpath = forest, hashes_h5=hashes, mat_path= None , nsamples = 512)
 
@@ -90,9 +89,8 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
                 valout.write(pickle.dumps(val))
         else:
             with open(config.datadir + 'val.pkl' , 'rb')as valout:
-                val = pickle.loadds(valout.read())
+                val = pickle.loads(valout.read())
     print( 'done')
-
     print('testing db')
     if not hoglist:
         #sample random hogs
@@ -128,10 +126,9 @@ def profiling_error( db , taxfilter, tax_mask, lossweight , presenceweight, dupw
                         print('timeout')
                     gc.collect()
                     del(processes[c])
-
                     break
-
         hogsemsim = {}
+
         while retq.empty() == False:
             combo,semsim = retq.get()
             print(combo)
@@ -156,10 +153,9 @@ if __name__ == '__main__':
     args = vars(parser.parse_args(sys.argv[1:]))
 
     db = args['db']
-    print(args)
-    savedir = config_utils.datadir+args['dir']
-    if not os.path.exists(savedir):
-        os.makedirs(savedir)
+    dir = args['dir']
+    if not os.path.exists(dir):
+        os.makedirs(dir)
     error = functools.partial( profiling_error , db=db , taxfilter = dbdict[db]['taxfilter'], tax_mask = dbdict[db]['taxmask'],  hoglist =None , dir = args['dir'])
     #get error for the first point with all weights at 1
     bo = BayesianOptimization( f = error ,  pbounds = {'lossweight': (0, 1),
@@ -210,7 +206,6 @@ if __name__ == '__main__':
 
     #else use loaded points to try new interesting ones
     bo.maximize(init_points=2, n_iter=15, kappa=2)
-
     #save the friggin result
     with open( savedir+'bayesopt.pkl', mode='wb', buffering=None) as bayesout:
         bayesout.write(  pickle.dumps(bo, -1))

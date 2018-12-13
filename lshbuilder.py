@@ -11,6 +11,7 @@ from datetime import datetime
 import h5py
 import redis
 import ete3
+import gc
 
 
 from pyoma.browser import db
@@ -24,7 +25,6 @@ import random
 np.random.seed(0)
 random.seed(0)
 class LSHBuilder:
-
     """
     This class contains the stuff you need to make a phylogenetic profiling database with input orthxml files and a taxonomic tree
 
@@ -39,6 +39,7 @@ class LSHBuilder:
         self.tax_mask = taxmask
         self.verbose = verbose
 
+
         if masterTree is None:
             self.tree_string, self.tree_ete3 = files_utils.get_tree(self.h5OMA)
         else:
@@ -46,6 +47,10 @@ class LSHBuilder:
                 self.tree_string = treein.read()
             self.tree_ete3 = ete3.Tree(masterTree ,format= '1')
         self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.tree_ete3 , self.tax_filter, self.tax_mask)
+
+        with open( config_utils.datadir + 'taxaIndex.pkl', 'wb') as taxout:
+            taxout.write( pickle.dumps(self.taxaIndex))
+
         self.numperm = numperm
         if treeweights is None:
             self.treeweights = hashutils.generate_treeweights(self.tree_ete3  , self.taxaIndex , taxfilter, taxmask , lambdadict, start)
@@ -69,7 +74,6 @@ class LSHBuilder:
         self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree_string )
         self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=wmg )
         self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
-
         self.hashes_path = self.saving_path + 'hashes.h5'
         self.lshpath = self.saving_path + 'newlsh.pkl'
         self.lshforestpath = self.saving_path + 'newlshforest.pkl'
@@ -127,7 +131,7 @@ class LSHBuilder:
                 df['tree'] = df[['Fam', 'ortho']].apply(self.HAM_PIPELINE, axis=1)
                 df[['hash','rows']] = df[['Fam', 'tree']].apply(self.HASH_PIPELINE, axis=1)
                 retq.put(df[['Fam', 'hash']])
-                #matq.put(df[['Fam', 'rows']])
+                matq.put(df[['Fam', 'rows']])
             else:
                 if self.verbose == True:
                     print('Worker done' + str(i))
@@ -143,6 +147,7 @@ class LSHBuilder:
         forest = MinHashLSHForest(num_perm=self.numperm)
 
         forest_add = forest.add
+        taxstr = ''
         if self.tax_filter is None:
             taxstr = 'NoFilter'
         if self.tax_mask is None:
@@ -170,10 +175,10 @@ class LSHBuilder:
                     if this_dataframe is not None:
                         if not this_dataframe.empty:
                             hashes = this_dataframe['hash'].to_dict()
-                            if self.verbose == True:
-                                print(str(t.time() - global_time)+' seconds ')
-                                print(str(this_dataframe.Fam.max())+ 'fam num')
-                                print(str(count) + ' done')
+
+                            print(str(t.time() - global_time)+' seconds ')
+                            print(str(this_dataframe.Fam.max())+ 'fam num')
+                            print(str(count) + ' done')
                             hashes = {fam:hashes[fam] for fam in hashes if hashes[fam] is not None}
                             [ forest_add(str(fam),hashes[fam]) for fam in hashes]
                             for fam in hashes:
@@ -203,33 +208,50 @@ class LSHBuilder:
                         break
 
     def matrix_updater(self, iprocess , q, retq, matq, l):
+        #todo finsih me
+
         save_start = t.time()
         chunk_size = 100
         print('hogmat saver init ' + str(iprocess))
-        with h5py.File(self.mat_path , 'w', libver='latest') as h5hashes:
-            h5hashes.create_dataset( 'matrows', (chunk_size, 0), maxshape=(None, None), dtype='int32')
-            h5mat = h5hashes['matrows']
+        h5mat = None
+        with h5py.File(self.mat_path + str(iprocess) + 'h5' , 'w', libver='latest') as h5hashes:
             i =0
             while True:
                 rows = matq.get()
-                i +=1
                 if rows is not None:
-                    for index, row in rows.iterrows():
-                        if row is not None:
-                            sparse_row = row['rows']
-                            fam = int(row['Fam'])
-                            h5mat[fam, :] = sparse_row.ravel()
-                        if t.time() - save_start > 500 or i % 100 == 0:
-                            h5mat.flush()
-                            save_start = t.time()
+                    rows = rows.sort_values(by=['Fam'])
+                    rows = rows.dropna()
+                    maxfam = rows.Fam.max()
+                    index = np.asarray(rows.Fam)
+                    block = np.vstack(rows.rows)
+                    if h5mat is None:
+                        h5hashes.create_dataset( 'matrows',(10,block.shape[1]), maxshape=(None, block.shape[1]), dtype='i8')
+                        h5mat = h5hashes['matrows']
+
+                    if h5mat.shape[0] < maxfam:
+                        h5mat.resize((maxfam+1,block.shape[1]))
+                    h5mat[index]= block
+                    h5hashes.flush()
+
+
+                    #for index,row in rows.iter_rows():
+                    #     h5mat[row.Fam ] = row.rows
+                    i+=1
+                    #index = np.asarray(rows.Fam)
+                    #block = np.vstack(rows.rows)
+                    #h5mat[index]= block
+                    #[ h5mat[row.Fam , : ] = row.rows for index,row in rows.iter_rows() ]
+                    if t.time()-save_start > 200:
+                        save_start = t.time()
+                        #gc.collect()
                 else:
                     break
-            h5mat.flush()
+            h5hashes.flush()
         print('DONE MAT UPDATER' + str(i))
 
     def run_pipeline(self):
         functype_dict = {'worker': (self.worker, int(2*mp.cpu_count()/3), True), 'updater': (self.saver, 1, False),
-                         'matrix_updater': (self.matrix_updater, 0, False)}
+                         'matrix_updater': (self.matrix_updater, 4, False) }
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
         return self.hashes_path, self.lshforestpath , self.mat_path
 
@@ -292,7 +314,7 @@ if __name__ == '__main__':
 
     # hyper params
     #compile default db with weights at 1
-    num_perm = config_utils.num_perm
+    num_perm = 512
     startdict={'presence':1, 'loss':1, 'dup':1}
     lambdadict={'presence':0, 'loss':0, 'dup':0}
 
@@ -306,7 +328,6 @@ if __name__ == '__main__':
     'fungi':{ 'taxfilter': None , 'taxmask': 4751 },
     'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
     }
-
 
     for dbname in dbdict:
         print('compiling' + dbname)
