@@ -24,10 +24,10 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
     :return: weights: a vector of weights for each tax level
     """
 
-    weights = { type: np.ones((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
+    weights = { type: np.zeros((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
     print(lambdadict)
     print(start)
-    print(taxaIndex)
+    print(len(taxaIndex))
 
     for node in mastertree.traverse():
         node.add_feature('degree', 1 )
@@ -78,13 +78,11 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
 
     losses = [ taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in taxaIndex  ]
     dupl = [ taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in taxaIndex  ]
-    presence = [ taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in taxaIndex  ]
-
+    presence = [ taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in taxaIndex ]
 
     indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
     hog_matrix_weighted = np.zeros((1, 3*len(taxaIndex)))
     hog_matrix_raw = np.zeros((1, 3*len(taxaIndex)))
-    hogsum = 0
 
     for i,event in enumerate(indices):
         if len(indices[event])>0:
@@ -92,8 +90,7 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
             hogindex = np.asarray(indices[event])+i*len(taxaIndex)
             hog_matrix_weighted[:,hogindex] = treeweights[event][taxindex].ravel()
             hog_matrix_raw[:,hogindex] = 1
-            hogsum+=np.sum(treeweights[event][taxindex])
-    if hogsum > 0:
+    if np.sum(hog_matrix_weighted) > 0 and wmg:
         weighted_hash = wmg.minhash(list(hog_matrix_weighted.flat))
         return  hog_matrix_raw , weighted_hash
     else:

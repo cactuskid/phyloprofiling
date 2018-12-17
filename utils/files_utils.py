@@ -3,84 +3,89 @@ import pandas as pd
 from Bio import Entrez
 import pyoma
 import copy
+import pickle
+
 import os
 
 
-def get_tree(oma=None, saveTree=True):
+def get_tree(oma=None, saveTree=True, overwrite = False):
     """
     Generates a working species tree for all OMA
     :param oma:  a pyoma db object
     :param saveTree: Bool for whether or not to save a mastertree newick file
     :return: tree_string: a newick string tree: an ete3 object
     """
-    #if not os.path.isfile('./mastertree.nwk'):
+    if not os.path.isfile('./mastertree.pkl') or overwrite == True:
 
-    ncbi = ete3.NCBITaxa()
+        ncbi = ete3.NCBITaxa()
 
-    genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
-    genomes = [ str(g) for g in genomes]
+        genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
+        genomes = [ str(g) for g in genomes]
 
-    tax = genomes + [ 131567, 2759, 2157, 45596 ]+[ taxrel[0] for taxrel in  list(oma.root.Taxonomy[:]) ]  + [  taxrel[1] for taxrel in list(oma.root.Taxonomy[:]) ]
+        tax = genomes + [ 131567, 2759, 2157, 45596 ]+[ taxrel[0] for taxrel in  list(oma.root.Taxonomy[:]) ]  + [  taxrel[1] for taxrel in list(oma.root.Taxonomy[:]) ]
 
-    #add luca
-    #tree_string = pyoma.browser.db.Taxonomy(oma.root.Taxonomy[:]).newick()
-    #with open( './pyoma.nwk' , 'w') as nwkout:
-    #    nwkout.write(tree_string)
-    #print(tree_string)
-    #tree_string = ete3.Tree( tree_string , format=1 )
+        #add luca
+        #tree_string = pyoma.browser.db.Taxonomy(oma.root.Taxonomy[:]).newick()
+        #with open( './pyoma.nwk' , 'w') as nwkout:
+        #    nwkout.write(tree_string)
+        #print(tree_string)
+        #tree_string = ete3.Tree( tree_string , format=1 )
 
-    #ncbi.update_taxonomy_database()
+        #ncbi.update_taxonomy_database()
 
-    tax = set(tax)
-    genomes = set(genomes)
+        tax = set(tax)
+        genomes = set(genomes)
 
-    tax.remove(0)
-    print(len(tax))
+        tax.remove(0)
+        print(len(tax))
 
-    tree = ete3.PhyloTree( name = '')
-    tree.add_child(name ='131567')
+        tree = ete3.PhyloTree( name = '')
+        tree.add_child(name ='131567')
 
-    topo = ncbi.get_topology(tax , collapse_subspecies=False)
-    tax = set([ str(taxid) for taxid in tax])
-
-
-    tree.add_child(topo)
-
-    orphans = list(genomes - set([x.name for x in tree.get_leaves()]))
-
-    print('missing taxa:')
-    print(len(orphans))
-
-    Entrez.email = "clement.train@gmail.com"
-    orphans_info1 = {}
-    orphans_info2 = {}
-
-    for x in orphans:
-        search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
-        record = next(Entrez.parse(search_handle))
-        print(record)
-        orphans_info1[ record['ParentTaxId']] = x
-        orphans_info2[x] = [x['TaxId'] for x in record['LineageEx']]
-
-    for n in tree.traverse():
-        if n.name in orphans_info1:
-            n.add_sister(name = orphans_info1[n.name])
-            print(n)
+        topo = ncbi.get_topology(tax , collapse_subspecies=False)
+        tax = set([ str(taxid) for taxid in tax])
 
 
-    orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
-    print(orphans)
-    tree = add_orphans(orphans_info2, tree, genomes)
-    orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
-    print(orphans)
-    tree_string = tree.write(format=1)
+        tree.add_child(topo)
 
-    if saveTree == True:
-        with open( './mastertree.nwk' , 'w') as nwkout:
-            nwkout.write(tree_string)
-    """else:
-        tree_string = open('./mastertree.nwk', 'r').read()
-        tree =  ete3.PhyloTree(tree_string)"""
+        orphans = list(genomes - set([x.name for x in tree.get_leaves()]))
+
+        print('missing taxa:')
+        print(len(orphans))
+
+        Entrez.email = "clement.train@gmail.com"
+        orphans_info1 = {}
+        orphans_info2 = {}
+
+        for x in orphans:
+            search_handle = Entrez.efetch('taxonomy', id=str(x), retmode='xml')
+            record = next(Entrez.parse(search_handle))
+            print(record)
+            orphans_info1[ record['ParentTaxId']] = x
+            orphans_info2[x] = [x['TaxId'] for x in record['LineageEx']]
+
+        for n in tree.traverse():
+            if n.name in orphans_info1:
+                n.add_sister(name = orphans_info1[n.name])
+                print(n)
+
+
+        orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
+        print(orphans)
+        tree = add_orphans(orphans_info2, tree, genomes)
+        orphans = set(genomes) - set([x.name for x in tree.get_leaves()])
+        print(orphans)
+        tree_string = tree.write(format=1)
+
+        if saveTree == True:
+            with open( './mastertree.nwk' , 'w') as nwkout:
+                nwkout.write(tree_string)
+            with open( './mastertree.pkl', 'wb') as pklout:
+                pklout.write(pickle.dumps(tree))
+
+    else:
+        tree = pickle.loads(open('./mastertree.pkl', 'rb').read())
+        tree_string = tree.write(format=1)
     return tree_string, tree
 
 

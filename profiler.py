@@ -17,11 +17,14 @@ from datasketch import WeightedMinHashGenerator
 from validation import validation_semantic_similarity
 from utils import hashutils,  config_utils , pyhamutils , files_utils
 from time import time
+import multiprocessing as mp
+import functools
+import numpy as np
 
 class Profiler:
 
 
-    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, omapath = None , nsamples = 256):
+    def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, oma = False , nsamples = 256):
         #use the lsh forest or the lsh
 
         """
@@ -38,42 +41,87 @@ class Profiler:
         print('DONE')
 
         if mat_path:
-
             ## TODO: change this to read hdf5
             #profile_matrix_file = open(profile_matrix_path, 'rb')
             #profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
             #self.profile_matrix = profile_matrix_unpickled.load()
             pass
-
-        if omapath:
+        if oma:
             #open oma db object
             ## TODO: unfinished
             #open up taxa Index
-            self.taxtree = ete3.Tree.phylotree('./mastertree.nwk')
-            self.taxaIndex = { n.name:i for i,n in enumerate(self.taxtree.traverse()) }
-
+            #self.taxtree = ete3.Tree.phylotree('./mastertree.nwk')
+            #self.taxaIndex = { n.name:i for i,n in enumerate(self.taxtree.traverse()) }
+            #open master tree and taxa index
+            with open( './mastertree.pkl', 'rb') as treein:
+                self.tree = pickle.loads(treein.read())
+            self.tree_string = self.tree.write(format = 1)
+            with open( config_utils.datadir + 'taxaIndex.pkl', 'rb') as taxain:
+                self.taxaIndex = pickle.loads(taxain.read())
             h5_oma = open_file(config_utils.omadir + 'OmaServer.h5', mode="r")
             self.db_obj = db.Database(h5_oma)
-
             #open up master tree
+            self.treeweights = hashutils.generate_treeweights(self.tree , self.taxaIndex , None, None , None, None)
             self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree_string )
-            self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=wmg )
+            self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=None )
             self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
 
-
-            #setup function to generate a profile on the fly
-
-    def return_profile_OTF(self, fam):
+    def return_profile_OTF(self, fam, retq=None, lock = None):
         ## TODO: unfinished
+        if lock:
+            lock.aquire()
         ortho_fam = self.READ_ORTHO(fam)
-        pyham_tree = self.HAM_PIPELINE([fam, ortho_fam])
+        if lock:
+            lock.relaease()
+        tp = self.HAM_PIPELINE([fam, ortho_fam])
+        print(tp)
         losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
         dupl = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in self.taxaIndex  ]
         presence = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in self.taxaIndex  ]
-        return mat
+        indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
+        hog_matrix_raw = np.zeros((1, 3*len(self.taxaIndex)))
+        for i,event in enumerate(indices):
+            if len(indices[event])>0:
+                taxindex = np.asarray(indices[event])
+                hogindex = np.asarray(indices[event])+i*len(self.taxaIndex)
+                hog_matrix_raw[:,hogindex] = 1
+        print(hog_matrix_raw)
+        if retq:
+            retq.put(mat)
+        return fam,hog_matrix_raw,tp
 
-    def return_profile_mat_OTF(self , hogs):
-        return np.vstack([ self.return_profile_OTF(hog) for hog in hogs])
+    def retmat_mp(self, fams):
+        fams = [ hashutils.hogid2fam(fam) for fam in fams ]
+        retq= mp.Queue()
+
+        for fam in fams:
+            processes[fam] = {'time':time.time() , 'process': mp.Process( taarget = self.return_profile_OTF , args = (fam, retq , lock)  ) }
+            processes[fams]['process'].start()
+            while len(processes)> mp.cpu_count()/4:
+                time.sleep(.01)
+                for c in processes:
+                    if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
+                        processes[c]['process'].terminate()
+                        gc.collect()
+                        del(processes[c])
+                        break
+
+        while len(processes)> 0:
+            time.sleep(.01)
+            for c in processes:
+                if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
+                    processes[c]['process'].terminate()
+                    if rocesses[c]['time']>timelimit:
+                        print('timeout')
+                    gc.collect()
+                    del(processes[c])
+                    break
+        hogmat = {}
+        while retq.empty() == False:
+            fam,mat,tp = retq.get()
+            hogmat[fam] = mat
+
+
 
     def hog_query(self, hog_id=None, fam_id=None , k = 100  ):
         """
@@ -85,8 +133,11 @@ class Profiler:
         if hog_id is not None:
             fam_id = hashutils.hogid2fam(hog_id)
         query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  self.nsamples )
+        print(query_hash)
         results = self.lshobj.query(query_hash, k)
         return results
+
+
     def hog_query_sorted(self, hog_id=None, fam_id=None , k = 100  ):
         """
         Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
@@ -100,7 +151,7 @@ class Profiler:
         results = self.lshobj.query(query_hash, k)
         hogdict = pull_hashes(results)
         hogdict[fam_id]= query_hash
-        
+
         return results
 
     def hog_query_OMA(self,hog_id=None, fam_id=None , k = 100 ):

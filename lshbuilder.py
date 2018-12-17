@@ -39,19 +39,14 @@ class LSHBuilder:
         self.tax_mask = taxmask
         self.verbose = verbose
 
-
-        if masterTree is None:
-            self.tree_string, self.tree_ete3 = files_utils.get_tree(self.h5OMA)
-        else:
-            with open( masterTree, 'r') as treein:
-                self.tree_string = treein.read()
-            self.tree_ete3 = ete3.Tree(masterTree ,format= '1')
+        self.tree_string , self.tree_ete3 = files_utils.get_tree(oma=self.h5OMA)
         self.taxaIndex, self.reverse = files_utils.generate_taxa_index(self.tree_ete3 , self.tax_filter, self.tax_mask)
 
         with open( config_utils.datadir + 'taxaIndex.pkl', 'wb') as taxout:
             taxout.write( pickle.dumps(self.taxaIndex))
 
         self.numperm = numperm
+
         if treeweights is None:
             self.treeweights = hashutils.generate_treeweights(self.tree_ete3  , self.taxaIndex , taxfilter, taxmask , lambdadict, start)
         else:
@@ -86,8 +81,7 @@ class LSHBuilder:
         pyham_tree = self.HAM_PIPELINE([fam, ortho_fam])
         hog_matrix,weighted_hash = hashutils.hash_tree(pyham_tree , self.taxaIndex , self.treeweights , self.wmg)
         return ortho_fam , pyham_tree, weighted_hash,hog_matrix
-
-    def generates_dataframes(self, size=100, minhog_size=None, maxhog_size=None ):
+    def generates_dataframes(self, size=100, minhog_size=4, maxhog_size=None ):
         families = {}
         start = -1
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
@@ -131,12 +125,11 @@ class LSHBuilder:
                 df['tree'] = df[['Fam', 'ortho']].apply(self.HAM_PIPELINE, axis=1)
                 df[['hash','rows']] = df[['Fam', 'tree']].apply(self.HASH_PIPELINE, axis=1)
                 retq.put(df[['Fam', 'hash']])
-                matq.put(df[['Fam', 'rows']])
+                #matq.put(df[['Fam', 'rows']])
             else:
                 if self.verbose == True:
                     print('Worker done' + str(i))
                 break
-
 
     def saver(self, i, q, retq, matq, l):
         print_start = t.time()
@@ -145,7 +138,6 @@ class LSHBuilder:
         chunk_size = 100
         count = 0
         forest = MinHashLSHForest(num_perm=self.numperm)
-
         forest_add = forest.add
         taxstr = ''
         if self.tax_filter is None:
@@ -175,8 +167,6 @@ class LSHBuilder:
                     if this_dataframe is not None:
                         if not this_dataframe.empty:
                             hashes = this_dataframe['hash'].to_dict()
-
-                            print(str(t.time() - global_time)+' seconds ')
                             print(str(this_dataframe.Fam.max())+ 'fam num')
                             print(str(count) + ' done')
                             hashes = {fam:hashes[fam] for fam in hashes if hashes[fam] is not None}
@@ -185,16 +175,15 @@ class LSHBuilder:
                                 if len(datasets[dataset_name]) < fam + 10:
                                     datasets[dataset_name].resize((fam + chunk_size, len(hashes[fam].hashvalues.ravel())))
                                 datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
+                                count += 1
                             if t.time() - save_start > 200:
                                 h5flush()
-
+                                save_start = t.time()
                                 with open(self.lshforestpath , 'wb') as forestout:
                                     forestout.write(pickle.dumps(forest, -1))
                                 if self.verbose == True:
-                                    save_start = t.time()
                                     print('save done at' + str(t.time() - global_time))
 
-                            count += len(this_dataframe)
                     else:
                         if self.verbose == True:
                             print('wrap it up')
@@ -208,50 +197,45 @@ class LSHBuilder:
                         break
 
     def matrix_updater(self, iprocess , q, retq, matq, l):
-        #todo finsih me
-
         save_start = t.time()
         chunk_size = 100
         print('hogmat saver init ' + str(iprocess))
         h5mat = None
-        with h5py.File(self.mat_path + str(iprocess) + 'h5' , 'w', libver='latest') as h5hashes:
+        times1 = []
+        times2 = []
+        frames = []
+        with h5py.File(self.mat_path + str(iprocess) + 'h5' , 'w', libver='latest' ) as h5hashes:
             i =0
             while True:
                 rows = matq.get()
                 if rows is not None:
-                    rows = rows.sort_values(by=['Fam'])
                     rows = rows.dropna()
                     maxfam = rows.Fam.max()
-                    index = np.asarray(rows.Fam)
-                    block = np.vstack(rows.rows)
                     if h5mat is None:
-                        h5hashes.create_dataset( 'matrows',(10,block.shape[1]), maxshape=(None, block.shape[1]), dtype='i8')
+                        h5hashes.create_dataset( 'matrows',(10,block.shape[1]), maxshape=(None, block.shape[1]),chunks=(1, block.shape[1]), dtype='i8')
                         h5mat = h5hashes['matrows']
-
                     if h5mat.shape[0] < maxfam:
                         h5mat.resize((maxfam+1,block.shape[1]))
-                    h5mat[index]= block
-                    h5hashes.flush()
-
-
-                    #for index,row in rows.iter_rows():
-                    #     h5mat[row.Fam ] = row.rows
                     i+=1
-                    #index = np.asarray(rows.Fam)
-                    #block = np.vstack(rows.rows)
-                    #h5mat[index]= block
-                    #[ h5mat[row.Fam , : ] = row.rows for index,row in rows.iter_rows() ]
-                    if t.time()-save_start > 200:
-                        save_start = t.time()
-                        #gc.collect()
+                    frames.append(rows)
+                    assign = t.time()
+                    index = np.asarray(rows.Fam)
+                    block = np.vstack(rows.rows)
+                    h5mat[index,:]= block
+
+                    times1.append(t.time()-assign)
+                    if len(times1)>10:
+                        times1.pop(0)
+                        print(np.mean(times1))
+                    h5hashes.flush()
                 else:
+                    h5hashes.flush()
                     break
-            h5hashes.flush()
         print('DONE MAT UPDATER' + str(i))
 
     def run_pipeline(self):
         functype_dict = {'worker': (self.worker, int(2*mp.cpu_count()/3), True), 'updater': (self.saver, 1, False),
-                         'matrix_updater': (self.matrix_updater, 4, False) }
+                         'matrix_updater': (self.matrix_updater, 0, False) }
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
         return self.hashes_path, self.lshforestpath , self.mat_path
 
@@ -261,10 +245,9 @@ class LSHBuilder:
         update_processes = {}
         lock = mp.Lock()
         cores = mp.cpu_count()
-        q = mp.Queue(maxsize=cores * 40)
-        retq = mp.Queue(maxsize=cores * 40)
-        matq = mp.Queue(maxsize=cores * 40)
-
+        q = mp.Queue(maxsize=cores * 10)
+        retq = mp.Queue(maxsize=cores * 10)
+        matq = mp.Queue(maxsize=cores * 10)
         work_processes = {}
         print('start workers')
         for key in functypes:
@@ -329,6 +312,7 @@ if __name__ == '__main__':
     'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
     }
 
+
     for dbname in dbdict:
         print('compiling' + dbname)
         taxmask = dbdict[dbname]['taxmask']
@@ -337,6 +321,3 @@ if __name__ == '__main__':
             lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=dbname, numperm = 256 ,
             treeweights= None , taxfilter = taxfilter, taxmask=taxmask , lambdadict= lambdadict, start= startdict)
             lsh_builder.run_pipeline()
-            #save config
-            with open( config_utils.datadir + dbname + 'lshbuilder.pkl', 'wb') as lshbuilder_save:
-                lshbuilder_save.write( pickle.dumps(lsh_builder, -1) )
