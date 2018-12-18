@@ -29,15 +29,9 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
     print(start)
     print(len(taxaIndex))
 
-    for node in mastertree.traverse():
-        node.add_feature('degree', 1 )
-    for node in mastertree.iter_descendants():
-        for d in node.iter_descendants():
-            d.degree+=1
-
+    newtree = mastertree
     for event in weights:
-        newtree = copy.deepcopy(mastertree)
-        for n in newtree.traverse():
+        for n in netwtree.traverse():
             if taxmask:
                 if str(n.name) == str(taxmask):
                     newtree = n
@@ -46,9 +40,9 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
                 if n.name in taxfilter:
                     #set weight for descendants of n to 0
                     n.delete()
-
+    
     for event in weights:
-        for n in newtree.traverse():
+        for n in netwtree.traverse():
             #exponential decay of initial weigh over node degree
             #weight must be positive
             if exp == True:
@@ -90,11 +84,9 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
             hogindex = np.asarray(indices[event])+i*len(taxaIndex)
             hog_matrix_weighted[:,hogindex] = treeweights[event][taxindex].ravel()
             hog_matrix_raw[:,hogindex] = 1
-    if np.sum(hog_matrix_weighted) > 0 and wmg:
-        weighted_hash = wmg.minhash(list(hog_matrix_weighted.flat))
-        return  hog_matrix_raw , weighted_hash
-    else:
-        return None, None
+    weighted_hash = wmg.minhash(list(hog_matrix_weighted.flatten()))
+    return  hog_matrix_raw , weighted_hash
+
 
 def row2hash(row , taxaIndex , treeweights , wmg):
     """

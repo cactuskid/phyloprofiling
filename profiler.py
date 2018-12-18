@@ -20,6 +20,7 @@ from time import time
 import multiprocessing as mp
 import functools
 import numpy as np
+import time
 
 class Profiler:
 
@@ -69,12 +70,11 @@ class Profiler:
     def return_profile_OTF(self, fam, retq=None, lock = None):
         ## TODO: unfinished
         if lock:
-            lock.aquire()
+            lock.acquire()
         ortho_fam = self.READ_ORTHO(fam)
         if lock:
-            lock.relaease()
+            lock.release()
         tp = self.HAM_PIPELINE([fam, ortho_fam])
-        print(tp)
         losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
         dupl = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in self.taxaIndex  ]
         presence = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in self.taxaIndex  ]
@@ -85,24 +85,25 @@ class Profiler:
                 taxindex = np.asarray(indices[event])
                 hogindex = np.asarray(indices[event])+i*len(self.taxaIndex)
                 hog_matrix_raw[:,hogindex] = 1
-        print(hog_matrix_raw)
         if retq:
-            retq.put(mat)
+            retq.put(hog_matrix_raw)
         return fam,hog_matrix_raw,tp
 
     def retmat_mp(self, fams):
+        timelimit = 600
+
         fams = [ hashutils.hogid2fam(fam) for fam in fams ]
         retq= mp.Queue()
-
+        lock = mp.Lock()
+        processes = {}
         for fam in fams:
-            processes[fam] = {'time':time.time() , 'process': mp.Process( taarget = self.return_profile_OTF , args = (fam, retq , lock)  ) }
-            processes[fams]['process'].start()
+            processes[fam] = {'time':time.time() , 'process': mp.Process( target = self.return_profile_OTF , args = (fam, retq , lock)  ) }
+            processes[fam]['process'].start()
             while len(processes)> mp.cpu_count()/4:
                 time.sleep(.01)
                 for c in processes:
                     if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
                         processes[c]['process'].terminate()
-                        gc.collect()
                         del(processes[c])
                         break
 
@@ -111,15 +112,13 @@ class Profiler:
             for c in processes:
                 if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
                     processes[c]['process'].terminate()
-                    if rocesses[c]['time']>timelimit:
-                        print('timeout')
-                    gc.collect()
                     del(processes[c])
                     break
         hogmat = {}
         while retq.empty() == False:
             fam,mat,tp = retq.get()
             hogmat[fam] = mat
+        return hogmat
 
 
 
@@ -133,7 +132,9 @@ class Profiler:
         if hog_id is not None:
             fam_id = hashutils.hogid2fam(hog_id)
         query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  self.nsamples )
-        print(query_hash)
+
+        print(query_hash.hashvalues)
+
         results = self.lshobj.query(query_hash, k)
         return results
 
@@ -217,8 +218,11 @@ class Profiler:
         #generate an all v all jaccard distance matrix
         hashmat = np.zeros((len(hashes),len(hashes)))
         for i , hog1 in enumerate(hashes):
-            for j, hog2 in enumerate(hahes):
-                hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
+            for j, hog2 in enumerate(hashes):
+                if i < j :
+                    hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
+        hashmat = hashmat+hashmat.T
+        np.fill_diagonal(hashmat, 1)
         return hashmat
 
     def hog_v_hog(self, hog1,hog2):

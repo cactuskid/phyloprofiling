@@ -21,16 +21,13 @@ def get_tree(oma=None, saveTree=True, overwrite = False):
 
         genomes = pd.DataFrame(oma.root.Genome.read())["NCBITaxonId"].tolist()
         genomes = [ str(g) for g in genomes]
-
         tax = genomes + [ 131567, 2759, 2157, 45596 ]+[ taxrel[0] for taxrel in  list(oma.root.Taxonomy[:]) ]  + [  taxrel[1] for taxrel in list(oma.root.Taxonomy[:]) ]
-
         #add luca
         #tree_string = pyoma.browser.db.Taxonomy(oma.root.Taxonomy[:]).newick()
         #with open( './pyoma.nwk' , 'w') as nwkout:
         #    nwkout.write(tree_string)
         #print(tree_string)
         #tree_string = ete3.Tree( tree_string , format=1 )
-
         #ncbi.update_taxonomy_database()
 
         tax = set(tax)

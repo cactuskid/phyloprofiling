@@ -61,11 +61,12 @@ class LSHBuilder:
         else:
             self.saving_path = self.saving_folder + self.date_string
 
-        # define minhash generator. taxa stay fixedself.
-
         wmg = WeightedMinHashGenerator(3*len(self.taxaIndex), sample_size=numperm, seed=1)
+        with open( config_utils.datadir +saving_name + 'wmg.pkl', 'wb') as taxout:
+            taxout.write( pickle.dumps(self.taxaIndex))
 
         self.wmg = wmg
+
         self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree_string )
         self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=wmg )
         self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
@@ -81,7 +82,8 @@ class LSHBuilder:
         pyham_tree = self.HAM_PIPELINE([fam, ortho_fam])
         hog_matrix,weighted_hash = hashutils.hash_tree(pyham_tree , self.taxaIndex , self.treeweights , self.wmg)
         return ortho_fam , pyham_tree, weighted_hash,hog_matrix
-    def generates_dataframes(self, size=100, minhog_size=4, maxhog_size=None ):
+
+    def generates_dataframes(self, size=100, minhog_size=3, maxhog_size=None ):
         families = {}
         start = -1
         for i, row in enumerate(self.h5OMA.root.OrthoXML.Index):
@@ -138,7 +140,7 @@ class LSHBuilder:
         chunk_size = 100
         count = 0
         forest = MinHashLSHForest(num_perm=self.numperm)
-        forest_add = forest.add
+
         taxstr = ''
         if self.tax_filter is None:
             taxstr = 'NoFilter'
@@ -169,20 +171,26 @@ class LSHBuilder:
                             hashes = this_dataframe['hash'].to_dict()
                             print(str(this_dataframe.Fam.max())+ 'fam num')
                             print(str(count) + ' done')
-                            hashes = {fam:hashes[fam] for fam in hashes if hashes[fam] is not None}
-                            [ forest_add(str(fam),hashes[fam]) for fam in hashes]
+                            hashes = {fam:hashes[fam] if hashes[fam] is not None else print(fam) for fam in hashes }
+                            [ forest.add(str(fam),hashes[fam]) for fam in hashes]
                             for fam in hashes:
                                 if len(datasets[dataset_name]) < fam + 10:
                                     datasets[dataset_name].resize((fam + chunk_size, len(hashes[fam].hashvalues.ravel())))
                                 datasets[dataset_name][fam, :] = hashes[fam].hashvalues.ravel()
                                 count += 1
                             if t.time() - save_start > 200:
+                                print( t.time() - global_time )
+                                forest.index()
+                                print(forest.query( hashes[fam] , k = 10 ) )
                                 h5flush()
                                 save_start = t.time()
                                 with open(self.lshforestpath , 'wb') as forestout:
                                     forestout.write(pickle.dumps(forest, -1))
+
                                 if self.verbose == True:
                                     print('save done at' + str(t.time() - global_time))
+                        else:
+                            print(this_dataframe)
 
                     else:
                         if self.verbose == True:
@@ -234,7 +242,7 @@ class LSHBuilder:
         print('DONE MAT UPDATER' + str(i))
 
     def run_pipeline(self):
-        functype_dict = {'worker': (self.worker, int(2*mp.cpu_count()/3), True), 'updater': (self.saver, 1, False),
+        functype_dict = {'worker': (self.worker, int(4*mp.cpu_count()/5), True), 'updater': (self.saver, 1, False),
                          'matrix_updater': (self.matrix_updater, 0, False) }
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
         return self.hashes_path, self.lshforestpath , self.mat_path
