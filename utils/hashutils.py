@@ -31,7 +31,7 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
 
     newtree = mastertree
     for event in weights:
-        for n in netwtree.traverse():
+        for n in newtree.traverse():
             if taxmask:
                 if str(n.name) == str(taxmask):
                     newtree = n
@@ -40,9 +40,9 @@ def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask , lambdadic
                 if n.name in taxfilter:
                     #set weight for descendants of n to 0
                     n.delete()
-    
+
     for event in weights:
-        for n in netwtree.traverse():
+        for n in newtree.traverse():
             #exponential decay of initial weigh over node degree
             #weight must be positive
             if exp == True:
@@ -128,8 +128,15 @@ def hogid2fam(hog_id):
     :param hog_id: hog id
     :return: fam
     """
+
     if ':' in hog_id:
-        fam = int(hog_id.split(':')[1])
+        hog_id = hog_id.split(':')[1]
+        if '.' in hog_id:
+            hog_id = hog_id.split('.')[0]
+        hog_id = hog_id.replace("'",'')
+        fam = int(hog_id)
+
+
     else:
         fam = int(hog_id)
     return fam

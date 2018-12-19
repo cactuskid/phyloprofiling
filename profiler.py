@@ -118,6 +118,7 @@ class Profiler:
         while retq.empty() == False:
             fam,mat,tp = retq.get()
             hogmat[fam] = mat
+        
         return hogmat
 
 
@@ -225,12 +226,13 @@ class Profiler:
         np.fill_diagonal(hashmat, 1)
         return hashmat
 
-    def hog_v_hog(self, hog1,hog2):
+    def hog_v_hog(self, hogs):
         """
         give two hogs returns jaccard distance.
         :param hog1 , hog2: str hog id
         :return: jaccard score
         """
+        hog1,hog2 = hogs
         #generate an all v all jaccard distance matrix
         hashes = self.pull_hashes([hog1,hog2])
         hashes = list(hashes.values())
