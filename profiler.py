@@ -21,6 +21,8 @@ import multiprocessing as mp
 import functools
 import numpy as np
 import time
+import sys
+import gc
 
 class Profiler:
 
@@ -68,11 +70,13 @@ class Profiler:
             self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
 
     def return_profile_OTF(self, fam, retq=None, lock = None):
-        ## TODO: unfinished
-        if lock:
+        if type(fam) is str:
+            fam = hashutils.hogid2fam(fam)
+
+        if lock is not None:
             lock.acquire()
         ortho_fam = self.READ_ORTHO(fam)
-        if lock:
+        if lock is not None:
             lock.release()
         tp = self.HAM_PIPELINE([fam, ortho_fam])
         losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
@@ -85,41 +89,41 @@ class Profiler:
                 taxindex = np.asarray(indices[event])
                 hogindex = np.asarray(indices[event])+i*len(self.taxaIndex)
                 hog_matrix_raw[:,hogindex] = 1
-        if retq:
-            retq.put(hog_matrix_raw)
-        return fam,hog_matrix_raw,tp
+        if retq is not None:
+            retq.put( {'fam':fam, 'mat':hog_matrix_raw, 'tree':tp}  )
+            sys.exit(0)
+
 
     def retmat_mp(self, fams):
-        timelimit = 600
 
-        fams = [ hashutils.hogid2fam(fam) for fam in fams ]
-        retq= mp.Queue()
+        timelimit = 60
+        #fams = [ hashutils.hogid2fam(fam) for fam in fams ]
+        retq= mp.Queue(  maxsize=-1 )
+
         lock = mp.Lock()
         processes = {}
-        for fam in fams:
-            processes[fam] = {'time':time.time() , 'process': mp.Process( target = self.return_profile_OTF , args = (fam, retq , lock)  ) }
-            processes[fam]['process'].start()
-            while len(processes)> mp.cpu_count()/4:
-                time.sleep(.01)
-                for c in processes:
-                    if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
-                        processes[c]['process'].terminate()
-                        del(processes[c])
-                        break
-
-        while len(processes)> 0:
-            time.sleep(.01)
-            for c in processes:
-                if processes[c]['time']>timelimit or processes[c]['process'].exitcode is not None:
-                    processes[c]['process'].terminate()
-                    del(processes[c])
-                    break
         hogmat = {}
-        while retq.empty() == False:
-            fam,mat,tp = retq.get()
-            hogmat[fam] = mat
-        
-        return hogmat
+        trees= {}
+        for i,fam in enumerate(fams):
+            processes[fam] = {'time':time.time() , 'process': mp.Process( target = self.return_profile_OTF ,daemon = True, args = (fam, retq , lock)  ) }
+            processes[fam]['process'].start()
+
+        process_list = list(processes.keys())
+        while len(process_list)> 0:
+            while retq.empty() == False:
+                retval = retq.get()
+                fam,mat,tp = retval
+                hogmat[fam] = mat
+                trees[fam] = tp
+
+            process_list = list(processes.keys())
+            for c in process_list:
+                if time.time() - processes[c]['time']  >timelimit or  processes[c]['process'].exitcode == 0 :
+                    processes[c]['process'].terminate()
+                    del processes[c]
+            gc.collect()
+
+        return hogmat , trees
 
 
 
