@@ -242,7 +242,7 @@ class LSHBuilder:
         print('DONE MAT UPDATER' + str(i))
 
     def run_pipeline(self):
-        functype_dict = {'worker': (self.worker, int(4*mp.cpu_count()/5), True), 'updater': (self.saver, 1, False),
+        functype_dict = {'worker': (self.worker, int(1*mp.cpu_count()/2), True), 'updater': (self.saver, 1, False),
                          'matrix_updater': (self.matrix_updater, 0, False) }
         self.mp_with_timeout(functypes=functype_dict, data_generator=self.generates_dataframes(100))
         return self.hashes_path, self.lshforestpath , self.mat_path
@@ -297,6 +297,7 @@ class LSHBuilder:
             if joinval == False:
                 for process in work_processes[key]:
                     process.join()
+
         gc.collect()
         print('DONE!')
 
@@ -305,27 +306,37 @@ if __name__ == '__main__':
 
     # hyper params
     #compile default db with weights at 1
-    num_perm = 512
     startdict={'presence':1, 'loss':1, 'dup':1}
     lambdadict={'presence':0, 'loss':0, 'dup':0}
 
     dbdict = {
     'all': { 'taxfilter': None , 'taxmask': None },
-    'plants': { 'taxfilter': None , 'taxmask': 33090 },
-    'archaea':{ 'taxfilter': None , 'taxmask': 2157 },
-    'bacteria':{ 'taxfilter': None , 'taxmask': 2 },
-    'eukarya':{ 'taxfilter': None , 'taxmask': 2759 },
-    'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None },
-    'fungi':{ 'taxfilter': None , 'taxmask': 4751 },
-    'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
+    #'plants': { 'taxfilter': None , 'taxmask': 33090 },
+    #'archaea':{ 'taxfilter': None , 'taxmask': 2157 },
+    #'bacteria':{ 'taxfilter': None , 'taxmask': 2 },
+    #'eukarya':{ 'taxfilter': None , 'taxmask': 2759 },
+    #'protists':{ 'taxfilter': [2 , 2157 , 33090 , 4751, 33208] , 'taxmask':None },
+    #'fungi':{ 'taxfilter': None , 'taxmask': 4751 },
+    #'metazoa':{ 'taxfilter': None , 'taxmask': 33208 }
     }
 
+    from keras.models import model_from_json
+    json_file = open( './model_nobias.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    model = model_from_json(loaded_model_json)
+    # load weights into new model
+    model.load_weights( "model_nobias.h5")
+    print("Loaded model from disk")
+    weights = model.get_weights()[0]
+    #weight are non zero
 
+    weights += 10 ** -10
     for dbname in dbdict:
         print('compiling' + dbname)
         taxmask = dbdict[dbname]['taxmask']
         taxfilter = dbdict[dbname]['taxfilter']
         with open_file(config_utils.omadir + 'OmaServer.h5', mode="r") as h5_oma:
             lsh_builder = LSHBuilder(h5_oma, saving_folder= config_utils.datadir , saving_name=dbname, numperm = 256 ,
-            treeweights= None , taxfilter = taxfilter, taxmask=taxmask , lambdadict= lambdadict, start= startdict)
+            treeweights= weights , taxfilter = taxfilter, taxmask=taxmask , lambdadict= lambdadict, start= startdict)
             lsh_builder.run_pipeline()

@@ -82,7 +82,7 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
         if len(indices[event])>0:
             taxindex = np.asarray(indices[event])
             hogindex = np.asarray(indices[event])+i*len(taxaIndex)
-            hog_matrix_weighted[:,hogindex] = treeweights[event][taxindex].ravel()
+            hog_matrix_weighted[:,hogindex] = treeweights[hogindex].ravel()
             hog_matrix_raw[:,hogindex] = 1
     weighted_hash = wmg.minhash(list(hog_matrix_weighted.flatten()))
     return  hog_matrix_raw , weighted_hash

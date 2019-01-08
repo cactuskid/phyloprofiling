@@ -23,6 +23,8 @@ import numpy as np
 import time
 import sys
 import gc
+import logging
+
 
 class Profiler:
 
@@ -69,7 +71,7 @@ class Profiler:
             self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=None )
             self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml, db_obj=self.db_obj)
 
-    def return_profile_OTF(self, fam, retq=None, lock = None):
+    def return_profile_OTF(self, fam, lock = None):
         if type(fam) is str:
             fam = hashutils.hogid2fam(fam)
 
@@ -78,52 +80,115 @@ class Profiler:
         ortho_fam = self.READ_ORTHO(fam)
         if lock is not None:
             lock.release()
+
         tp = self.HAM_PIPELINE([fam, ortho_fam])
+
         losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
         dupl = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in self.taxaIndex  ]
         presence = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in self.taxaIndex  ]
+
         indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
         hog_matrix_raw = np.zeros((1, 3*len(self.taxaIndex)))
+
         for i,event in enumerate(indices):
             if len(indices[event])>0:
                 taxindex = np.asarray(indices[event])
                 hogindex = np.asarray(indices[event])+i*len(self.taxaIndex)
                 hog_matrix_raw[:,hogindex] = 1
-        if retq is not None:
-            retq.put( {'fam':fam, 'mat':hog_matrix_raw, 'tree':tp}  )
-            sys.exit(0)
+
+        return {fam:{ 'mat':hog_matrix_raw, 'tree':tp} }
+
+    def worker( self,i, inq, retq ):
+        print('worker start'+str(i))
+        while True:
+            input = inq.get()
+            if input is None:
+                break
+            else:
+                try:
+                    fam,ortho_fam = input
+                    tp = self.HAM_PIPELINE([fam, ortho_fam])
+                    losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
+                    dupl = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in self.taxaIndex  ]
+                    presence = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in self.taxaIndex  ]
+                    indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
+                    hog_matrix_raw = np.zeros((1, 3*len(self.taxaIndex)))
+                    for i,event in enumerate(indices):
+                        if len(indices[event])>0:
+                            taxindex = np.asarray(indices[event])
+                            hogindex = np.asarray(indices[event])+i*len(self.taxaIndex)
+                            hog_matrix_raw[:,hogindex] = 1
+                    retq.put({fam:{ 'mat':hog_matrix_raw, 'tree':tp} })
+                except:
+                    retq.put({fam:{ 'mat':None, 'tree':None} })
 
 
-    def retmat_mp(self, fams):
-
-        timelimit = 60
+    def retmat_mp(self, traindf , nworkers = 25, chunksize=50  ):
         #fams = [ hashutils.hogid2fam(fam) for fam in fams ]
-        retq= mp.Queue(  maxsize=-1 )
+        def calculate_x(row):
+            mat_x1 = row.mat_x
+            mat_x2 = row.mat_y
 
-        lock = mp.Lock()
+            ret1 = np.zeros(mat_x1.shape)
+            ret2 = np.zeros(mat_x2.shape)
+            #diff = mat_x1 - mat_x2
+            matsum = mat_x1 + mat_x2
+            #ret1[np.where(diff != 0 ) ] = -1
+            ret2[ np.where(matsum == 2 ) ] = 1
+            return list(ret2)
+
+
+        retq= mp.Queue(-1)
+        inq= mp.Queue(-1)
         processes = {}
-        hogmat = {}
-        trees= {}
-        for i,fam in enumerate(fams):
-            processes[fam] = {'time':time.time() , 'process': mp.Process( target = self.return_profile_OTF ,daemon = True, args = (fam, retq , lock)  ) }
-            processes[fam]['process'].start()
+        mp.log_to_stderr()
+        logger = mp.get_logger()
+        logger.setLevel(logging.INFO)
 
-        process_list = list(processes.keys())
-        while len(process_list)> 0:
-            while retq.empty() == False:
-                retval = retq.get()
-                fam,mat,tp = retval
-                hogmat[fam] = mat
-                trees[fam] = tp
+        for i in range(nworkers):
+            processes[i] = {'time':time.time() , 'process': mp.Process( target = self.worker , args = (i,inq, retq )  ) }
+            #processes[i]['process'].daemon = True
+            processes[i]['process'].start()
 
-            process_list = list(processes.keys())
-            for c in process_list:
-                if time.time() - processes[c]['time']  >timelimit or  processes[c]['process'].exitcode == 0 :
-                    processes[c]['process'].terminate()
-                    del processes[c]
+        for batch in range(0, len(traindf) , chunksize ):
+            print(batch)
+
+            slicedf = traindf.iloc[batch:batch+chunksize, :]
+            fams = list(set(list(slicedf.HogFamA.unique()) + list(slicedf.HogFamB.unique() ) ) )
+            total= {}
+            for fam in fams:
+                orthxml = self.READ_ORTHO(fam)
+                if orthxml is not None:
+                    inq.put((fam,orthxml))
+
+            done = []
+            count = 0
+            while len(fams)-1 > count:
+                try:
+                    data =retq.get(False)
+                    count+=1
+                    total.update(data)
+                except :
+                    pass
+                time.sleep(.01)
+
             gc.collect()
+            retdf= pd.DataFrame.from_dict( total , orient= 'index')
+            slicedf = slicedf.merge( retdf , left_on = 'HogFamA' , right_index = True , how= 'left')
+            slicedf = slicedf.merge( retdf , left_on = 'HogFamB' , right_index = True , how= 'left')
+            slicedf = slicedf.dropna(subset=['mat_y', 'mat_x'] , how = 'any')
 
-        return hogmat , trees
+            slicedf['xtrain'] = slicedf.apply( calculate_x , axis = 1)
+
+            X_train = np.vstack( slicedf['xtrain'])
+            y_train = slicedf.truth
+            print(slicedf)
+
+            yield (X_train, y_train)
+        for i in processes:
+            inq.put(None)
+        for i in processes:
+            processes[i]['process'].terminate()
 
 
 
