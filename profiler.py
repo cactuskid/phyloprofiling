@@ -220,10 +220,12 @@ class Profiler:
             fam_id = hashutils.hogid2fam(hog_id)
         query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  self.nsamples )
         results = self.lshobj.query(query_hash, k)
-        hogdict = pull_hashes(results)
-        hogdict[fam_id]= query_hash
+        hogdict = self.pull_hashes(results)
 
-        return results
+        hogdict = { hog: hogdict[hog].jaccard(query_hash) for hog in hogdict  }
+
+
+        return hogdict
 
     def hog_query_OMA(self,hog_id=None, fam_id=None , k = 100 ):
         #construct a profile on the fly
