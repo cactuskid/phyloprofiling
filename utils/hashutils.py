@@ -88,6 +88,35 @@ def hash_tree(tp , taxaIndex , treeweights , wmg):
     return  hog_matrix_raw , weighted_hash
 
 
+def tree2str_DCA(tp , taxaIndex ):
+    """
+    Generate a string where each column is a tax level
+    each letter code corresponds to an event type
+    each row is a protein family. for use with DCA pipelines
+
+    :param tp: a pyham tree profile
+    :param taxaIndex: dict mapping taxa to columns
+    :return dcaMat: a weighted minhash of a HOG
+
+    """
+    #convert a tree profile to a weighted minhash
+
+    losses = [ taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in taxaIndex  ]
+    dupl = [ taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in taxaIndex  ]
+    presence = [ taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in taxaIndex ]
+
+    Ds = set(dupl).intersection(set(presence))
+    Ps=  set(presence).difference(set(dupl))
+    Ls=  set(losses)
+    charar = np.chararray((1,len(taxaIndex)))
+    #set to absent
+    charar[:] = 'A'
+    charar[Ds] = 'D'
+    charar[Ls] = 'L'
+    charar[Ps] = 'P'
+    return charar
+
+
 def row2hash(row , taxaIndex , treeweights , wmg):
     """
     turn a dataframe row with an orthoxml file to hash and matrix row
