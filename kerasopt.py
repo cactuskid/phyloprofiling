@@ -30,6 +30,15 @@ import gc
 ###return profiler and validation obj
 
 
+"""
+use this script in conjuction with a labelled protein interaction datasets.
+You can optimize the profile weights at diff taxonomic levels to give a
+better prediction of protein interaction with the jaccard score.
+A positive and negative dataset need to be generated.
+
+"""
+
+
 def load_valobjs( db , val = False , hashes=None , forest=None ):
     print('compiling' + db)
     p = profiler.Profiler(lshforestpath = forest, hashes_h5=hashes, mat_path= None , nsamples = 256, oma = True )
@@ -67,17 +76,34 @@ def calculate_x(row):
     #generate dataframes w sem sim and profile distances
 
 if __name__ == '__main__':
+
+
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-hognetcsv", help="csv for training", type =str)
     parser.add_argument("-epochs", help="number of epochs to train", type=int)
     parser.add_argument("-savedir", help="save directory for model", type=str)
     parser.add_argument("-chunksize", help="num hog pairs to analyze at once", type=str)
     parser.add_argument("-overwrite", help="overwrite model", type=str)
-    parser.add_argument("-forest", help="lsh forest", type=str)
-    parser.add_argument("-hashes", help="hashvals for forest", type=str)
+    parser.add_argument("-name", help="name of database", type=str)
+    parser.add_argument("-ntrain", help="n profiles to train on ", type=str)
+    parser.add_argument("-ntest", help="n profiles to test on ", type=str)
+
     print(sys.argv)
     args = vars(parser.parse_args(sys.argv[1:]))
+
+    try:
+        saving_path  = self.config_utils + args['name']
+    except:
+        raise Exception('please specidfy db name')
+
+    hashes_path = saving_path + 'hashes.h5'
+    lshpath = saving_path + 'newlsh.pkl'
+    lshforestpath = saving_path + 'newlshforest.pkl'
+    mat_path = saving_path+ 'hogmat.h5'
+
     #load hogs dataset from paper
+    #hog names need to be mapped to interactors
     if args['hognetcsv']:
         csvs = glob.glob(args['hognetcsv'] )
         print(csvs)
@@ -108,7 +134,8 @@ if __name__ == '__main__':
     if args['forest'] and args['hashes']:
         p = profiler.Profiler( hashes = args['hashes'], forest = args['forest'] , oma = True)
     else:
-         p = profiler.Profiler( config_utils.datadir +'allnewlshforest.pkl', config_utils.datadir +'allhashes.h5',  oma = True)
+        p = profiler.Profiler( lshforestpath, hashes_path ,  oma = True)
+
     #shuffle
     df['HogFamA'] = df.HogA.map(hashutils.hogid2fam)
     df['HogFamB'] = df.HogB.map(hashutils.hogid2fam)
@@ -119,17 +146,13 @@ if __name__ == '__main__':
     #split
     traindf = df[msk]
     testdf = df[~msk]
-
     print( traindf)
     print( testdf)
-
 
     with open( config_utils.datadir + 'taxaIndex.pkl', 'rb')as taxain:
         taxaIndex = pickle.loads( taxain.read() )
     # 3 events, diff and union of matrows
-
     hogmat_size = 3 *  len(taxaIndex)
-
     if overwrite ==False & os.path.isfile(savedir + 'model.json') and  os.path.isfile(savedir + 'model.h5'):
         json_file = open(savedir + 'model.json', 'r')
         loaded_model_json = json_file.read()
@@ -149,66 +172,56 @@ if __name__ == '__main__':
     #sgd = optimizers.SGD(lr= .1, momentum=0.1, decay=0.01, nesterov=True)
 
     sgd = optimizers.SGD(lr= .01, momentum=0.01, decay=0.01, nesterov=True)
-    rms = optimizers.RMSprop(lr=1, rho=0.9, epsilon=None, decay=0.0)
-    model.compile(loss='mean_squared_error', optimizer=sgd, metrics=['accuracy'])
-
-    """
+    #rms = optimizers.RMSprop(lr=1, rho=0.9, epsilon=None, decay=0.0)
+    model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
 
     tstart = t.time()
-    testtrue = testdf.truth
-        if overwrite == False & os.path.isfile(savedir + 'testset.pkl') :
-            with open( savedir +  'testset.pkl' , 'rb') as testin:
-                testdf = pickle.loads( testin.read())
-            print(testdf)
-        else:
-            testset = list(set(list(testdf.HogFamA.unique()) + list(testdf.HogFamB.unique() ) ) )
-            print(len(testset))
-            #calculate the test set
-            retdf = None
-            for i in range( 0,len(testset),chunksize):
-                print(i)
-                retdict = p.retmat_mp(testset[i:i+chunksize])
-                ret= pd.DataFrame.from_dict(retdict , orient= 'index')
-                print(testset[i:i+chunksize])
-                if i ==0 :
-                    retdf = ret
-                else:
-                    retdf = pd.concat([retdf , ret])
 
-            testdf = testdf.merge( retdf , left_on = 'HogFamA' , right_index = True , how= 'left')
-            testdf = testdf.merge( retdf , left_on = 'HogFamB' , right_index = True , how= 'left')
-            testdf = testdf.dropna(subset=['mat_y', 'mat_x'] , how = 'any')
-            testdf['xtrain'] = testdf.apply( calculate_x , axis = 1)
-            with open( savedir +  'testset.pkl' , 'wb') as testin:
-                testin.write( pickle.dumps(testdf))
-
-        X_test = np.vstack(testdf.xtrain)
-        y_test = testdf.truth
-    """
+    X_test = np.vstack(testdf.xtrain)
+    y_test = testdf.truth
     epochs = 20
     tstart= t.time()
+
     gendata= p.retmat_mp(traindf, nworkers = 25, chunksize=50)
-    #calculate testdf
+
     xtotal = []
     ytotal = []
-    for X,y in gendata:
 
+
+    print('generate data for training')
+    for i in range(int(args['ntrain'] / chunksize ) ):
+        X,y next(gendata)
         xtotal.append(X)
         ytotal.append(y)
         xtotalmat = np.vstack(xtotal)
         ytotalmat = np.hstack(ytotal)
-
         print( xtotalmat.shape)
         print(ytotalmat.shape)
-        metrics = model.fit(x=xtotalmat  , y=ytotalmat, batch_size= 32 , epochs=1000, verbose=1 )
-        print(model.predict(X))
+    print('training')
+    metrics = model.train(x=xtotalmat  , y=ytotalmat, batch_size= 32 , epochs=1000, verbose=1 )
+    print('done')
 
-        if t.time() - tstart > 200:
-            # serialize model to
-            model_json = model.to_json()
-            with open(savedir + "model_nobias.json", "w") as json_file:
-                json_file.write(model_json)
-            # serialize weights to HDF5
-            model.save_weights(savedir + "model_nobias.h5")
-            print("Saved model to disk")
-            tstart = t.time()
+    print('generate data for testing')
+    xtotal = []
+    ytotal = []
+    gendata= p.retmat_mp(testdf, nworkers = 25, chunksize=50)
+    for i in range(int(args['ntest'] / chunksize ) ):
+        X,y next(gendata)
+        xtotal.append(X)
+        ytotal.append(y)
+        xtotalmat = np.vstack(xtotal)
+        ytotalmat = np.hstack(ytotal)
+        print(xtotalmat.shape)
+        print(ytotalmat.shape)
+    model.evaluate(x = xtotalmat , y = ytotalmat)
+    print('done')
+    
+    print('saving')
+    model_json = model.to_json()
+    with open(savedir + "model_nobias.json", "w") as json_file:
+        json_file.write(model_json)
+    # serialize weights to HDF5
+    model.save_weights(savedir + "model_nobias.h5")
+    print("Saved model to disk")
+    tstart = t.time()
+    print('DONE')
