@@ -1,3 +1,4 @@
+
 import _pickle as pickle
 import pandas as pd
 import h5py
@@ -5,429 +6,418 @@ import itertools
 import ujson as json
 import random
 from scipy.sparse import csr_matrix
-
-from goatools import obo_parser
-from goatools.associations import read_gaf
-from goatools.semantic import TermCounts
-from pyoma.browser import db
-
-from validation import validation_semantic_similarity
-from utils import hashutils, string_utils
-from preprocessing import string_stringdataMap
-
+from tables import *
+import numpy as np
+import random
+np.random.seed(0)
+random.seed(0)
+import ete3
+from datasketch import WeightedMinHashGenerator
+#from validation import validation_semantic_similarity
+from utils import hashutils,  config_utils , pyhamutils , files_utils
 from time import time
+import multiprocessing as mp
+import functools
+import numpy as np
+import time
+import sys
+import gc
+import logging
+
+
 class Profiler:
 
-    def __init__(self, lsh_path, hashes_path, mat_path = None):
-
-        self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
-        self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
-
-        self.go = obo_parser.GODag(obo_file_path)
-        self.associations = read_gaf(gaf_file_path)
-
-        self.term_counts = TermCounts(self.go, self.associations)
-        self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
-                                                                                            self.term_counts,
-                                                                                            self.go_terms_hdf5)
-
-        self.h5OMA = oma_path
-        self.db_obj = db.Database(self.h5OMA)
-
-        lsh_file = open(lsh_path, 'rb')
-        lsh_unpickled = pickle.Unpickler(lsh_file)
-        self.lsh = lsh_unpickled.load()
-        self.hashes_h5 = h5py.File(hashes_path, mode='r')
-
-        self.r1 = string_stringdataMap.connect2IDmap()
-        self.r2 = string_stringdataMap.connect2Stringmap()
-        self.string_data_path = string_data_path
-
-        # profile_matrix_file = open(profile_matrix_path, 'rb')
-        # profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
-        # self.profile_matrix = profile_matrix_unpickled.load()
-
-
-    def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
-        """
-        Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
-        :param hog_id: query hog id
-        :param fam_id: query fam id
-        :param events: list of events one wants to query
-        :param combination: Boolean, combination of events or not
-        :return: dictionary containing the results of the LSH for the given query
-        """
-        if hog_id is None and fam_id is None:
-            return
-
-        if hog_id is not None:
-            fam_id = hashutils.hogid2fam(hog_id)
-
-        # query_hashes dict keys:lminhashname, values:hashes
-        # get it from h5hashes instead of recomputing it
-
-        query_dict = {}
-        for event in events:
-            query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5, [event])
-            name = str(fam_id) + '-' + event
-            query_dict[name] = self.lsh.query(query_hashe)
-
-        if combination:
-            #use compbination of all hashes
-            for j in range(1, len(events)):
-                for i in itertools.combinations(events, j + 1):
-                    comb_name = str(fam_id)
-                    for array in i:
-                        comb_name += '-' + array
-                    query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, i)
-                    query_dict[comb_name] = self.lsh.query(query_hashe)
-        return query_dict
-
-
-class Validation_Profiler:
-
-    def __init__(self, lsh_path, hashes_path, obo_file_path, gaf_file_path, h5_go_terms_parents_path, oma_path, string_data_path, mat_path):
-        Profiler.__init__(lsh_path, hashes_path, mat_path)
-        self.go_terms_hdf5 = h5py.File(h5_go_terms_parents_path, 'r')
-        self.hogs2goterms = self.go_terms_hdf5['hog2goterms']
-
-        self.go = obo_parser.GODag(obo_file_path)
-        self.associations = read_gaf(gaf_file_path)
-
-        self.term_counts = TermCounts(self.go, self.associations)
-        self.goTermAnalysis = validation_semantic_similarity.Validation_semantic_similarity(self.go,
-                                                                                            self.term_counts,
-                                                                                            self.go_terms_hdf5)
-
-        self.h5OMA = oma_path
-        self.db_obj = db.Database(self.h5OMA)
-
-
-        self.r1 = string_stringdataMap.connect2IDmap()
-        self.r2 = string_stringdataMap.connect2Stringmap()
-        self.string_data_path = string_data_path
-
-        # profile_matrix_file = open(profile_matrix_path, 'rb')
-        # profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
-        # self.profile_matrix = profile_matrix_unpickled.load()
-
-
-        def results_query(self, query, results_list):
-            results_dict = {}
-            hog_event_1 = query
-            results_list = [query] + results_list
-            for hog_event_2 in results_list:
-                    results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-            return results_dict
-
-        def results_matrows(self, query, results_list )
-
-
-    def hog_query(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'], combination=True):
-        """
-        Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
-        :param hog_id: query hog id
-        :param fam_id: query fam id
-        :param events: list of events one wants to query
-        :param combination: Boolean, combination of events or not
-        :return: dictionary containing the results of the LSH for the given query
-        """
-        if hog_id is None and fam_id is None:
-            return
-
-        if hog_id is not None:
-            fam_id = hashutils.hogid2fam(hog_id)
-
-        # query_hashes dict keys:lminhashname, values:hashes
-        # get it from h5hashes instead of recomputing it
-        query_dict = {}
-        for event in events:
-            query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, [event])
-            name = str(fam_id) + '-' + event
-            query_dict[name] = self.lsh.query(query_hashe)
-
-        if combination:
-            for j in range(1, len(events)):
-                for i in itertools.combinations(events, j + 1):
-                    comb_name = str(fam_id)
-                    for array in i:
-                        comb_name += '-' + array
-                    query_hashe = hashutils.fam2hash_hdf5(fam_id, self.hashes, i)
-                    query_dict[comb_name] = self.lsh.query(query_hashe)
-
-        return query_dict
-
-    def results(self, hog_id, fam_id, events, combination, all_vs_all):
-        """
-        Get jaccard score and semantic value between given hog/id and its results in the LSH
-        :param hog_id: hog id
-        :param fam_id: fam id
-        :param events: evolutionary events
-        :param combination: Boolean
-        :param all_vs_all: Boolean, True: all vs all, False: query vs results+query
-        :return: list of dataframes containing hog ids, semantic value, and jaccard score
-        """
-        results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
-        see_results(results)
-
-        dataframe_list = []
-
-        for query, results_list in results.items():
-
-            print('getting results for {}'.format(query))
-            if all_vs_all:
-                results_query_dict = self.results_all_vs_all(query, results_list)
-            else:
-                results_query_dict = self.results_query(query, results_list)
-
-            results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
-            results_query_df['event'] = query
-
-            dataframe_list.append(results_query_df)
-
-            print('{} done'.format(query))
-
-        return dataframe_list
-
-    def filter_results(self, results):
-        """
-        filters results, remove hogs without GO terms, used for validation
-        :param results: dictionary of results
-        :return: filtered dictionary of results
-        """
-        filtered = {}
-
-        for query, results_list in results.items():
-
-            filtered_list_results = []
-            for result in results_list:
-
-                result_fam = hashutils.result2fam(result)
-                if result_fam not in filtered_list_results and self.hogs2goterms[result_fam] \
-                    and json.loads(self.hogs2goterms[result_fam]):
-                    filtered_list_results.append(result)
-            filtered[query] = filtered_list_results
-        return filtered
-
-    def results_all_vs_all(self, query, results_list):
-        results_dict = {}
-        results_list = [query] + results_list
-        for hog_event_1 in results_list:
-
-            for hog_event_2 in results_list:
-                results_dict.update(self.get_scores(hog_event_1, hog_event_2, results_dict))
-        return results_dict
-
-
-    def get_scores(self, hog_event_1, hog_event_2, results_dict):
-        hog1 = hashutils.result2hogid(hog_event_1)
-        hog2 = hashutils.result2hogid(hog_event_2)
-
-        semantic_dist = self.compute_semantic_distance(hog1, hog2)
-        results_dict[(hog1, hog2)] = {'Semantic': semantic_dist}
-        jaccard_dist = self.compute_jaccard_distance(hog_event_1, hog_event_2)
-        results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
-
-        return results_dict
-
-    def results_with_string_score(self, query, results_list):
-        results_dict = {}
-        results_list = [query] + results_list
-        for hog_event_1 in results_list:
-            for hog_event_2 in results_list:
-
-                if len(results_dict) < 10:
-                    results = self.get_string_jaccard_scores(hog_event_1, hog_event_2)
-                    if results:
-                        results_dict.update(results)
-        return results_dict
-
-    def get_string_jaccard_scores(self, hog_event_1, hog_event_2):
-        hog1 = hashutils.result2hogid(hog_event_1)
-        hog2 = hashutils.result2hogid(hog_event_2)
-
-        # TODO get string results list
-        string_results_list = self.get_string_scores(hog1, hog2)
-
-        results_dict = {}
-
-        if string_results_list:
-            results_dict[(hog1, hog2)] = {'String': string_results_list}
-
-            jaccard_dist = self.compute_jaccard_distance(hog_event_1, hog_event_2)
-            results_dict[(hog1, hog2)]['Jaccard'] = jaccard_dist
-
-        return results_dict
-
-    # TODO: add get string functions hashes_error_files
-
-    def get_string_scores(self, hog1, hog2):
-
-        allstring1 = string_stringdataMap.fam2stringID(self.db_obj, hog1, self.r1)
-        allstring2 = string_stringdataMap.fam2stringID(self.db_obj, hog2, self.r1)
-
-        if len(allstring1) > 0 and len(allstring2) > 0:
-
-            # string_results = string_stringdataMap.HOGvsHOG(allstring1, allstring2, self.r2, self.string_data_path)
-            # here, change function ...
-            string_results = string_utils.get_interactions(allstring1, allstring2)
-            print(string_results)
-            return string_results
-        else:
-            return None
-
-    def compute_semantic_distance(self, hog_1, hog_2):
-
-        semantic_dist = self.goTermAnalysis.semantic_similarity_score(hog_1, hog_2)
-
-        return semantic_dist
-
-    def compute_jaccard_distance(self, hog_event_1, hog_event_2):
-
-        hash_1, hash_2 = [hashutils.fam2hash_hdf5(hashutils.result2fam(hog_event), self.hashes)
-                          for hog_event in [hog_event_1, hog_event_2]]
-        jaccard_dist = hash_1.jaccard(hash_2)
-
-        return jaccard_dist
-
-    def get_hogs_with_annotations(self):
-        print('getting hogs')
-        hogs_with_annotations = []
-        for fam, goterms in enumerate(self.hogs2goterms):
-            if goterms:
-                if json.loads(goterms):
-                    hogs_with_annotations.append(fam)
-
-        print(len(hogs_with_annotations))
-        return hogs_with_annotations
-
-    def validate_pipeline_go_terms(self, path_to_hog_id_file, path_to_save):
-
-        # get list of queries
-        hog_ids = list(pd.read_csv(path_to_hog_id_file, sep='\t')['hog id'])
-
-        dataframe_list = []
-
-        # query the LSH, get dict query:list of result
-        for hog in hog_ids:
-            raw_results = self.hog_query(fam_id=hog)
-            filtered_results = self.filter_results(raw_results)
-            see_results(filtered_results)
-
-            for query, list_results in filtered_results.items():
-                start_time = time()
-
-                number_samples = 10 if len(list_results) >= 10 else len(list_results)
-                random_results = random.sample(list_results, number_samples)
-
-                results_query_dict = self.results_all_vs_all(query, random_results)
-
-                results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
-                results_query_df['event'] = query
-
-                dataframe_list.append(results_query_df)
-
-                print('{} done in {}'.format(query, time() - start_time))
-
-        concat_result = pd.concat(list(dataframe_list))
-        concat_result.to_csv(path_to_save, sep='\t')
-        print('DONE')
-
-    def validate_pipeline_string(self, path_to_save):
-
-        # get randomly n hogs
-        hog_ids = self.get_random_hogs_with_string_id(2)
-
-        dataframe_list = []
-
-        for hog in hog_ids:
-            results = self.hog_query(fam_id=hog)
-            see_results(results)
-
-            for query, list_results in results.items():
-                start_time = time()
-
-                # do not take all results, otherwise too long
-                # number_samples = 10 if len(list_results) >= 10 else len(list_results)
-                # random_results = random.sample(list_results, number_samples)
-
-                results_query_dict = self.results_with_string_score(query, list_results)
-
-                results_query_df = pd.DataFrame.from_dict(results_query_dict, orient='index')
-                results_query_df['event'] = query
-
-                dataframe_list.append(results_query_df)
-
-                print('{} done in {}'.format(query, time() - start_time))
-
-        concat_result = pd.concat(list(dataframe_list))
-        concat_result.to_csv(path_to_save, sep='\t')
-        print('DONE')
-
-    def query_pipeline(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
-                     combination=True, path_to_save=None, all_vs_all=False):
-
-        print('getting results')
-        df_results = self.results(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination,
-                                  all_vs_all=all_vs_all)
-        print('saving ...')
-        if path_to_save is not None:
-            concat_result = pd.concat(list(df_results))
-            concat_result.to_csv(path_to_save, sep='\t')
-            print(df_results)
-        print('done')
-
-    def query_analysis_pipeline(self, hog_id=None, fam_id=None, events=['duplication', 'gain', 'loss', 'presence'],
-                                combination=True, path_to_save=None, all_vs_all=False):
-
-        print('getting results')
-        results = self.hog_query(hog_id=hog_id, fam_id=fam_id, events=events, combination=combination)
-        see_results(results)
-
-        results_ids = get_hog_ids_from_results(results)
-
-        # get X (matrix)
-        results_matrix = self.profile_matrix
-
-    def get_submatrix_form_results(self, results):
-
-        res_mat_list = []
-
-        for query, result in results.items():
-            res_mat = csr_matrix((len(result), self.profile_matrix.shape[1]))
-            for i, r in enumerate(result):
-                res_mat[i, :] = self.profile_matrix[r, :]
-
-            res_mat_list.append(res_mat)
-
-        return res_mat_list
-
-    def get_random_hogs_with_string_id(self, number_hogs):
-        # TODO put correct number of hogs in OMA
-        hogs_in_OMA = 500000
-
-        fam_ids = []
-        while len(fam_ids) < number_hogs:
-            rand_hog = random.randint(1, hogs_in_OMA)
-            if rand_hog not in fam_ids:
-                string = string_stringdataMap.fam2stringID(self.db_obj, hashutils.fam2hogid(rand_hog), self.r1)
-                if string:
-                    fam_ids.append(rand_hog)
-                    print(rand_hog)
-
-        return fam_ids
-
-
-def see_results(results):
-    for k, v in results.items():
-        print('{} queries found for {}'.format(len(v), k))
-
-
-def get_hog_ids_from_results(results):
-
-    query_event_hog_ids = {}
-
-    for query, result in results.items():
-        query_event_hog_ids[query] = [hashutils.result2fam(query)] + [hashutils.result2fam(r) for r in result]
-
-    return query_event_hog_ids
+	"""
+	A profiler object allows the user to query the LSH with HOGs and get a list of result HOGs back
+
+	"""
+	def __init__(self,lshforestpath = None, hashes_h5=None, mat_path= None, oma = False , nsamples = 256):
+		#use the lsh forest or the lsh
+		print('loading lsh')
+		with open(lshforestpath, 'rb') as lshpickle:
+			self.lshobj = pickle.loads(lshpickle.read())
+			print('indexing lsh')
+			self.lshobj.index()
+		self.hashes_h5 = h5py.File(hashes_h5, mode='r')
+		self.nsamples = nsamples
+		print('DONE')
+
+		if mat_path:
+			## TODO: change this to read hdf5
+			#profile_matrix_file = open(profile_matrix_path, 'rb')
+			#profile_matrix_unpickled = pickle.Unpickler(profile_matrix_file)
+			#self.profile_matrix = profile_matrix_unpickled.load()
+			pass
+		if oma:
+			from pyoma.browser import db
+
+			with open( './mastertree.pkl', 'rb') as treein:
+				self.tree = pickle.loads(treein.read())
+			self.tree_string = self.tree.write(format = 1)
+			with open( config_utils.datadir + 'taxaIndex.pkl', 'rb') as taxain:
+				self.taxaIndex = pickle.loads(taxain.read())
+			h5_oma = open_file(config_utils.omadir + 'OmaServer.h5', mode="r")
+			self.db_obj = db.Database(h5_oma)
+			#open up master tree
+			self.treeweights = hashutils.generate_treeweights(self.tree , self.taxaIndex , None, None , None, None)
+			self.HAM_PIPELINE = functools.partial(pyhamutils.get_ham_treemap_from_row, tree=self.tree_string )
+			self.HASH_PIPELINE = functools.partial(hashutils.row2hash , taxaIndex=self.taxaIndex  , treeweights=self.treeweights , wmg=None )
+
+		if oma :
+			self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml_oma	, db_obj=self.db_obj)
+		else:
+			self.READ_ORTHO = functools.partial(pyhamutils.get_orthoxml_tar, db_obj=self.db_obj)
+
+	def return_profile_OTF(self, fam):
+		"""
+		Returns profiles as binary vectors for use with optimisation pipelines
+		"""
+		if type(fam) is str:
+			fam = hashutils.hogid2fam(fam)
+		ortho_fam = self.READ_ORTHO(fam)
+		tp = self.HAM_PIPELINE([fam, ortho_fam])
+
+		losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
+		dupl = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in self.taxaIndex  ]
+		presence = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in self.taxaIndex  ]
+		indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
+		hog_matrix_raw = np.zeros((1, 3*len(self.taxaIndex)))
+		for i,event in enumerate(indices):
+			if len(indices[event])>0:
+				taxindex = np.asarray(indices[event])
+				hogindex = np.asarray(indices[event])+i*len(self.taxaIndex)
+				hog_matrix_raw[:,hogindex] = 1
+		return {fam:{ 'mat':hog_matrix_raw, 'tree':tp} }
+
+
+	def return_profile_OTF_DCA(self, fam, lock = None):
+		"""
+		Returns profiles as strings for use with DCA pipelines
+		just concatenate the numpy arrays and use the tostring
+		function to generate an input "alignment"
+
+		"""
+		if type(fam) is str:
+			fam = hashutils.hogid2fam(fam)
+		if lock is not None:
+			lock.acquire()
+		ortho_fam = self.READ_ORTHO(fam)
+		if lock is not None:
+			lock.release()
+		tp = self.HAM_PIPELINE([fam, ortho_fam])
+		dcastr = hashutils.tree2str_DCA(tp,self.taxaIndex)
+		return {fam:{ 'dcastr':dcastr, 'tree':tp} }
+
+	def worker( self,i, inq, retq ):
+		"""
+		this worker function is for parallelization of generation of binary vector for use with optimisation pipelines
+
+		"""
+		print('worker start'+str(i))
+		while True:
+			input = inq.get()
+			if input is None:
+				break
+			else:
+				try:
+					fam,ortho_fam = input
+					tp = self.HAM_PIPELINE([fam, ortho_fam])
+					losses = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in self.taxaIndex  ]
+					dupl = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in self.taxaIndex  ]
+					presence = [ self.taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in self.taxaIndex  ]
+					indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
+					hog_matrix_raw = np.zeros((1, 3*len(self.taxaIndex)))
+					for i,event in enumerate(indices):
+						if len(indices[event])>0:
+							taxindex = np.asarray(indices[event])
+							hogindex = np.asarray(indices[event])+i*len(self.taxaIndex)
+							hog_matrix_raw[:,hogindex] = 1
+					retq.put({fam:{ 'mat':hog_matrix_raw, 'tree':tp} })
+				except:
+					retq.put({fam:{ 'mat':None, 'tree':None} })
+
+
+	def retmat_mp(self, traindf , nworkers = 25, chunksize=50  ):
+		"""
+		function used to create training matrix with pairs of hogs. calculate_x will return the difference and union of
+		two binary vectors generated by pyham
+		"""
+		#fams = [ hashutils.hogid2fam(fam) for fam in fams ]
+		def calculate_x(row):
+			mat_x1 = row.mat_x
+			mat_x2 = row.mat_y
+			ret1 = np.zeros(mat_x1.shape)
+			ret2 = np.zeros(mat_x2.shape)
+			#diff = mat_x1 - mat_x2
+			matsum = mat_x1 + mat_x2
+			ret1[np.where(diff != 0 ) ] = -1
+			ret2[ np.where(matsum == 2 ) ] = 1
+			return list(ret2)
+		retq= mp.Queue(-1)
+		inq= mp.Queue(-1)
+		processes = {}
+		mp.log_to_stderr()
+		logger = mp.get_logger()
+		logger.setLevel(logging.INFO)
+
+		for i in range(nworkers):
+			processes[i] = {'time':time.time() , 'process': mp.Process( target = self.worker , args = (i,inq, retq )  ) }
+			#processes[i]['process'].daemon = True
+			processes[i]['process'].start()
+
+		for batch in range(0, len(traindf) , chunksize ):
+			print(batch)
+
+			slicedf = traindf.iloc[batch:batch+chunksize, :]
+			fams = list(set(list(slicedf.HogFamA.unique()) + list(slicedf.HogFamB.unique() ) ) )
+			total= {}
+			for fam in fams:
+				orthxml = self.READ_ORTHO(fam)
+				if orthxml is not None:
+					inq.put((fam,orthxml))
+
+			done = []
+			count = 0
+			while len(fams)-1 > count:
+				try:
+					data =retq.get(False)
+					count+=1
+					total.update(data)
+				except :
+					pass
+				time.sleep(.01)
+
+			gc.collect()
+			retdf= pd.DataFrame.from_dict( total , orient= 'index')
+			slicedf = slicedf.merge( retdf , left_on = 'HogFamA' , right_index = True , how= 'left')
+			slicedf = slicedf.merge( retdf , left_on = 'HogFamB' , right_index = True , how= 'left')
+			slicedf = slicedf.dropna(subset=['mat_y', 'mat_x'] , how = 'any')
+			slicedf['xtrain'] = slicedf.apply( calculate_x , axis = 1)
+			X_train = np.vstack( slicedf['xtrain'])
+			y_train = slicedf.truth
+			print(slicedf)
+
+			yield (X_train, y_train)
+		for i in processes:
+			inq.put(None)
+		for i in processes:
+			processes[i]['process'].terminate()
+
+
+	def retmat_mp_profiles(self, fams , nworkers = 25, chunksize=50  ):
+		"""
+		function used to create training matrix with pairs of hogs. calculate_x will return the difference and union of
+		two binary vectors generated by pyham
+		"""
+		retq= mp.Queue(-1)
+		inq= mp.Queue(-1)
+		processes = {}
+		mp.log_to_stderr()
+		logger = mp.get_logger()
+		logger.setLevel(logging.INFO)
+		total = {}
+
+		for i in range(nworkers):
+			processes[i] = {'time':time.time() , 'process': mp.Process( target = self.worker , args = (i,inq, retq )  ) }
+			#processes[i]['process'].daemon = True
+			processes[i]['process'].start()
+		for fam in fams:
+			orthxml = self.READ_ORTHO(fam)
+			if orthxml is not None:
+				inq.put((fam,orthxml))
+		done = []
+		count = 0
+		while len(fams)-1 > count:
+			try:
+				data =retq.get(False)
+				count+=1
+				total.update(data)
+				print(data)
+			except :
+				pass
+			time.sleep(.01)
+		for i in range(nworkers):
+			processes[i]['process'].terminate()
+		gc.collect()
+		retdf= pd.DataFrame.from_dict( total , orient= 'index')
+		return retdf
+
+
+	def hog_query(self, hog_id=None, fam_id=None , k = 100  ):
+		"""
+		Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+		:param hog_id: query hog id
+		:param fam_id: query fam id
+		:return: list containing the results of the LSH for the given query
+		"""
+		if hog_id is not None:
+			fam_id = hashutils.hogid2fam(hog_id)
+		query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  self.nsamples )
+		print(query_hash.hashvalues)
+		results = self.lshobj.query(query_hash, k)
+		return results
+
+	def hog_query_sorted(self, hog_id=None, fam_id=None , k = 100  ):
+		"""
+		Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+		:param hog_id: query hog id
+		:param fam_id: query fam id
+		:return: list containing the results of the LSH for the given query
+		"""
+
+		if hog_id is not None:
+			fam_id = hashutils.hogid2fam(hog_id)
+		query_hash = hashutils.fam2hash_hdf5(fam_id, self.hashes_h5 , nsamples=  self.nsamples )
+		results = self.lshobj.query(query_hash, k)
+		hogdict = self.pull_hashes(results)
+
+		hogdict = { hog: hogdict[hog].jaccard(query_hash) for hog in hogdict  }
+
+
+		return hogdict
+
+	def hog_query_OMA(self,hog_id=None, fam_id=None , k = 100 ):
+		#construct a profile on the fly
+		#rand seed values need to be identical between the construction of the lsh DB and the use of this function
+		"""
+		Untested, Given a hog_id or a fam_id as a query, returns a dictionary containing the results of the LSH.
+		Generates the tree profile and hashes on the fly
+		:param hog_id: query hog id
+		:param fam_id: query fam id
+		:return: list containing the results of the LSH for the given query
+		"""
+		if hog_id is not None:
+			fam_id = hashutils.hogid2fam(hog_id)
+		ortho = self.lshobj.READ_ORTHO(fam)
+		tp = self.lshobj.HAM_PIPELINE((fam, ortho))
+		hash = self.lshobj.HASH_PIPELINE((fam, tp))
+		results = self.lshobj.query(query_hash, k)
+		return results
+
+	def pull_hashes(self , hoglist):
+		"""
+		Given a list of hog_ids , returns a dictionary containing their hashes.
+		This uses the hdf5 file to get the hashvalues
+		:param hog_id: query hog id
+		:param fam_id: query fam id
+		:return: a dict containing the hash values of the hogs in hoglist
+		"""
+		return { hog: hashutils.fam2hash_hdf5( hashutils.hogid2fam(hog), self.hashes_h5 , nsamples=  self.nsamples) for hog in hoglist}
+
+	def pull_matrows(self,fams):
+		"""
+		given a list of fams return the submatrix containing their profiles
+
+		:return:fams sorted, sparse mat
+		"""
+		return self.profile_matrix[np.asarray(fams),:]
+
+
+	@staticmethod
+	def sort_hashes(query_hash,hashes):
+		"""
+		Given a dict of hogs:hashes, returns a sorted array of hogs and jaccard distances relative to query hog.
+		:param query hash: weighted minhash of the query
+		:param hashes: a dict of hogs:hashes
+		:return: sortedhogs, jaccard
+		"""
+		#sort the hashes by their jaccard relative to query hash
+		jaccard=[ query_hash.jaccard(hashes[hog]) for hog in hashes]
+		index = np.argsort(jaccard)
+		sortedhogs = np.asarry(list(hashes.keys()))[index]
+		jaccard= jaccard[index]
+		return sortedhogs, jaccard
+
+
+	@staticmethod
+	def allvall_hashes(hashes):
+		"""
+		Given a dict of hogs:hashes, returns generate an all v all jaccard distance matrix.
+		:param hashes: a dict of hogs:hashes
+		:return: hashmat
+		"""
+		#generate an all v all jaccard distance matrix
+		hashmat = np.zeros((len(hashes),len(hashes)))
+		for i , hog1 in enumerate(hashes):
+			for j, hog2 in enumerate(hashes):
+				if i < j :
+					hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
+		hashmat = hashmat+hashmat.T
+		np.fill_diagonal(hashmat, 1)
+		return hashmat
+
+	def hog_v_hog(self, hogs):
+		"""
+		give two hogs returns jaccard distance.
+		:param hog1 , hog2: str hog id
+		:return: jaccard score
+		"""
+		hog1,hog2 = hogs
+		#generate an all v all jaccard distance matrix
+		hashes = self.pull_hashes([hog1,hog2])
+		hashes = list(hashes.values())
+		return hashes[0].jaccard(hashes[1])
+
+	def allvall_nx(G,hashes,thresh =None):
+		"""
+		Given a dict of hogs:hashes, returns generate an all v all jaccard distance matrix.
+		:param hashes: a dict of hogs:hashes
+		:return: hashmat
+		"""
+		#generate an all v all jaccard distance matrix
+
+		hashmat = [[ hashes[hog1].jaccard(hashes[hog2]) for hog2 in enumerate(hashes[0:i] ) ] for i,hog1 in enumerate(hashes)  ]
+		hashmat = np.asarray(hashmat)
+		hashmat+= hashmat.T
+		#hashmat = np.zeros((len(hashes),len(hashes)))
+
+		#for i , hog1 in enumerate(hashes):
+		#	for j, hog2 in enumerate(hashes):
+		#		hashmat[i,j]= hashes[hog1].jaccard(hashes[hog2])
+		return hashmat
+
+	def iternetwork(seedHOG):
+		pass
+
+	def rank_hashes(query_hash,hashes):
+		jaccard = []
+		sorted = []
+		scores = {}
+		hogsRanked = np.asarray(list(hashes.keys()))
+		for i, hog in enumerate(hashes):
+			score = query_hash.jaccard(hashes[hog])
+			jaccard.append( score)
+			scores[hog] = score
+		hogsRanked = list( hogsRanked[ np.argsort(jaccard) ] )
+		jaccard = np.sort(jaccard)
+		return hogsRanked, jaccard
+
+
+	def get_vpairs(fam):
+
+		"""
+		get pairwise distance matrix of OMA all v all
+		#not finished
+		:param fam: an oma fam
+		:return sparesemat: a mat with all taxa in Oma with nonzero entries where this protein is found
+		:return densemat: a mat with the taxa covered by the fam
+		"""
+		taxa = self.db_obj.hog_levels_of_fam(fam)
+		subtaxindex = { taxon:i for i,taxon in enumerate(taxa)}
+		prots = self.db_obj.hog_members_from_hog_id(fam,  'LUCA')
+		for prot in prots:
+			taxon = prot.ncbi_taxon_id()
+			pairs = self.db_obj.get_vpairs(prot)
+			for EntryNr1, EntryNr2, RelType , score , distance in list(pairs):
+				pass
+		return sparsemat , densemat
+
+	def get_submatrix_form_results(self, results):
+		res_mat_list = []
+		for query, result in results.items():
+			res_mat = csr_matrix((len(result), self.profile_matrix.shape[1]))
+			for i, r in enumerate(result):
+				res_mat[i, :] = self.profile_matrix[r, :]
+			res_mat_list.append(res_mat)
+		final = np.vstack(res_mat_list)
+		return res_mat_list

@@ -64,3 +64,17 @@ target/
 
 # data folder
 /data/
+
+GOPreprocessing/go-basic\.obo
+
+GOPreprocessing/go\.obo
+
+go-basic\.obo
+
+pyoma\.nwk
+
+taxdump\.tar\.gz
+
+lshconfig\.pkl
+
+old stuff/

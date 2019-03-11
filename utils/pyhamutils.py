@@ -1,10 +1,18 @@
 import pyham
 import xml.etree.cElementTree as ET
+import pickle
+from utils import config_utils
 
-
-def get_orthoxml(fam, db_obj):
+def get_orthoxml_oma(fam, db_obj):
     orthoxml = db_obj.get_orthoxml(fam).decode()
+    return orthoxml
 
+def get_orthoxml_tar(fam, tar):
+    f = tar.extractfile(fam)
+    if f is not None:
+        return f.read()
+    else:
+        raise Exception( member + ' : not found in tarfile ')
     return orthoxml
 
 
@@ -17,14 +25,16 @@ def get_species_from_orthoxml(orthoxml):
     return NCBI_taxid2name
 
 
-def switch_name_ncbi_id(orthoxml):
+def switch_name_ncbi_id(orthoxml , mapdict = None):
+    #swap ncbi taxid for species name to avoid ambiguity
+    #mapdict should be a mapping from species name to taxid if the info isnt in the orthoxmls
     root = ET.fromstring(orthoxml)
     for child in root:
         if 'species' in child.tag:
             child.attrib['name'] = child.attrib['NCBITaxId']
-
+        elif mapdict:
+            child.attrib['name'] = mapdict[child.attrib['name']]
     orthoxml = ET.tostring(root, encoding='unicode', method='xml')
-
     return orthoxml
 
 
@@ -35,29 +45,24 @@ def get_ham_treemap_from_fam(fam, tree, db_obj):
     try:
         ham_obj = pyham.Ham(tree, orthoxml.encode(), type_hog_file="orthoxml", use_internal_name=False,
                             orthoXML_as_string=True)
-        hog = ham_obj.get_hog_by_id(fam)
-        tp = ham_obj.create_tree_profile(hog=hog)
+        tp = ham_obj.create_tree_profile(ham, hog=ham_obj.get_list_top_level_hogs()[0])
+        #tp = ham_obj.create_tree_profile(hog=hog)
         return tp.treemap
     except TypeError as err:
         print('Pyham error:', err)
         return None
 
 
-def get_ham_treemap_from_row(row, tree, tax_filter=None):
+def get_ham_treemap_from_row(row, tree):
 
     fam, orthoxml = row
     orthoxml = switch_name_ncbi_id(orthoxml)
+
     try:
         ham_obj = pyham.Ham(tree, orthoxml, type_hog_file="orthoxml", use_internal_name=True, orthoXML_as_string=True)
-        hog = ham_obj.get_hog_by_id(fam)
-        tp = ham_obj.create_tree_profile(hog=hog)
-
-        if tax_filter:
-            for n in tp.treemap.traverse():
-                if str(n.name) == str(tax_filter):
-                    return n
-
+        tp = ham_obj.create_tree_profile(hog=ham_obj.get_list_top_level_hogs()[0])
         return tp.treemap
+
     except TypeError as err:
         print('Type error:', err)
         return None

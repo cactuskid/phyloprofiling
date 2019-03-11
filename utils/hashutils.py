@@ -1,21 +1,157 @@
+
+
 import datasketch
 import itertools
 from scipy.sparse import lil_matrix
+import ete3
+import copy
+import math
+import numpy as np
+import pandas as pd
 
+
+def generate_treeweights( mastertree, taxaIndex , taxfilter, taxmask ):
+    #weighing function for tax level, masking levels etc. sets all weights to 1
+    """
+    Generate the weights of each taxonomic level to be applied during the
+    constructin of weighted minhashes
+    :param mastertree: full corrected ncbi taxonomy
+    :param taxaIndex: dict mapping taxa to columns
+    :param taxfilter: list of branches to delete
+    :param taxmask: if this is not NONE taxmask, the DB is constructed with this subtree
+    :return: weights: a vector of weights for each tax level
+    """
+
+    weights = { type: np.zeros((len(taxaIndex),1)) for type in ['presence', 'loss', 'dup']}
+    print(lambdadict)
+    print(start)
+    print(len(taxaIndex))
+    newtree = mastertree
+    for event in weights:
+        for n in newtree.traverse():
+            if taxmask:
+                if str(n.name) == str(taxmask):
+                    newtree = n
+                    break
+            if taxfilter:
+                if n.name in taxfilter:
+                    n.delete()
+    for event in weights:
+        for n in newtree.traverse():
+            weights[event][taxaIndex[n.name]] = 1
+    return weights
+
+def hash_tree(tp , taxaIndex , treeweights , wmg):
+    """
+    Generate a weighted minhash and binary matrix row for a tree profile
+
+    :param tp: a pyham tree profile
+    :param taxaIndex: dict mapping taxa to columns
+    :param treeweights: a vector of weights for each tax levels
+    :param wmg: Datasketch weighted minhash generator
+    :return hog_matrix: a vector of weights for each tax level
+    :return weighted_hash: a weighted minhash of a HOG
+
+    """
+    losses = [ taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in taxaIndex  ]
+    dupl = [ taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in taxaIndex  ]
+    presence = [ taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in taxaIndex ]
+    indices = dict(zip (['presence', 'loss', 'dup'],[presence,losses,dupl] ) )
+    hog_matrix_weighted = np.zeros((1, 3*len(taxaIndex)))
+    hog_matrix_binary = np.zeros((1, 3*len(taxaIndex)))
+    for i,event in enumerate(indices):
+        if len(indices[event])>0:
+            taxindex = np.asarray(indices[event])
+            hogindex = np.asarray(indices[event])+i*len(taxaIndex)
+            hog_matrix_weighted[:,hogindex] = treeweights[hogindex].ravel()
+            hog_matrix_binary[:,hogindex] = 1
+    weighted_hash = wmg.minhash(list(hog_matrix_weighted.flatten()))
+    return  hog_matrix_binary , weighted_hash
+
+def tree2str_DCA(tp , taxaIndex ):
+    """
+    Generate a string where each column is a tax level
+    each letter code corresponds to an event type
+    each row is a protein family. for use with DCA pipelines
+
+    :param tp: a pyham tree profile
+    :param taxaIndex: dict mapping taxa to columns
+    :return dcaMat: a weighted minhash of a HOG
+
+    """
+    #convert a tree profile to a weighted minhash
+
+    losses = [ taxaIndex[n.name]  for n in tp.traverse() if n.lost and n.name in taxaIndex  ]
+    dupl = [ taxaIndex[n.name]  for n in tp.traverse() if n.dupl  and n.name in taxaIndex  ]
+    presence = [ taxaIndex[n.name]  for n in tp.traverse() if n.nbr_genes > 0  and n.name in taxaIndex ]
+
+    Ds = set(dupl).intersection(set(presence))
+    Ps=  set(presence).difference(set(dupl))
+    Ls=  set(losses)
+    charar = np.chararray((1,len(taxaIndex)))
+    #set to absent
+    charar[:] = 'A'
+    charar[Ds] = 'D'
+    charar[Ls] = 'L'
+    charar[Ps] = 'P'
+    return charar
+
+
+def row2hash(row , taxaIndex , treeweights , wmg):
+    """
+    turn a dataframe row with an orthoxml file to hash and matrix row
+    :param row: lsh builder dataframe row
+    :param taxaIndex: dict mapping taxa to columnsfam
+    :param treeweights: a vector of weights for each tax levels
+    :param wmg: Datasketch weighted minhash generator
+    :return: hog_matrix: a vector of weights for each tax level
+    :return: weighted_hash: a weighted minhash of a HOG
+    """
+    #convert a dataframe row to a weighted minhash
+    fam, treemap = row.tolist()
+    hog_matrix,weighted_hash = hash_tree(treemap , taxaIndex , treeweights , wmg)
+    return [weighted_hash,hog_matrix]
+
+
+def fam2hash_hdf5(fam,  hdf5, dataset = None, nsamples = 128  ):
+    #read the stored hash values and return a weighted minhash
+    """
+    Read the stored hash values and return a weighted minhash
+    :param fam: hog id
+    :param hdf5: h5py object of the hashvalues
+    :param dataset: which dataset to use when constructing the hash
+    :return: minhash1: the weighted hash of your HOG
+    """
+    if dataset is None:
+        dataset = list(hdf5.keys())[0]
+    hashvalues = np.asarray(hdf5[dataset][fam, :].reshape(nsamples,2 ))
+    hashvalues = hashvalues.astype('int64')
+    minhash1 = datasketch.WeightedMinHash( seed = 1, hashvalues=hashvalues)
+    return minhash1
 
 def hogid2fam(hog_id):
     """
+    For use with OMA HOGs
     Get fam given hog id
     :param hog_id: hog id
     :return: fam
     """
-    fam = int(hog_id.split(':')[1])
+    if ':' in hog_id:
+        hog_id = hog_id.split(':')[1]
+        if '.' in hog_id:
+            hog_id = hog_id.split('.')[0]
+        hog_id = hog_id.replace("'",'')
+        fam = int(hog_id)
 
+
+    else:
+        fam = int(hog_id)
     return fam
 
 
 def fam2hogid(fam_id):
     """
+    For use with OMA HOGs
     Get hog id given fam
     :param fam_id: fam
     :return: hog id
@@ -23,237 +159,3 @@ def fam2hogid(fam_id):
     hog_id = "HOG:" + (7-len(str(fam_id))) * '0' + str(fam_id)
 
     return hog_id
-
-
-def result2hogid(result):
-    """
-    Get hog id given result
-    :param result: result
-    :return: hog id
-    """
-    hog_id = fam2hogid(result2fam(result))
-
-    return hog_id
-
-
-def result2fam(result):
-    """
-    Get fam given result
-    :param result: result
-    :return: fam
-    """
-    fam = int(result.split('-')[0])
-
-    return fam
-
-
-def result2events(result):
-    """
-    Get list of events given result
-    :param result: result
-    :return: list of events
-    """
-    events = [event for event in result.split('-')[1:]]
-
-    return events
-
-
-def tree2eventdict(treemap):
-    """
-    Get events dictionary from treemap object from pyham
-    :param treemap: treemap object from pyham
-    :return: dictionary of evolutionary events
-    """
-    eventdict = {'presence': [], 'gain': [], 'loss': [], 'duplication': []}
-    for node in treemap.traverse():
-        if not node.is_root():
-            if node.nbr_genes > 0:
-                eventdict['presence'].append('P' + node.name)
-            if node.dupl > 0:
-                eventdict['duplication'].append('D' + node.name)
-            if node.lost > 0:
-                eventdict['loss'].append('L' + node.name)
-        else:
-            eventdict['gain'].append('G' + node.name)
-    return eventdict
-
-
-def eventdict2minhashes(eventdict, nperm = 128):
-    """
-    Get minhashes from events dictionary
-    :param eventdict: dictionary of evolutionary events
-    :return: minHashes
-    """
-    hashes_dictionary = {}
-
-    for event in eventdict:
-
-        eventdict[event] = set(eventdict[event])
-        minHash = datasketch.MinHash(num_perm=nperm)
-
-        for element in eventdict[event]:
-            minHash.update(element.encode())
-
-        hashes_dictionary[event] = minHash
-
-    return hashes_dictionary
-
-
-def eventdict2WeightedMinhashes(eventdict, nperm = 128, treeweights =None ):
-    """
-    Get minhashes from events dictionary
-    :param eventdict: dictionary of evolutionary events
-    :return: minHashes
-    """
-    if wmg == None:
-    	wmg = WeightedMinHashGenerator()
-
-    hashes_dictionary = {}
-
-    for event in eventdict:
-        eventdict[event] = set(eventdict[event])
-        minHash = datasketch.MinHash(num_perm=nperm)
-
-        for element in eventdict[event]:
-            minHash.update(element.encode())
-
-        hashes_dictionary[event] = minHash
-
-    return hashes_dictionary
-
-
-
-def minhashes2leanminhashes(fam, minhashes, combination=True ,  nperm = 128):
-    """
-    Get leanMinHashes from MinHashes
-    :param fam: fam
-    :param minhashes: list of minHashes
-    :param combination: boolean, combination wanted or not
-    :return: dictionary of leanMinHashes
-    """
-    lean_minhashes_dictionary = {}
-
-    for name, minhash in minhashes.items():
-        lean_minhash = datasketch.LeanMinHash(minhash)
-        lean_minhash_name = str(fam) + '-' + name
-        lean_minhashes_dictionary[lean_minhash_name] = lean_minhash
-
-    if combination:
-        for j in range(1, len(minhashes.keys())):
-            for i in itertools.combinations(minhashes.keys(), j + 1):
-                comb_name = str(fam)
-                minHash = datasketch.MinHash(num_perm=nperm)
-                for array in i:
-                    comb_name += '-' + array
-                    minHash.merge(minhashes[array])
-
-                lean_minhash = datasketch.LeanMinHash(minHash)
-                lean_minhashes_dictionary[comb_name] = lean_minhash
-
-    return lean_minhashes_dictionary
-
-
-def tree2hashes(fam, treemap, events, combination, nperm = 128):
-    """
-    Get hashes from tree
-    :param fam: fam
-    :param treemap: pyham treemap object
-    :param events: list of events
-    :param combination: boolean, combination wanted or not
-    :return: dictionary containing two lists: one of minHashes and one of LeanMinHashes
-    """
-    if treemap is not None:
-        event_dictionary = tree2eventdict(treemap)
-        event_dictionary = {e: event_dictionary[e] for e in events}
-        minhashes = eventdict2minhashes(event_dictionary,nperm)
-        leanminhashes = minhashes2leanminhashes(fam, minhashes, combination, nperm)
-        return {'hashes': minhashes, 'dict': leanminhashes}
-    else:
-        return None
-
-
-def tree2hashes_from_row(row, events, combination,  nperm = 128):
-    """
-    Get hashes from tree
-    :param row: tumple containing fam and treemap (pyham object)
-    :param events: list of events
-    :param combination: boolean, combination wanted or not
-    :return: dictionary containing two lists: one of minHashes and one of LeanMinHashes
-    """
-    fam, treemap = row.tolist()
-
-    return tree2hashes(fam, treemap, events, combination , nperm)
-
-
-def tree2mat(treemap, taxa_index, verbose=False):
-    """
-    Turn each tree into a sparse matrix with 4 rows
-    :param treemap: tree profile object from pyHam; contains biological events
-    :param taxa_index: index of global taxonomic tree from OMA
-    :param verbose: boolean, True for more info
-    :return: profile_matrix : matrix of size numberOfBiologicalEvents times taxaIndex containing
-    when the given biological event is present in the given species
-    """
-    if treemap is not None:
-        hog_matrix = lil_matrix((1, 4 * len(taxa_index)))
-        column_dict = {'presence': 0, 'gain': 1, 'loss': 2, 'duplication': 3}
-
-        for node in treemap.traverse():
-            # traverse() returns an iterator to traverse the tree structure
-            # strategy:"levelorder" by default; nodes are visited in order from root to leaves
-            # it return treeNode instances
-            if not node.is_root():
-                # for presence, loss, and duplication, set 1 if > 0
-                if node.nbr_genes > 0:
-                    pad = column_dict['presence'] * len(taxa_index)
-                    hog_matrix[0, pad + taxa_index[node.name]] = node.nbr_genes
-                if node.lost > 0:
-                    pad = column_dict['loss'] * len(taxa_index)
-
-                    hog_matrix[0, pad + taxa_index[node.name]] = 1
-                if node.dupl > 0:
-                    pad = column_dict['duplication'] * len(taxa_index)
-                    hog_matrix[0, pad + taxa_index[node.name]] = 1
-            else:
-                # gain is only for root; impossible to "gain" a gene several times
-                pad = column_dict['gain'] * len(taxa_index)
-                hog_matrix[0, pad + taxa_index[node.name]] = 1
-
-        if verbose:
-            print(hog_matrix)
-
-        return hog_matrix
-
-    else:
-        return lil_matrix((1, 4 * len(taxa_index)))
-
-
-def fam2hash_hdf5(fam, hdf5, events=['duplication', 'gain', 'loss', 'presence']):
-    """
-    Get the minhash corresponding to the given hog id number
-    :param fam: hog id number
-    :param hdf5: hdf5 file containing hashes
-    :param events: list of events the hashes are build on; default: all four events
-    :return: list of hashes for the given fam and events
-    """
-    minhash1 = None
-    for event in events:
-        query_minhash = datasketch.MinHash(num_perm=128)
-
-        try:
-            query_minhash.hashvalues = hdf5[event][fam, :]
-        except:
-            print('bug fam2hash_hdf5')
-            print(fam)
-            print(event)
-            print(hdf5[event].shape)
-
-        query_minhash.seed = 1
-
-        if minhash1 is None:
-            minhash1 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
-        else:
-            minhash2 = datasketch.MinHash(seed=query_minhash.seed, hashvalues=query_minhash.hashvalues)
-            minhash1.merge(minhash2)
-
-    return minhash1
